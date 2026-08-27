@@ -139,8 +139,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             {
                 foreach (var project in value.Model.Projects)
                     Projects.Add(project);
-                foreach (var field in value.Model.WorkstationConfiguration.Fields)
-                    ConfigurationFields.Add(new ViCoConfigurationFieldVM(field));
+                foreach (var configurationField in value.Model.WorkstationConfiguration.Fields)
+                    ConfigurationFields.Add(new ViCoConfigurationFieldVM(configurationField));
                 SelectedProject = Projects.FirstOrDefault();
             }
             else

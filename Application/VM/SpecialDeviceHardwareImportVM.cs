@@ -79,9 +79,25 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public int Slot => Module.Slot;
 
+    public int Subslot => Module.Subslot;
+
     public string DeviceName => Module.DeviceName;
 
+    public string DeviceType => Module.DeviceType;
+
+    public string Manufacturer => Module.Manufacturer;
+
+    public string OrderNumber => Module.OrderNumber;
+
+    public string GsdName => Module.GsdName;
+
+    public string ProfinetName => Module.ProfinetName;
+
+    public string IpAddress => Module.IpAddress;
+
     public string ModuleName => Module.ModuleName;
+
+    public string ModulePath => Module.ModulePath;
 
     public string ModuleType => Module.ModuleType;
 

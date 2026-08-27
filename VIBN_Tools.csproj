@@ -10,15 +10,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
 	<BaseOutputPath>$(MSBuildProjectDirectory)\artifacts\build\</BaseOutputPath>
-	<FeeScreenSimRoot Condition="'$(FEE_SCREEN_SIM_ROOT)' != ''">$(FEE_SCREEN_SIM_ROOT)</FeeScreenSimRoot>
-	<FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == ''">C:\Program Files\fe.screen-sim V5\5.0.11.48415</FeeScreenSimRoot>
 	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**</DefaultItemExcludes>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Compile Remove="ContainerToFee\General\SensorFaultSim_Container.cs" />
-    <Compile Remove="ContainerToFee\General\Sensor_Container.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <None Remove="Content\LogicDefinitions\GrobStandard\Grob_AxisBeckhoff.xml" />
@@ -43,15 +36,17 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="ClosedXML" Version="0.105.0" />
-	<PackageReference Include="Grob.UX" Version="1.8.93" />
-	<PackageReference Include="Microsoft.ML" Version="5.0.0" />
-	<PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
-	<PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
-    <PackageReference Include="NPOI" Version="2.7.5" />
+	<PackageReference Include="ClosedXML" />
+	<PackageReference Include="Grob.UX" />
+	<PackageReference Include="Microsoft.ML" />
+	<PackageReference Include="Microsoft.ML.LightGbm" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+	<PackageReference Include="NLog.Extensions.Logging" />
+    <PackageReference Include="NPOI" />
     <!-- Required at runtime by the FEE SDK; declare it explicitly so a
          deployed desktop build does not depend on a machine-wide GAC entry. -->
-    <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" />
+    <PackageReference Include="System.ComponentModel.Composition" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
 
   <ItemGroup>
@@ -62,220 +57,112 @@
 
   <ItemGroup>
     <Reference Include="FS.API">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.API.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.API.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.Components">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.Components.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Components.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.Content">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.Content.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Content.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.Input">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.Input.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Input.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Mathematics">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.Mathematics.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Mathematics.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Network">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.Network.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Network.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Packets">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.Packets.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Packets.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Util">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.Util.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Util.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Wpf">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.SDK.Wpf.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Wpf.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="FS.Util">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\FS.Util.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Util.dll</HintPath>
+      <Private>true</Private>
     </Reference>
     <Reference Include="ReadingUnitPlugin">
-      <HintPath>..\..\..\Program Files\fe.screen-sim V5\5.0.9.44419\Bin\Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll</HintPath>
+      <HintPath>$(FeeScreenSimRoot)\Bin\Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll</HintPath>
+      <Private>true</Private>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Content\CabinetDefinitions\Grob_2PositionSwitch.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\CabinetDefinitions\Grob_3PositionSwitch.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\CabinetDefinitions\Grob_Button.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\CabinetDefinitions\Grob_NotAus.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Absaugung.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\AddCountToString.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Analogsensor_Skalierung.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\AnalogValueSwitch.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\AsciiToUnicode.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Auflagekontrolle.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\AutoInsert.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Beckhoff_RfidSearchIndex.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Beckhoff_SearchIndex_ChangeMaterial.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\DMC_WT-Helper.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\GetCurrentTime.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Grob_ExternalStop.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\KalteSchnittstelleBand.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Kurvenscheibe.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\ManipulateString.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Process_Nok_Part.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\RenameLabelGlobal.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\SafetyDoorAsi.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Schublade_Helper.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Template_ChangeMark.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Template_ChangeMaterial.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Template_Reparenter.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Template_SdkFunctions.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\Timer_TON_TOF_Impuls.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAdditional\TurnDirectionHelper.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAddOns\Grob_GripperAddOn_AnalogValues.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobAddOns\Grob_GripperAddOn_MultiplePartTypes.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_AxisBeckhoff.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_AxisSiemens.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_BeltControl.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_Clamping.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_Conveyor.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_Cylinder.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_GripperBasic.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_GripperVacuum.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_LiftUnit.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_PneumaticSupply.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_SafePnPn.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_SafetyDoor.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_Sensor.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_SimModeSiemens.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\GrobStandard\Grob_Stop.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\AtlasCopco_SYS_6000_%28BMW%29.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\AtlasCopco_SYS_6000_%28VASS%29.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\Cognex_DataMan_DMR.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\IPG_LaserPicker.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\KeyenceBarcodeSR2000.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\KukaSafety.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\LENZE_8400_Motec.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\LENZE_8400_Protec.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\Lenze_i950.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="Content\LogicDefinitions\SpecialDevices\Promess_SpindleUP.xml">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    <!-- All shipped definitions are runtime data. The wildcard also picks
+         up newly added definitions without another project-file edit. -->
+    <None Update="Content\**\*.xml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
     </None>
   </ItemGroup>
 
   <Target Name="BuildAndCopyTiaBridge" AfterTargets="Build">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\VIBN_Tools.TiaBridge\VIBN_Tools.TiaBridge.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
+    <MSBuild Projects="$(MSBuildProjectDirectory)\VIBN_Tools.TiaBridge\VIBN_Tools.TiaBridge.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)"
+             RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile" />
     <ItemGroup>
       <TiaBridgeOutput Include="$(MSBuildProjectDirectory)\VIBN_Tools.TiaBridge\bin\$(Configuration)\net48\**\*" />
     </ItemGroup>
     <Copy SourceFiles="@(TiaBridgeOutput)" DestinationFiles="@(TiaBridgeOutput->'$(TargetDir)TiaBridge\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyFeeRuntimeToOutput" AfterTargets="Build">
+    <ItemGroup>
+      <FeeRuntimeRootAssembly Include="$(FeeScreenSimRoot)\Bin\*.dll" />
+      <FeeRuntimePluginFile Include="$(FeeScreenSimRoot)\Bin\Plugins\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FeeRuntimeRootAssembly)"
+          DestinationFolder="$(TargetDir)"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FeeRuntimePluginFile)"
+          DestinationFiles="@(FeeRuntimePluginFile->'$(TargetDir)Plugins\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyTiaBridgeToPublish" AfterTargets="Publish">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\VIBN_Tools.TiaBridge\VIBN_Tools.TiaBridge.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration)"
+             RemoveProperties="RuntimeIdentifier;SelfContained;PublishSingleFile" />
+    <ItemGroup>
+      <TiaBridgePublishOutput Include="$(MSBuildProjectDirectory)\VIBN_Tools.TiaBridge\bin\$(Configuration)\net48\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(TiaBridgePublishOutput)"
+          DestinationFiles="@(TiaBridgePublishOutput->'$(PublishDir)TiaBridge\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyFeeRuntimeToPublish" AfterTargets="Publish">
+    <ItemGroup>
+      <FeePublishRootAssembly Include="$(FeeScreenSimRoot)\Bin\*.dll" />
+      <FeePublishPluginFile Include="$(FeeScreenSimRoot)\Bin\Plugins\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(FeePublishRootAssembly)"
+          DestinationFolder="$(PublishDir)"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(FeePublishPluginFile)"
+          DestinationFiles="@(FeePublishPluginFile->'$(PublishDir)Plugins\%(RecursiveDir)%(Filename)%(Extension)')"
+          SkipUnchangedFiles="true" />
   </Target>
 
 </Project>

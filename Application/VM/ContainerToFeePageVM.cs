@@ -409,7 +409,6 @@ namespace VIBN_Tools.Application.VM
                     ListAllContainers.Add(c);
 
                     //// Add Fault CabinetElement for sensor containers
-                    //if (c is Sensor_Container sensor)
                     //{
                     //    var faultSimContainer = sensor.CreateFaultSimCabinetElementContainer();
                     //    ListAllContainers.Add(faultSimContainer);

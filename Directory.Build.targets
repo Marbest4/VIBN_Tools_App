@@ -1,0 +1,8 @@
+<Project>
+  <Target Name="ValidateFeeScreenSimSdk"
+          BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(MSBuildProjectName)' == 'VIBN_Tools'">
+    <Error Condition="!Exists('$(FeeScreenSimRoot)\Bin\FS.SDK.dll')"
+           Text="FEE SDK wurde unter '$(FeeScreenSimRoot)' nicht gefunden. Build.ps1 verwenden oder FEE_SCREEN_SIM_ROOT setzen." />
+  </Target>
+</Project>
