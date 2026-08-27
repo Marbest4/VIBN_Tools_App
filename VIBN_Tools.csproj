@@ -9,6 +9,9 @@
     <Nullable>annotations</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+	<!-- A machine with a serviced .NET 8 Desktop Runtime (for example 8.0.30)
+	     must run a build whose minimum framework version is 8.0.0. -->
+	<RollForward>LatestPatch</RollForward>
 	<BaseOutputPath>$(MSBuildProjectDirectory)\artifacts\build\</BaseOutputPath>
 	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**</DefaultItemExcludes>
   </PropertyGroup>
@@ -36,17 +39,17 @@
   </ItemGroup>
 
   <ItemGroup>
-	<PackageReference Include="ClosedXML" />
-	<PackageReference Include="Grob.UX" />
-	<PackageReference Include="Microsoft.ML" />
-	<PackageReference Include="Microsoft.ML.LightGbm" />
-	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-	<PackageReference Include="NLog.Extensions.Logging" />
-    <PackageReference Include="NPOI" />
+	<PackageReference Include="ClosedXML" Version="0.105.0" />
+	<PackageReference Include="Grob.UX" Version="1.8.93" />
+	<PackageReference Include="Microsoft.ML" Version="5.0.0" />
+	<PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
+	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+	<PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
+    <PackageReference Include="NPOI" Version="2.7.5" />
     <!-- Required at runtime by the FEE SDK; declare it explicitly so a
          deployed desktop build does not depend on a machine-wide GAC entry. -->
-    <PackageReference Include="System.ComponentModel.Composition" />
-    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" />
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
   </ItemGroup>
 
   <ItemGroup>

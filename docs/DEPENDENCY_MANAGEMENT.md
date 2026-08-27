@@ -11,7 +11,7 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 | Variante | Wartbarkeit | Skalierung | Aufwand | Stabilität | TIA/FEE-Kompatibilität | Bewertung |
 | --- | ---: | ---: | ---: | ---: | ---: | --- |
 | `Directory.Build.props` | 4 | 4 | 2 | 4 | 5 | Sofort sinnvoll für SDK-Pfade/Buildregeln |
-| `Directory.Packages.props` | 5 | 5 | 2 | 5 | 5 | Sofort sinnvoll für NuGet-Versionen |
+| `Directory.Packages.props` | 5 | 5 | 2 | 3 | 5 | Zieloption nach Vereinheitlichung der Entwicklerumgebungen |
 | Gemeinsame Shared Library | 4 | 4 | 3 | 4 | 5 | Für eigene Verträge/Adapter geeignet |
 | Projekt- statt DLL-Referenzen | 5 | 4 | 3 | 5 | 2 | Nur wenn FS-Quellprojekte verfügbar sind |
 | Privates NuGet-Repository | 5 | 5 | 3 | 5 | 5 | Technisch beste Zielarchitektur |
@@ -22,14 +22,14 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 
 ## Umgesetzter Zwischenstand
 
-- `Directory.Packages.props` verwaltet alle NuGet-Versionen zentral.
+- NuGet-Versionen stehen vorerst explizit an den `PackageReference`-Einträgen. Das erhält die Restore-Kompatibilität mit den aktuell eingesetzten Visual-Studio-/NuGet-Versionen.
 - `Directory.Build.props` ermittelt `FeeScreenSimRoot` aus Parameter/Environment, `external`, danach installierter Standardversion.
 - `Directory.Build.targets` bricht früh mit einer klaren SDK-Meldung ab.
 - Alle FS-Referenzen verwenden denselben Root und `Private=true`.
 - `Build.ps1` erkennt die höchste installierte Version automatisch.
 - Neue XML-Definitionen werden per Wildcard automatisch veröffentlicht.
 
-Die zentrale Paketverwaltung folgt [Microsofts NuGet Central Package Management](https://learn.microsoft.com/en-gb/nuget/consume-packages/central-package-management).
+Eine spätere zentrale Paketverwaltung kann nach Vereinheitlichung und Prüfung der Entwicklerumgebungen nach [Microsofts NuGet Central Package Management](https://learn.microsoft.com/en-gb/nuget/consume-packages/central-package-management) erneut eingeführt werden.
 
 ## Empfohlene Zielarchitektur
 

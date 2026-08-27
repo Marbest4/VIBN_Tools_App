@@ -62,7 +62,7 @@ Kanbanize-/Dateisystemaufrufe sind asynchron; CPU- bzw. blockierende SDK-Arbeit 
 | Vorher | Nachher | Begründung |
 | --- | --- | --- |
 | Feste relative `Program Files/.../5.0.9...`-HintPaths | `$(FeeScreenSimRoot)` mit explizitem, Umgebungs-, Repository- und Versionsfallback | Rechner- und versionsunabhängiger Build |
-| Paketversion an jedem `PackageReference` | `Directory.Packages.props` | Ein Versionsort, keine Drift |
+| Nicht reproduzierbare Paketstände | Explizit fixierte Version an jedem `PackageReference` | Stabiler Restore auch mit den vorhandenen Visual-Studio-/NuGet-Versionen |
 | Dutzende einzelne XML-Copy-Einträge | `Content\**\*.xml` mit `PreserveNewest` | Neue Definitionen werden automatisch ausgeliefert; weniger Build-I/O |
 | Hardwarelogik in der allgemeinen TIA-Session | `TiaHardwareReader` als read-only Adapter | Single Responsibility und isolierbare Versionsgrenze |
 | Modulidentität ohne Hierarchie/Subslot | Identität aus Gerät, Modulpfad, Slot, Subslot und Typkennung | Keine falsche Deduplizierung gleichartiger Submodule |
@@ -108,4 +108,3 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 5. Legacy-Service-Locator strangweise durch Konstruktorinjektion ersetzen.
 6. Unit-/Contract-Tests für Container2FEE und Hardware-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
-
