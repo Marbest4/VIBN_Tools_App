@@ -75,7 +75,7 @@
 | TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `SpecialDevices/DeviceFactory.cs` |
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
-| Container Generation | `ContainerGenerationPageVM.cs`, `ContainerGeneration/` |
+| Container Generation | `ContainerGenerationStateVM.cs` (Zustand), `ContainerGenerationWorkflowVM.cs` (Import/Generierung/Reimport) und `ContainerGenerationPageVM.cs` (WPF-Interaktion), `ContainerGeneration/` (Fachlogik) |
 | Container2Fee | `ContainerToFeePageVM.cs`, `ContainerToFee/` |
 | Model Validation | `ModelValidationPageVM.cs` |
 | Model Control | `ModelControlPageVM.cs` |

@@ -19,7 +19,7 @@
 | Remote session / last logon | read-only `quser` | lack of permission means “Not available”, not offline |
 | Workplace card schedule | VIBN source + single VIBN template deadline | source −14 days, template +56 days |
 | Authorization | central `roles.json` | `lutzma` is Level9; at least two Level9 users on save |
-| TIA hardware | selected PLC via Openness | read-only module and byte address data before FEE creation |
+| TIA hardware | all project devices via Openness; selected PLC is sorted first | read-only device/module tree, GSD/network metadata, slot/subslot and byte address data before FEE creation |
 
 ## Reliability and performance
 

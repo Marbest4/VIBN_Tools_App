@@ -86,13 +86,33 @@ public sealed class TiaHardwareModuleInfo
 
     public string DeviceName { get; set; } = string.Empty;
 
+    public string DeviceType { get; set; } = string.Empty;
+
+    public string Manufacturer { get; set; } = string.Empty;
+
+    public string OrderNumber { get; set; } = string.Empty;
+
+    public string GsdName { get; set; } = string.Empty;
+
+    public string GsdType { get; set; } = string.Empty;
+
+    public string ProfinetName { get; set; } = string.Empty;
+
+    public string IpAddress { get; set; } = string.Empty;
+
+    public string NetworkRole { get; set; } = string.Empty;
+
     public string ModuleName { get; set; } = string.Empty;
+
+    public string ModulePath { get; set; } = string.Empty;
 
     public string ModuleType { get; set; } = string.Empty;
 
     public string TypeIdentifier { get; set; } = string.Empty;
 
     public string FirmwareVersion { get; set; } = string.Empty;
+
+    public int Subslot { get; set; } = -1;
 
     public int InputStartByte { get; set; } = -1;
 

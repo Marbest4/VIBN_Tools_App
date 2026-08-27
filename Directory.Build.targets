@@ -1,0 +1,13 @@
+<Project>
+  <Target Name="ValidateFeeScreenSimSdk"
+          BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(MSBuildProjectName)' == 'VIBN_Tools'">
+    <Error Condition="'$(FeeScreenSimRoot)' == '' and '$(_HasMultipleInstalledFeeSdks)' == 'True'"
+           Text="Mehrere vollständige FEE-SDK-Versionen wurden gefunden. Build.ps1 verwenden (wählt die höchste Version) oder FEE_SCREEN_SIM_ROOT explizit setzen." />
+    <Error Condition="!Exists('$(FeeScreenSimRoot)\Bin\FS.SDK.dll')"
+           Text="Keine vollständige FEE-SDK-Installation gefunden. Installationsordner ohne Bin\FS.SDK.dll werden übersprungen. Build.ps1 verwenden oder FEE_SCREEN_SIM_ROOT setzen." />
+    <Message Condition="Exists('$(FeeScreenSimRoot)\Bin\FS.SDK.dll')"
+             Importance="High"
+             Text="FEE SDK erkannt: Version $([System.IO.Path]::GetFileName('$(FeeScreenSimRoot)')) unter '$(FeeScreenSimRoot)'." />
+  </Target>
+</Project>

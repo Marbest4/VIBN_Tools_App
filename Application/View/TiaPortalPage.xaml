@@ -146,9 +146,17 @@
                               RowHeight="30"
                               ColumnHeaderHeight="34">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Gerät" Binding="{Binding DeviceName, Mode=OneWay}" Width="240" />
-                            <DataGridTextColumn Header="Slot" Binding="{Binding Slot, Mode=OneWay}" Width="70" />
+                            <DataGridTextColumn Header="Gerätename" Binding="{Binding DeviceName, Mode=OneWay}" Width="190" />
+                            <DataGridTextColumn Header="Gerätetyp" Binding="{Binding DeviceType, Mode=OneWay}" Width="190" />
+                            <DataGridTextColumn Header="Hersteller" Binding="{Binding Manufacturer, Mode=OneWay}" Width="120" />
+                            <DataGridTextColumn Header="Bestellnummer" Binding="{Binding OrderNumber, Mode=OneWay}" Width="145" />
+                            <DataGridTextColumn Header="GSDML" Binding="{Binding GsdName, Mode=OneWay}" Width="170" />
+                            <DataGridTextColumn Header="PROFINET-Name" Binding="{Binding ProfinetName, Mode=OneWay}" Width="150" />
+                            <DataGridTextColumn Header="IP-Adresse" Binding="{Binding IpAddress, Mode=OneWay}" Width="110" />
+                            <DataGridTextColumn Header="Slot" Binding="{Binding Slot, Mode=OneWay}" Width="65" />
+                            <DataGridTextColumn Header="Subslot" Binding="{Binding Subslot, Mode=OneWay}" Width="70" />
                             <DataGridTextColumn Header="Modul" Binding="{Binding ModuleName, Mode=OneWay}" Width="220" />
+                            <DataGridTextColumn Header="Modulpfad" Binding="{Binding ModulePath, Mode=OneWay}" Width="260" />
                             <DataGridTextColumn Header="Modultyp" Binding="{Binding ModuleType, Mode=OneWay}" Width="180" />
                             <DataGridTextColumn Header="Typkennung" Binding="{Binding TypeIdentifier, Mode=OneWay}" Width="240" />
                             <DataGridTextColumn Header="Firmware" Binding="{Binding FirmwareVersion, Mode=OneWay}" Width="90" />

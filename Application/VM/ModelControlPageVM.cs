@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 //using System.Windows.Controls;
@@ -23,15 +23,8 @@ namespace VIBN_Tools.Application.VM
 
         #region Constructor & View-Model Properties
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///                                                                                                                      ///   
         ///     C O N S T R U C T O R   &   V I E W   M O D E L   P R O P E R T I E S                                            ///
-        ///                                                                                                                      ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        //===========================================================================================================================
-        // C O N S T R U C T O R
-        //===========================================================================================================================
 
         public ModelControlPageVM()
         {
@@ -44,8 +37,6 @@ namespace VIBN_Tools.Application.VM
             // Trigger for Fee Objects updated
             Services.FeeObjects.FeeObjectsUpdated += OnFeeObjectsChanged;
 
-
-
             // Robot Control
             EnableOpenRobotCsv = true;
 
@@ -54,7 +45,6 @@ namespace VIBN_Tools.Application.VM
             _robotMotionController.StatusChanged += OnStatusChanged;
             _robotMotionController.JointValuesUpdated += OnJointValuesUpdated;
             _robotMotionController.MovingStateChanged += OnRobotMovingStateChanged;
-
 
             // Axis Control
             EnableOpenAxisCompositionCsv = true;
@@ -69,7 +59,6 @@ namespace VIBN_Tools.Application.VM
             _axisCompositionMotionController.StatusChanged += OnStatusChanged;
             _axisCompositionMotionController.JointValuesUpdated += OnJointValuesUpdated;
             _axisCompositionMotionController.MovingStateChanged += OnAxisCompositionMovingStateChanged;
-
 
             // Object Control
             ControllableObjects = new ObservableCollection<FeeAbstractObject>();
@@ -87,14 +76,7 @@ namespace VIBN_Tools.Application.VM
                 ExpanderView.Refresh();
             };
 
-
-
         }
-
-
-        //===========================================================================================================================
-        // P R O P E R T I E S   O F   V I E W - M O D E L
-        //===========================================================================================================================
 
         // General
         private bool _isBusyUpdatingFeeData;
@@ -111,15 +93,8 @@ namespace VIBN_Tools.Application.VM
         // Robot Control
         private readonly ModelControlMotionService _robotMotionController;
 
-
         // Object Control
         private readonly ModelControlMotionService _axisCompositionMotionController;
-
-
-
-        //===========================================================================================================================
-        // F U N C T I O N S   O F   V I E W - M O D E L
-        //===========================================================================================================================
 
         private async Task Reload_FeeDataAsync()
         {
@@ -127,7 +102,6 @@ namespace VIBN_Tools.Application.VM
 
             await Services.FeeObjects.UpdateFeeDataAsync();
         }
-
 
         private void OnFeeObjectsChanged(object sender, FeeObjectsUpdatedEventargs e)
         {
@@ -137,13 +111,6 @@ namespace VIBN_Tools.Application.VM
 
             IsBusyUpdatingFeeData = false;
         }
-
-
-
-
-        //===========================================================================================================================
-        // E V E N T S
-        //===========================================================================================================================
 
         private void OnStatusChanged(string message, Severity severity)
         {
@@ -166,25 +133,12 @@ namespace VIBN_Tools.Application.VM
             return index < arr.Length ? (float)Math.Round(arr[index], 3) : 0f;
         }
 
-
-
         #endregion
-
-
-
-
 
         #region Robot Control
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///                                                                                                                      ///   
         ///     R O B O T   C O N T R O L   -   B I N D I N G S   &   F U N C T I O N S                                          ///
-        ///                                                                                                                      ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        //===========================================================================================================================
-        // F I L E   I M P O R T
-        //===========================================================================================================================
 
         // Textbox Filename Robot CSV
         private string _fileNameRobotCsv;
@@ -209,23 +163,11 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         // Button Open Robot CSV
         public ICommand OpenRobotCsv => GetCommandBindingAsync(Open_RobotCsv);
 
-
-
-
-
-        //===========================================================================================================================
-        // R O B O T   C O N T R O L
-        //===========================================================================================================================
-
-
         public ObservableCollection<RobotControlData> RobotsData { get; } = new();
         public ObservableCollection<SimRobotDefinition> SimRobots { get; set; } = new();
-
-
 
         private RobotControlData _selectedRobot;
         public RobotControlData SelectedRobot
@@ -269,7 +211,6 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         private SimRobotDefinition _selectedSimRobot;
         public SimRobotDefinition SelectedSimRobot
         {
@@ -296,7 +237,6 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         private bool _isRobotMoving;
         public bool IsRobotMoving
         {
@@ -319,7 +259,6 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         // Button Update Sim Robots
         public ICommand UpdateSimRobotData => GetCommandBindingAsync(Reload_FeeDataAsync);
 
@@ -328,12 +267,6 @@ namespace VIBN_Tools.Application.VM
 
         // Button Stop Movement 
         public ICommand StopRobotMovement => GetCommandBinding(Stop_RobotMovement);
-
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( B U T T O N S )
-        //===========================================================================================================================
 
         private async Task<bool> Open_RobotCsv(object parameter)
         {
@@ -364,7 +297,6 @@ namespace VIBN_Tools.Application.VM
                 // initialize sim robots when csv parse was successful
                 await Reload_FeeDataAsync();
 
-
                 return true;
             }
             catch (FormatException)
@@ -378,9 +310,7 @@ namespace VIBN_Tools.Application.VM
                 return false;
             }
 
-
         }
-
 
         private async Task MoveRobot_ToPosition(object parameter)
         {
@@ -418,17 +348,10 @@ namespace VIBN_Tools.Application.VM
 
         }
 
-
         private void Stop_RobotMovement(object parameter)
         {
             _robotMotionController.Cancel();
         }
-
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( H E L P E R S )
-        //===========================================================================================================================
 
         private void UpdateSimRobotsList()
         {
@@ -441,7 +364,6 @@ namespace VIBN_Tools.Application.VM
                 SimRobots.Add(robot);
         }
 
-
         public async Task RefreshSimRobotValues()
         {
             if (SelectedSimRobot == null)
@@ -451,36 +373,17 @@ namespace VIBN_Tools.Application.VM
             OnJointValuesUpdated(values);
         }
 
-
-
-        //===========================================================================================================================
-        // E V E N T S
-        //===========================================================================================================================
-
         private void OnRobotMovingStateChanged(bool isMoving)
         {
             IsRobotMoving = isMoving;
         }
 
-
         #endregion
-
-
-
-
 
         #region Axis Control
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///                                                                                                                      ///   
         ///     A X I S   C O N T R O L   -   B I N D I N G S   &   F U N C T I O N S                                            ///
-        ///                                                                                                                      ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
-        //===========================================================================================================================
-        // F I L E   I M P O R T
-        //===========================================================================================================================
 
         // Textbox Filename Robot CSV
         private string _fileNameAxisCompositionCsv;
@@ -505,16 +408,8 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         // Button Open Robot CSV
         public ICommand OpenAxisCompositionCsv => GetCommandBindingAsync(Open_AxisCompositionCsv);
-
-
-
-
-        //===========================================================================================================================
-        // C O M P O S I T I O N   D A T A
-        //===========================================================================================================================
 
         public ObservableCollection<AxisCompositionData> CompositionData { get; private set; }
 
@@ -522,8 +417,6 @@ namespace VIBN_Tools.Application.VM
 
         public ObservableCollection<AxisSelectionViewModel> AxisSelections { get; private set; }
         public ObservableCollection<FeeJoint> SelectableAxisCompositionJoints { get; private set; }
-
-
 
         private AxisCompositionData _selectedComposition;
         public AxisCompositionData SelectedComposition
@@ -551,10 +444,7 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         public bool HasSelectedComposition => SelectedComposition != null;
-
-
 
         private bool _isAxisCompositionMoving;
         public bool IsAxisCompositionMoving
@@ -578,24 +468,10 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
-
         public ICommand UpdateSelectableJoints => GetCommandBindingAsync(Reload_FeeDataAsync);
         public ICommand MoveAxisComposition => GetCommandBindingAsync(MoveAxisCompositiont_ToPosition);
 
         public ICommand StopAxisCompositionMovement => GetCommandBinding(Stop_AxisCompositionMovement);
-
-
-
-
-
-
-
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( B U T T O N S )
-        //===========================================================================================================================
 
         private async Task<bool> Open_AxisCompositionCsv(object parameter)
         {
@@ -623,9 +499,7 @@ namespace VIBN_Tools.Application.VM
 
             return true;
 
-
         }
-
 
         private async Task MoveAxisCompositiont_ToPosition(object parameter)
         {
@@ -648,20 +522,10 @@ namespace VIBN_Tools.Application.VM
 
         }
 
-
         private void Stop_AxisCompositionMovement(object parameter)
         {
             _axisCompositionMotionController.Cancel();
         }
-
-
-
-
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( H E L P E R S )
-        //===========================================================================================================================
 
         private void UpdateCompositionPositions()
         {
@@ -674,8 +538,6 @@ namespace VIBN_Tools.Application.VM
                 CompositionPositions.Add(pos);
 
         }    
-
-
 
         private void UpdateAxisSelections()
         {
@@ -700,7 +562,6 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         private void UpdateSelectableAxisList()
         {
             SelectableAxisCompositionJoints.Clear();
@@ -712,7 +573,6 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         private bool IsJointAvailable(AxisSelectionViewModel axisSel, FeeJoint joint)
         {
             var usedJoints = AxisSelections.Where(a => a != axisSel)
@@ -722,44 +582,23 @@ namespace VIBN_Tools.Application.VM
             return !usedJoints.Contains(joint);
         }
 
-
-
         private void OnAxisSelectionChanged(object sender, EventArgs e)
         {
             foreach (var axis in AxisSelections)
                 axis.OnPropertyChanged(nameof(axis.Options));
         }
 
-
-
-        //===========================================================================================================================
-        // E V E N T S
-        //===========================================================================================================================
-
         private void OnAxisCompositionMovingStateChanged(bool isMoving)
         {
             IsAxisCompositionMoving = isMoving;
         }
 
-
-
         #endregion
-
-
-
-
 
         #region Object Control
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///                                                                                                                      ///   
         ///     O B J E C T   C O N T R O L   -   B I N D I N G S   &   F U N C T I O N S                                        ///
-        ///                                                                                                                      ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        //===========================================================================================================================
-        // F I L T E R   /   S E L E C T I O N
-        //===========================================================================================================================
 
         private string _objectControlFilterText;
         public string ObjectControlFilterText
@@ -788,29 +627,14 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
         // DispatcherTimer for filtering SimObjects with Debounce
         private readonly DispatcherTimer _debounceTimerObjectControlFilter;
-
-
-
-
-        //===========================================================================================================================
-        // E X P A N D E R   V I E W 
-        //===========================================================================================================================
 
         public ICollectionView ExpanderView { get; }
 
         public ObservableCollection<FeeAbstractObject> ControllableObjects { get; }
 
         public ICommand UpdateControllableObjects => GetCommandBindingAsync(Reload_FeeDataAsync);
-
-
-
-
-        //===========================================================================================================================
-        // T R I G G E R   E X P A N D E R   E L E M E N T   F U N C T I O N S
-        //===========================================================================================================================
 
         public ICommand OnButtonPressRelease => GetCommandBindingAsync(async obj =>
         {
@@ -868,19 +692,6 @@ namespace VIBN_Tools.Application.VM
             }
         });
 
-
-
-
-
-
-
-
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( H E L P E R S )
-        //===========================================================================================================================
-
         private bool FilterControllableObjects(object obj)
         {
             var item = (FeeAbstractObject)obj;
@@ -894,7 +705,6 @@ namespace VIBN_Tools.Application.VM
             return true;
 
         }
-
 
         private void UpdateControllableObjectsList()
         {
@@ -928,27 +738,12 @@ namespace VIBN_Tools.Application.VM
             ExpanderView.Refresh();
         }
 
-
-
         #endregion
-
-
-
-
-
-
 
         #region Status Information
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        ///                                                                                                                      ///   
         ///     S T A T U S   I N F R O M A T I O N   -   B I N D I N G S   &   F U N C T I O N S                                ///
-        ///                                                                                                                      ///
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-        //===========================================================================================================================
-        // A C T U A L   P O S I T I O N
-        //===========================================================================================================================
 
         private float _actualPositionJ1;
         public float ActualPositionJ1
@@ -1027,14 +822,7 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
-
-        //===========================================================================================================================
-        // M O V E M E N T   /   S T A T U S
-        //===========================================================================================================================
-
         
-
 
         private string _statusText;
         public string StatusText
@@ -1061,73 +849,15 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
-
-
-        //===========================================================================================================================
-        // M E T H O D S   ( H E L P E R S )
-        //===========================================================================================================================
-
         private void SetStatus(string message, Severity severity = Severity.Info)
         {
             StatusText = $"[{DateTime.Now:HH:mm:ss}]\n{message}";
             StatusSeverity = severity;
         }
 
-
         #endregion
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        //===========================================================================================================================
         // PREPARE FOR AXIS CONTROL
-        //===========================================================================================================================
 
         public List<string> AllJoints { get; } = new List<string> { "J1", "J2", "J3", "J4", "J5", "J6" };
 
@@ -1138,15 +868,12 @@ namespace VIBN_Tools.Application.VM
         public string SelectedJoint5 { get; set; }
         public string SelectedJoint6 { get; set; }
 
-
         public IEnumerable<string> JointOptions1 => GetFilteredOptions(SelectedAxis1);
         public IEnumerable<string> JointOptions2 => GetFilteredOptions(SelectedAxis1);
         public IEnumerable<string> JointOptions3 => GetFilteredOptions(SelectedAxis1);
         public IEnumerable<string> JointOptions4 => GetFilteredOptions(SelectedAxis1);
         public IEnumerable<string> JointOptions5 => GetFilteredOptions(SelectedAxis1);
         public IEnumerable<string> JointOptions6 => GetFilteredOptions(SelectedAxis1);
-
-
 
         private IEnumerable<string> GetFilteredOptions(string currentSelection)
         {
@@ -1170,7 +897,6 @@ namespace VIBN_Tools.Application.VM
                 RefreshJointOptions();
             }
         }
-
 
         private void RefreshJointOptions()
         {

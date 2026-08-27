@@ -184,31 +184,11 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         if (!_selectedPlcIndex.HasValue)
             throw new InvalidOperationException("Select a PLC before reading hardware.");
 
-        var modules = new List<TiaHardwareModuleInfo>();
-        var identities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-
-        // PROFINET/PROFIBUS IO devices are independent entries in
-        // Project.Devices, not children of the selected PLC rack. Traversing
-        // only project.Devices[selectedPlc] therefore found CPU modules but
-        // missed the process addresses of robots and special devices.
-        var selectedDeviceIndex = _selectedPlcIndex.Value;
-        var deviceCount = Convert.ToInt32((object)project.Devices.Count);
-        var deviceOrder = Enumerable.Range(0, deviceCount)
-            .OrderBy(index => index == selectedDeviceIndex ? 0 : 1)
-            .ThenBy(index => index);
-        foreach (var deviceIndex in deviceOrder)
-        {
-            dynamic device = project.Devices[deviceIndex];
-            var deviceName = ReadStringMember(device, "Name");
-            TraverseHardwareItems(device, deviceIndex, deviceName, modules, identities);
-        }
-
-        return modules
-            .OrderBy(module => module.DeviceIndex == selectedDeviceIndex ? 0 : 1)
-            .ThenBy(module => module.DeviceName, StringComparer.OrdinalIgnoreCase)
-            .ThenBy(module => module.Slot < 0 ? int.MaxValue : module.Slot)
-            .ThenBy(module => module.ModuleName, StringComparer.OrdinalIgnoreCase)
-            .ToArray();
+        // Keep Siemens-version-specific reflection at this boundary. The
+        // reader enumerates every project device because distributed IO is
+        // not necessarily a child of the selected PLC rack.
+        return new TiaHardwareReader(RequireAssembly())
+            .Read(project, _selectedPlcIndex.Value);
     }
 
     public TiaProjectTree ListProgramBlocks()
@@ -335,128 +315,6 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         return null;
     }
 
-    private static void TraverseHardwareItems(
-        object parent,
-        int deviceIndex,
-        string deviceName,
-        ICollection<TiaHardwareModuleInfo> modules,
-        ISet<string> identities,
-        string? deviceItemName = null)
-    {
-        foreach (var item in GetChildDeviceItems(parent))
-        {
-            var moduleName = ReadStringMember(item, "Name");
-            var rootDeviceItemName = string.IsNullOrWhiteSpace(deviceItemName)
-                ? moduleName
-                : deviceItemName;
-            var displayDeviceName = string.IsNullOrWhiteSpace(rootDeviceItemName) ||
-                                    string.Equals(deviceName, rootDeviceItemName, StringComparison.OrdinalIgnoreCase)
-                ? deviceName
-                : $"{deviceName} ({rootDeviceItemName})";
-            var typeIdentifier = ReadStringMember(item, "TypeIdentifier");
-            var moduleType = ReadStringMember(item, "TypeName", "Classification");
-            var firmwareVersion = ReadStringMember(item, "FirmwareVersion");
-            if (string.IsNullOrWhiteSpace(firmwareVersion))
-                firmwareVersion = ExtractFirmwareVersion(typeIdentifier);
-            var slot = ReadIntMember(item, "PositionNumber", "Slot");
-            var inputStart = -1;
-            var inputLength = 0;
-            var outputStart = -1;
-            var outputLength = 0;
-
-            foreach (var address in GetAddresses(item))
-            {
-                var ioType = ReadAddressIoType(address);
-                var start = ReadAddressStart(address);
-                var length = Math.Max(0, ReadAddressLength(address));
-                if (ioType.IndexOf("Input", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    MergeAddressRange(ref inputStart, ref inputLength, start, length);
-                }
-                else if (ioType.IndexOf("Output", StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    MergeAddressRange(ref outputStart, ref outputLength, start, length);
-                }
-            }
-
-            var identity = $"{deviceIndex}|{slot}|{moduleName}|{typeIdentifier}";
-            if (identities.Add(identity))
-            {
-                modules.Add(new TiaHardwareModuleInfo
-                {
-                    DeviceIndex = deviceIndex,
-                    Slot = slot,
-                    DeviceName = displayDeviceName,
-                    ModuleName = moduleName,
-                    ModuleType = moduleType,
-                    TypeIdentifier = typeIdentifier,
-                    FirmwareVersion = firmwareVersion,
-                    InputStartByte = inputStart,
-                    InputLength = inputLength,
-                    OutputStartByte = outputStart,
-                    OutputLength = outputLength
-                });
-            }
-
-            TraverseHardwareItems(item, deviceIndex, deviceName, modules, identities, rootDeviceItemName);
-        }
-    }
-
-    private static IReadOnlyList<object> GetChildDeviceItems(object target)
-        => ReadEnumerableMember(target, "DeviceItems");
-
-    private static IReadOnlyList<object> GetAddresses(object target)
-        => ReadEnumerableMember(target, "Addresses");
-
-    /// <summary>
-    /// Openness proxy objects frequently expose compositions through an
-    /// explicit interface or a public base class. A plain dynamic access can
-    /// therefore fail although DeviceItems/Addresses are available. Resolve
-    /// the complete runtime type hierarchy and implemented interfaces.
-    /// </summary>
-    private static IReadOnlyList<object> ReadEnumerableMember(object target, string memberName)
-    {
-        var value = ReadMemberValue(target, memberName);
-        return value is System.Collections.IEnumerable enumerable
-            ? enumerable.Cast<object>().Where(item => item is not null).ToArray()
-            : Array.Empty<object>();
-    }
-
-    private static string ReadAddressIoType(object address)
-        => ReadStringMember(address, "IoType", "IOType", "AddressType");
-
-    private static int ReadAddressStart(object address)
-        => ReadIntMember(address, "StartAddress", "StartAdress", "StartByte");
-
-    private static int ReadAddressLength(object address)
-        => ReadIntMember(address, "Length", "ByteLength", "Size");
-
-    private static void MergeAddressRange(
-        ref int currentStart,
-        ref int currentLength,
-        int candidateStart,
-        int candidateLength)
-    {
-        if (candidateStart < 0)
-            return;
-        if (currentStart < 0)
-        {
-            currentStart = candidateStart;
-            currentLength = candidateLength;
-            return;
-        }
-
-        var end = Math.Max(currentStart + currentLength, candidateStart + candidateLength);
-        currentStart = Math.Min(currentStart, candidateStart);
-        currentLength = Math.Max(0, end - currentStart);
-    }
-
-    private static string ExtractFirmwareVersion(string typeIdentifier)
-    {
-        var match = Regex.Match(typeIdentifier ?? string.Empty, @"/(?<version>V[^/]+)$", RegexOptions.IgnoreCase);
-        return match.Success ? match.Groups["version"].Value.Trim() : string.Empty;
-    }
-
     private static string ReadStringMember(object target, params string[] names)
     {
         foreach (var name in names)
@@ -473,24 +331,6 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             }
         }
         return string.Empty;
-    }
-
-    private static int ReadIntMember(object target, params string[] names)
-    {
-        foreach (var name in names)
-        {
-            try
-            {
-                var value = ReadMemberValue(target, name);
-                if (value is not null && int.TryParse(Convert.ToString(value), out var number))
-                    return number;
-            }
-            catch (Exception)
-            {
-                // Some module types do not expose an address or slot.
-            }
-        }
-        return -1;
     }
 
     private static object? ReadMemberValue(object target, string name)

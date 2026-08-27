@@ -756,8 +756,18 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
                         new TiaHardwareModuleInfo
                         {
                             Slot = 2,
+                            Subslot = 1,
                             DeviceName = "PLC test",
+                            DeviceType = "ET 200 test",
+                            Manufacturer = "Siemens",
+                            OrderNumber = "6ES7 test",
+                            GsdName = "GSDML-test.xml",
+                            GsdType = "PROFINET IO",
+                            ProfinetName = "test-device",
+                            IpAddress = "192.168.0.10",
+                            NetworkRole = "IO-Device",
                             ModuleName = "DI/DO test module",
+                            ModulePath = "Head/Slot 2/DI-DO",
                             ModuleType = "Digital IO",
                             FirmwareVersion = "V1.0",
                             InputStartByte = 8,
@@ -786,6 +796,11 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
         var hardware = await client.ListHardwareAsync();
         Assert(hardware.Count == 1 && hardware[0].InputStartByte == 8 && hardware[0].OutputStartByte == 12 &&
                hardware[0].DeviceName == "PLC test" && hardware[0].ModuleType == "Digital IO" &&
+               hardware[0].DeviceType == "ET 200 test" && hardware[0].Manufacturer == "Siemens" &&
+               hardware[0].OrderNumber == "6ES7 test" && hardware[0].GsdName == "GSDML-test.xml" &&
+               hardware[0].ProfinetName == "test-device" && hardware[0].IpAddress == "192.168.0.10" &&
+               hardware[0].Slot == 2 && hardware[0].Subslot == 1 &&
+               hardware[0].ModulePath == "Head/Slot 2/DI-DO" &&
                hardware[0].FirmwareVersion == "V1.0" &&
                hardware[0].InputAddressRange == "8–19" && hardware[0].OutputAddressRange == "12–17",
             "TIA hardware configuration must survive the typed pipe boundary.");

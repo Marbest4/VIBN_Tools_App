@@ -89,9 +89,17 @@
                 <DataGrid Grid.Row="2" ItemsSource="{Binding TiaHardwareRows}" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" EnableColumnVirtualization="True" RowHeight="32" ColumnHeaderHeight="36" HorizontalScrollBarVisibility="Auto">
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="Übernehmen" Binding="{Binding Include}" Width="86" />
-                        <DataGridTextColumn Header="Gerät" Binding="{Binding DeviceName, Mode=OneWay}" IsReadOnly="True" Width="240" />
+                        <DataGridTextColumn Header="Gerätename" Binding="{Binding DeviceName, Mode=OneWay}" IsReadOnly="True" Width="190" />
+                        <DataGridTextColumn Header="Gerätetyp" Binding="{Binding DeviceType, Mode=OneWay}" IsReadOnly="True" Width="170" />
+                        <DataGridTextColumn Header="Hersteller" Binding="{Binding Manufacturer, Mode=OneWay}" IsReadOnly="True" Width="110" />
+                        <DataGridTextColumn Header="Bestellnummer" Binding="{Binding OrderNumber, Mode=OneWay}" IsReadOnly="True" Width="135" />
+                        <DataGridTextColumn Header="GSDML" Binding="{Binding GsdName, Mode=OneWay}" IsReadOnly="True" Width="150" />
+                        <DataGridTextColumn Header="PROFINET-Name" Binding="{Binding ProfinetName, Mode=OneWay}" IsReadOnly="True" Width="145" />
+                        <DataGridTextColumn Header="IP-Adresse" Binding="{Binding IpAddress, Mode=OneWay}" IsReadOnly="True" Width="105" />
                         <DataGridTextColumn Header="Slot" Binding="{Binding Slot, Mode=OneWay}" IsReadOnly="True" Width="60" />
+                        <DataGridTextColumn Header="Subslot" Binding="{Binding Subslot, Mode=OneWay}" IsReadOnly="True" Width="65" />
                         <DataGridTextColumn Header="Modul" Binding="{Binding ModuleName, Mode=OneWay}" IsReadOnly="True" Width="160" />
+                        <DataGridTextColumn Header="Modulpfad" Binding="{Binding ModulePath, Mode=OneWay}" IsReadOnly="True" Width="220" />
                         <DataGridTextColumn Header="Modultyp" Binding="{Binding ModuleType, Mode=OneWay}" IsReadOnly="True" Width="150" />
                         <DataGridTextColumn Header="TIA-Typkennung" Binding="{Binding TypeIdentifier, Mode=OneWay}" IsReadOnly="True" Width="220" />
                         <DataGridTextColumn Header="Firmware" Binding="{Binding FirmwareVersion, Mode=OneWay}" IsReadOnly="True" Width="85" />

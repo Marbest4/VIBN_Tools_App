@@ -10,6 +10,10 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - [Rollenverwaltung](docs/ROLLENVERWALTUNG.md) – Level, Sichtbarkeiten und die Level9-Mindestregel.
 - [Konfiguration und Betrieb](docs/KONFIGURATION_UND_BETRIEB.md) – Voraussetzungen, Datenquellen, Protokolle und Fehlersuche.
 - [Entwicklerhandbuch](docs/ENTWICKLERHANDBUCH.md) und [Klassenreferenz](docs/KLASSENREFERENZ.md) – Architektur, Erweiterungspunkte und Codewegweiser.
+- [Software-Audit 2026](docs/AUDIT_REPORT_2026.md) – Executive Summary, Befunde, Risiken und priorisierte Maßnahmen.
+- [TIA-Hardwareauslesung](docs/TIA_OPENNESS_HARDWARE.md) – Datenmodell, Ursache der Altdaten und Live-Abnahme.
+- [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md), [Deployment](docs/DEPLOYMENT.md) und [Diagramme](docs/ARCHITECTURE_DIAGRAMS.md).
+- [Installation und Installer](docs/INSTALLATION_UND_INSTALLER.md) – Setup erzeugen, auf andere Rechner übertragen und SDK-/Buildfehler beheben.
 
 ## Wichtige Eigenschaften
 
@@ -25,9 +29,11 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 Die vollständige Solution ist `VIBN_Tools_App.sln`. Für einen Build werden Windows, .NET 8, Grob.UX und das FEE-SDK benötigt. Für reale TIA-Funktionen muss außerdem eine unterstützte Siemens-TIA-Portal-/Openness-Installation vorhanden sein.
 
 ```powershell
-dotnet build VIBN_Tools_App.sln --configuration Release
+.\Build.ps1
 dotnet run --project Tests/CoreSmokeTests/VIBN_Tools.Core.SmokeTests.csproj --configuration Release
 dotnet run --project Tests/UiStartupSmokeTests/VIBN_Tools.UiStartup.SmokeTests.csproj --configuration Release
 ```
+
+`Build.ps1` erkennt die höchste installierte fe.screen-sim-V5-SDK-Version automatisch. Für einen abweichenden Pfad kann `-FeeScreenSimRoot` oder die Umgebungsvariable `FEE_SCREEN_SIM_ROOT` verwendet werden. Portable ZIP- und Setup-Erstellung sind in [DEPLOYMENT.md](docs/DEPLOYMENT.md) beschrieben.
 
 Die lokalen Smoke-Tests verwenden keine produktiven Kanbanize-Boards und keine realen TIA-Projekte. Die zusätzliche Live-Abnahme ist in [ACCEPTANCE_CHECKLIST.md](docs/ACCEPTANCE_CHECKLIST.md) beschrieben.
