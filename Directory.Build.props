@@ -10,8 +10,18 @@
   <!-- One override replaces all version-specific FS.* HintPaths. The build
        script discovers the newest installed version and passes this property. -->
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'VIBN_Tools'">
+    <FeeScreenSimInstallRoot Condition="'$(FeeScreenSimInstallRoot)' == ''">$(ProgramFiles)\fe.screen-sim V5</FeeScreenSimInstallRoot>
     <FeeScreenSimRoot Condition="'$(FEE_SCREEN_SIM_ROOT)' != ''">$(FEE_SCREEN_SIM_ROOT)</FeeScreenSimRoot>
     <FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == '' and Exists('$(MSBuildThisFileDirectory)external\fe-screen-sim\Bin\FS.SDK.dll')">$(MSBuildThisFileDirectory)external\fe-screen-sim</FeeScreenSimRoot>
-    <FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == ''">C:\Program Files\fe.screen-sim V5\5.0.11.48415</FeeScreenSimRoot>
+  </PropertyGroup>
+
+  <!-- Visual Studio builds do not execute Build.ps1. Discover complete SDK
+       installations during project evaluation and ignore folders which do
+       not contain Bin\FS.SDK.dll. Build.ps1 additionally resolves the newest
+       version when more than one complete SDK is installed. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'VIBN_Tools' and '$(FeeScreenSimRoot)' == ''">
+    <_InstalledFeeSdkMarkerPath Condition="Exists('$(FeeScreenSimInstallRoot)')">$([System.String]::Join(';', $([System.IO.Directory]::GetFiles('$(FeeScreenSimInstallRoot)', 'FS.SDK.dll', System.IO.SearchOption.AllDirectories))))</_InstalledFeeSdkMarkerPath>
+    <_HasMultipleInstalledFeeSdks>$([System.Text.RegularExpressions.Regex]::IsMatch('$(_InstalledFeeSdkMarkerPath)', ';'))</_HasMultipleInstalledFeeSdks>
+    <FeeScreenSimRoot Condition="'$(_InstalledFeeSdkMarkerPath)' != '' and '$(_HasMultipleInstalledFeeSdks)' != 'True'">$([System.IO.Path]::GetDirectoryName($([System.IO.Path]::GetDirectoryName('$(_InstalledFeeSdkMarkerPath)'))))</FeeScreenSimRoot>
   </PropertyGroup>
 </Project>

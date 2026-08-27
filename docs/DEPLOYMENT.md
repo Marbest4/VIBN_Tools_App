@@ -25,6 +25,8 @@ Das Publish-Skript prüft vorab die transitive `FS.*`-Assemblymenge. Ein reines 
 
 ## Befehle
 
+Eine vollständige Schritt-für-Schritt-Anleitung für Build- und Zielrechner befindet sich in [INSTALLATION_UND_INSTALLER.md](INSTALLATION_UND_INSTALLER.md).
+
 Portable Paket:
 
 ```powershell

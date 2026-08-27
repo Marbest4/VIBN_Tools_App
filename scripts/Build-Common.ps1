@@ -2,11 +2,10 @@ function Resolve-FeeScreenSimRoot {
     [CmdletBinding()]
     param([string]$ExplicitRoot)
 
+    $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
     $candidates = [Collections.Generic.List[string]]::new()
     if (-not [string]::IsNullOrWhiteSpace($ExplicitRoot)) { $candidates.Add($ExplicitRoot) }
     if (-not [string]::IsNullOrWhiteSpace($env:FEE_SCREEN_SIM_ROOT)) { $candidates.Add($env:FEE_SCREEN_SIM_ROOT) }
-
-    $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
     $candidates.Add((Join-Path $repositoryRoot 'external\fe-screen-sim'))
 
     $installationRoot = Join-Path $env:ProgramFiles 'fe.screen-sim V5'
@@ -19,13 +18,25 @@ function Resolve-FeeScreenSimRoot {
             ForEach-Object { $candidates.Add($_.FullName) }
     }
 
-    foreach ($candidate in $candidates | Select-Object -Unique) {
-        if (Test-Path -LiteralPath (Join-Path $candidate 'Bin\FS.SDK.dll') -PathType Leaf) {
-            return (Resolve-Path -LiteralPath $candidate).Path
+    $checked = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($candidate in $candidates) {
+        if ([string]::IsNullOrWhiteSpace($candidate)) { continue }
+        $absoluteCandidate = [IO.Path]::GetFullPath($candidate)
+        if (-not $checked.Add($absoluteCandidate)) { continue }
+
+        $marker = Join-Path $absoluteCandidate 'Bin\FS.SDK.dll'
+        if (Test-Path -LiteralPath $marker -PathType Leaf) {
+            $resolved = (Resolve-Path -LiteralPath $absoluteCandidate).Path
+            Write-Host "FEE SDK erkannt: Version $([IO.Path]::GetFileName($resolved)) unter '$resolved'."
+            return $resolved
+        }
+
+        if (Test-Path -LiteralPath $absoluteCandidate -PathType Container) {
+            Write-Warning "FEE-Installation '$absoluteCandidate' wird übersprungen: Bin\FS.SDK.dll fehlt."
         }
     }
 
-    throw 'Keine vollständige fe.screen-sim-SDK-Installation gefunden. FEE_SCREEN_SIM_ROOT setzen oder external\fe-screen-sim bereitstellen.'
+    throw 'Keine vollständige fe.screen-sim-SDK-Installation gefunden. Unvollständige Versionen wurden übersprungen. FEE_SCREEN_SIM_ROOT setzen oder external\fe-screen-sim bereitstellen.'
 }
 
 function Assert-LastExitCode {

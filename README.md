@@ -13,6 +13,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - [Software-Audit 2026](docs/AUDIT_REPORT_2026.md) – Executive Summary, Befunde, Risiken und priorisierte Maßnahmen.
 - [TIA-Hardwareauslesung](docs/TIA_OPENNESS_HARDWARE.md) – Datenmodell, Ursache der Altdaten und Live-Abnahme.
 - [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md), [Deployment](docs/DEPLOYMENT.md) und [Diagramme](docs/ARCHITECTURE_DIAGRAMS.md).
+- [Installation und Installer](docs/INSTALLATION_UND_INSTALLER.md) – Setup erzeugen, auf andere Rechner übertragen und SDK-/Buildfehler beheben.
 
 ## Wichtige Eigenschaften
 
