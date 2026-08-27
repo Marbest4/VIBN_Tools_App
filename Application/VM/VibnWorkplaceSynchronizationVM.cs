@@ -27,6 +27,7 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
         TargetStart = FormatDeadline(item.TargetCard?.StartDate);
         TargetDeadline = FormatDeadline(item.TargetCard?.Deadline);
         Details = item.Message;
+        _isSelected = Action == VibnWorkplaceSynchronizationAction.Create;
     }
 
     public VibnWorkplaceSynchronizationAction Action { get; }
@@ -35,7 +36,7 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
         Action is VibnWorkplaceSynchronizationAction.Create or
             VibnWorkplaceSynchronizationAction.UpdateDeadline;
 
-    /// <summary>Only explicitly checked preview rows may be written.</summary>
+    /// <summary>New cards start selected; every other change requires an explicit selection.</summary>
     public bool IsSelected
     {
         get => _isSelected;
@@ -106,6 +107,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
     private IReadOnlyList<KanbanizeColumnInfo> _targetBoardColumns = Array.Empty<KanbanizeColumnInfo>();
     private VibnWorkplaceSynchronizationPreview? _preview;
     private VibnWorkplaceSynchronizationSettings? _previewSettings;
+    private bool _isUpdatingSelection;
 
     public VibnWorkplaceSynchronizationVM(
         IKanbanizeCardService cards,
@@ -124,6 +126,8 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
 
         PreviewCommand = GetCommandBindingAsync(LoadPreviewAsync);
         SynchronizeCommand = GetCommandBindingAsync(SynchronizeAsync);
+        SelectAllCommand = GetCommandBinding(SelectAll);
+        DeselectAllCommand = GetCommandBinding(DeselectAll);
     }
 
     public ObservableCollection<KanbanizeBoardInfo> Boards { get; } = new();
@@ -139,6 +143,10 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
     public ICommand PreviewCommand { get; }
 
     public ICommand SynchronizeCommand { get; }
+
+    public ICommand SelectAllCommand { get; }
+
+    public ICommand DeselectAllCommand { get; }
 
     public bool IsConfigured => _synchronization.IsConfigured;
 
@@ -234,6 +242,8 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanPreview));
             OnPropertyChanged(nameof(CanSynchronize));
+            OnPropertyChanged(nameof(CanSelectAll));
+            OnPropertyChanged(nameof(CanDeselectAll));
         }
     }
 
@@ -245,6 +255,12 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         _previewSettings is not null &&
         _previewSettings == CreateSettings() &&
         PreviewItems.Any(item => item.CanSynchronize && item.IsSelected);
+
+    public bool CanSelectAll =>
+        !IsBusy && PreviewItems.Any(item => item.CanSynchronize && !item.IsSelected);
+
+    public bool CanDeselectAll =>
+        !IsBusy && PreviewItems.Any(item => item.CanSynchronize && item.IsSelected);
 
     public int CreateCount => _preview?.CreateCount ?? 0;
 
@@ -471,6 +487,8 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         OnPropertyChanged(nameof(ConflictCount));
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
         OnPropertyChanged(nameof(CanSynchronize));
+        OnPropertyChanged(nameof(CanSelectAll));
+        OnPropertyChanged(nameof(CanDeselectAll));
     }
 
     private void InvalidatePreview()
@@ -485,11 +503,47 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
         OnPropertyChanged(nameof(CanPreview));
         OnPropertyChanged(nameof(CanSynchronize));
+        OnPropertyChanged(nameof(CanSelectAll));
+        OnPropertyChanged(nameof(CanDeselectAll));
+    }
+
+    private void SelectAll()
+    {
+        SetAllSelections(true);
+    }
+
+    private void DeselectAll()
+    {
+        SetAllSelections(false);
+    }
+
+    private void SetAllSelections(bool isSelected)
+    {
+        _isUpdatingSelection = true;
+        try
+        {
+            foreach (var item in PreviewItems.Where(item => item.CanSynchronize))
+                item.IsSelected = isSelected;
+        }
+        finally
+        {
+            _isUpdatingSelection = false;
+        }
+
+        UpdateSelectionState();
     }
 
     private void OnPreviewSelectionChanged()
     {
+        if (!_isUpdatingSelection)
+            UpdateSelectionState();
+    }
+
+    private void UpdateSelectionState()
+    {
         OnPropertyChanged(nameof(CanSynchronize));
+        OnPropertyChanged(nameof(CanSelectAll));
+        OnPropertyChanged(nameof(CanDeselectAll));
         var selectedCount = PreviewItems.Count(item => item.CanSynchronize && item.IsSelected);
         StatusText = selectedCount == 0
             ? "Die gewünschten Änderungen in der Vorschau markieren."

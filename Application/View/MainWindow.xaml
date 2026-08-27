@@ -102,7 +102,11 @@
                     </TabItem>
                     
 
-                    <TabItem Header="Model Validation" ux:Icon.Kind="Wipe">
+                    <TabItem Header="Model Validation"
+                             ux:Icon.Kind="Wipe"
+                             IsEnabled="{Binding Connection.CanUseFeeFeatures}"
+                             ToolTip="{Binding Connection.UnavailableReason}"
+                             ToolTipService.ShowOnDisabled="True">
                         <p:ModelValidationPage/>
                     </TabItem>
                  
@@ -110,7 +114,11 @@
                         <p:MiniToolsPage/>
                     </TabItem>-->
 
-                    <TabItem Header="Model Control" ux:Icon.Kind="RobotWorkpiece">
+                    <TabItem Header="Model Control"
+                             ux:Icon.Kind="RobotWorkpiece"
+                             IsEnabled="{Binding Connection.CanUseFeeFeatures}"
+                             ToolTip="{Binding Connection.UnavailableReason}"
+                             ToolTipService.ShowOnDisabled="True">
                         <p:ModelControlPage/>
                     </TabItem>
 

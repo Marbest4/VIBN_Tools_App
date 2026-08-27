@@ -124,6 +124,7 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <WrapPanel VerticalAlignment="Center">
                                 <TextBlock Margin="0,0,14,0" FontWeight="SemiBold" Text="Vorschau:" />
@@ -133,14 +134,27 @@
                                 <TextBlock Margin="0,0,12,0" Text="{Binding ConflictCount, StringFormat={}Konflikte: {0}}" />
                                 <TextBlock Text="{Binding ExcludedSourceCardCount, StringFormat={}Ausgeschlossen: {0}}" />
                             </WrapPanel>
-                            <Button Grid.Column="1"
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" Orientation="Horizontal">
+                                <Button MinWidth="125"
+                                        MinHeight="36"
+                                        Content="Alle selektieren"
+                                        Command="{Binding SelectAllCommand}"
+                                        IsEnabled="{Binding CanSelectAll}" />
+                                <Button MinWidth="135"
+                                        MinHeight="36"
+                                        Margin="8,0,0,0"
+                                        Content="Alle deselektieren"
+                                        Command="{Binding DeselectAllCommand}"
+                                        IsEnabled="{Binding CanDeselectAll}" />
+                            </StackPanel>
+                            <Button Grid.Column="2"
                                     MinWidth="120"
                                     MinHeight="36"
-                                    Margin="12,0,0,0"
+                                    Margin="8,0,0,0"
                                     Content="Prüfen"
                                     Command="{Binding PreviewCommand}"
                                     IsEnabled="{Binding CanPreview}" />
-                            <Button Grid.Column="2"
+                            <Button Grid.Column="3"
                                     MinWidth="205"
                                     MinHeight="36"
                                     Margin="8,0,0,0"

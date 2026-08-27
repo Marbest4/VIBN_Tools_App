@@ -5,10 +5,12 @@ using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
+using VIBN_Tools.Application;
 using VIBN_Tools.Application.View;
 using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
+using VIBN_Tools.Settings;
 using VIBN_Tools.Tia.Contracts;
 
 namespace VIBN_Tools.UiStartup.SmokeTests;
@@ -28,6 +30,9 @@ internal static class Program
         {
             var workspacePage = new ViCoWorkspacePage();
             ExerciseDeferredTemplates(workspacePage);
+            var feeVersionInfo = new FeeVersionInfoProvider().Read();
+            if (string.Equals(feeVersionInfo.UsedSdkVersion, "Nicht erkannt", StringComparison.Ordinal))
+                throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             var projectPage = new ViCoPage();
             var projectViewModel = (ViCoPageVM)projectPage.DataContext;
             projectViewModel.Projects.Add(new ProjectLocation("GM1234/05-130", @"C:\Projects\GM1234\05-130"));
@@ -86,28 +91,50 @@ internal static class Program
                     OutputStartByte = 40,
                     OutputLength = 4
                 }));
+            VerifyTiaHardwareMappingPersistence();
 
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
             // Populate the deferred DataGrid template as well: this catches
             // bindings in the coloured synchronization preview before release.
-            kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(
-                new VibnWorkplaceSynchronizationRowVM(
-                    new VibnWorkplaceSynchronizationItem(
-                        VibnWorkplaceSynchronizationAction.Create,
-                        new KanbanizeCardInfo(
-                            4711,
-                            1392,
-                            1,
-                            2,
-                            "[VIBN] Grundinbetriebnahme UI-Prüfung",
-                            null,
-                            DateTimeOffset.UtcNow),
-                        null,
-                        "UI-Prüfdatensatz ohne externen Schreibzugriff.",
-                        new VibnWorkplaceSchedule(
-                            DateTimeOffset.UtcNow.AddDays(-14),
-                            DateTimeOffset.UtcNow.AddDays(56)))));
+            var sourceCard = new KanbanizeCardInfo(
+                4711,
+                1392,
+                1,
+                2,
+                "[VIBN] Grundinbetriebnahme UI-Prüfung",
+                null,
+                DateTimeOffset.UtcNow);
+            var schedule = new VibnWorkplaceSchedule(
+                DateTimeOffset.UtcNow.AddDays(-14),
+                DateTimeOffset.UtcNow.AddDays(56));
+            var createRow = new VibnWorkplaceSynchronizationRowVM(
+                new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.Create,
+                    sourceCard,
+                    null,
+                    "UI-Prüfdatensatz ohne externen Schreibzugriff.",
+                    schedule));
+            var deadlineRow = new VibnWorkplaceSynchronizationRowVM(
+                new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.UpdateDeadline,
+                    sourceCard with { Id = 4712 },
+                    sourceCard with { Id = 5712, BoardId = 1541 },
+                    "UI-Prüfung einer vorhandenen Karte.",
+                    schedule));
+            if (!createRow.IsSelected || deadlineRow.IsSelected)
+                throw new InvalidOperationException("Only new Kanbanize cards must be selected by default.");
+
+            kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(createRow);
+            kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(deadlineRow);
+            kanbanizeViewModel.WorkplaceSynchronization.SelectAllCommand.Execute(null);
+            if (kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Any(item => item.CanSynchronize && !item.IsSelected))
+                throw new InvalidOperationException("Selecting all Kanbanize preview rows failed.");
+            kanbanizeViewModel.WorkplaceSynchronization.DeselectAllCommand.Execute(null);
+            if (kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Any(item => item.IsSelected))
+                throw new InvalidOperationException("Deselecting all Kanbanize preview rows failed.");
+            // Restore the documented initial state for the generated handbook preview.
+            createRow.IsSelected = true;
 
             FrameworkElement[] integratedViews =
             [
@@ -178,6 +205,35 @@ internal static class Program
         }
 
         Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.ContextIdle);
+    }
+
+    private static void VerifyTiaHardwareMappingPersistence()
+    {
+        var path = Path.Combine(
+            Path.GetTempPath(),
+            $"vibn-tia-hardware-mapping-{Guid.NewGuid():N}.json");
+        try
+        {
+            var store = new JsonTiaHardwareMappingStore(path);
+            var expected = new TiaHardwareMapping(
+                "Device|pn-device|Module/Slot3|3|1",
+                true,
+                "SafeCoupler",
+                62,
+                70,
+                "Grob",
+                "SafePnPn",
+                string.Empty);
+            store.SaveAsync(new[] { expected }).GetAwaiter().GetResult();
+            var restored = store.LoadAsync().GetAwaiter().GetResult();
+            if (!restored.TryGetValue(expected.Key, out var actual) || actual != expected)
+                throw new InvalidOperationException("Persisted TIA hardware mapping was not restored unchanged.");
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
     }
 
     private static IEnumerable<T> FindVisualChildren<T>(DependencyObject parent) where T : DependencyObject

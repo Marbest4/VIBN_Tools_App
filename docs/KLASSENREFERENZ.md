@@ -9,6 +9,8 @@
 | `Application/ViCoFeatureBootstrapper.cs` | Composition Root für ViCo, Kanbanize, RDP, Rollen und TIA-Bridge |
 | `Application/ApplicationLogService.cs` | zentraler Anwendungslog für Status, Warnungen und Fehler |
 | `Application/View/DiagnosticsPanel.xaml` | sichtbares Diagnosefenster im Hauptfenster |
+| `Settings/FeeVersionInfoProvider.cs` | ermittelt verwendete SDK- und höchste lokal installierte FEE-Version für Project Settings |
+| `Settings/ConnectionService.cs` | bestätigt den SDK-Verbindungszustand und stellt das zentrale FEE-Funktions-Gate bereit |
 
 ## ViCo-Modelle und Fachregeln (`VIBN_Tools.Core/ViCo`)
 
@@ -63,7 +65,7 @@
 | Projekt/Datei | Aufgabe |
 | --- | --- |
 | `VIBN_Tools.Tia.Contracts` | serialisierbare DTOs, `TiaCommands`, Request/Response-Umschläge |
-| `VIBN_Tools.Tia.Client` | typed Named-Pipe-Client, Bridge-Start, Library-Import/-Export |
+| `VIBN_Tools.Tia.Client` | typed Named-Pipe-Client, Bridge-Start/-Abbruch, Library-Import/-Export |
 | `VIBN_Tools.TiaBridge/Bridge/TiaCommandDispatcher.cs` | ordnet Protokollkommandos Sessionmethoden zu |
 | `VIBN_Tools.TiaBridge/Openness/TiaOpennessSession.cs` | versionsgebundene Siemens-Openness-Implementierung; `ListHardware` liest Modul- und E/A-Adressdaten |
 | `Application/VM/TiaPortalPageVM.cs` | WPF-Steuerung und protokollierter Fehlerpfad |
@@ -72,7 +74,7 @@
 
 | Bereich | Einstiegspunkt |
 | --- | --- |
-| TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `SpecialDevices/DeviceFactory.cs` |
+| TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `Application/TiaHardwareMappingStore.cs`, `SpecialDevices/DeviceFactory.cs` |
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
 | Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |
@@ -80,5 +82,6 @@
 | Model Validation | `ModelValidationPageVM.cs` |
 | Model Control | `ModelControlPageVM.cs` |
 | Interface Operation | `InterfaceOperationPageVM.cs` |
+| ZuLi-/Container-Regressionstest | `Tests/ContainerGenerationSmokeTests` mit `Interface5.xlsx` und `Interface7.xlsx` |
 
 Bestehende große VIBN-ViewModels werden nicht durch neue ViCo-Logik vergrößert. Neue Integrationslogik gehört in die oben genannten modulierten Klassen und Dienste.

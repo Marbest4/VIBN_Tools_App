@@ -8,9 +8,11 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using VIBN_Tools.Application;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.InterfaceOperation;
+using VIBN_Tools.Settings;
 
 namespace VIBN_Tools.Application.VM
 {
@@ -88,6 +90,8 @@ namespace VIBN_Tools.Application.VM
                 SignalsView.Refresh();
             };
 
+            Connection.PropertyChanged += OnFeeConnectionPropertyChanged;
+
 
         }
 
@@ -101,6 +105,8 @@ namespace VIBN_Tools.Application.VM
 
 
         private readonly InterfaceOperationService _interfaceOperationService;
+
+        public FeeConnectionService Connection => Services.Connection;
 
 
 
@@ -157,7 +163,16 @@ namespace VIBN_Tools.Application.VM
         }
 
 
-        public bool CanConnetInterfaces => IsInterfaceValid(Interface1) && IsInterfaceValid(Interface2);
+        public bool CanConnetInterfaces => Connection.CanUseFeeFeatures && IsInterfaceValid(Interface1) && IsInterfaceValid(Interface2);
+
+        private void OnFeeConnectionPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+        {
+            if (eventArgs.PropertyName is nameof(FeeConnectionService.IsConnected) or
+                nameof(FeeConnectionService.CanUseFeeFeatures))
+            {
+                OnPropertyChanged(nameof(CanConnetInterfaces));
+            }
+        }
 
 
 
@@ -182,6 +197,9 @@ namespace VIBN_Tools.Application.VM
 
         public async Task Connect_Interfaces()
         {
+            if (!EnsureFeeConnection(nameof(ConnectInterfaces)))
+                return;
+
             await _interfaceOperationService.ConnectInterfacesAsync(Interface1, Interface2);
         }
 
@@ -404,11 +422,25 @@ namespace VIBN_Tools.Application.VM
 
         public async Task MergeSignals_ToInterface()
         {
+            if (!EnsureFeeConnection(nameof(MergeSignalsToInterface)))
+                return;
+
             var selectedSignals = AllSignals.Where(x => x.IsSelected).ToList();
 
             await _interfaceOperationService.MergeSignalsAsync(selectedSignals);
 
             await Reload_FeeSignals();
+        }
+
+        private bool EnsureFeeConnection(string operation)
+        {
+            if (Connection.CanUseFeeFeatures)
+                return true;
+
+            ApplicationLogService.Instance.Warning(
+                "Interface Operation",
+                $"{operation} wurde nicht ausgeführt: {FeeConnectionService.MissingConnectionMessage}");
+            return false;
         }
 
 

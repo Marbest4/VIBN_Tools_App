@@ -48,6 +48,8 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 | Rollen | `roles.json` | Anwendungstart und Verwaltungs-Refresh |
 | Kartenpositionen/Karten | Kanbanize v2 | ausdrücklich durch Kartenreiter |
 | TIA-Versionen | lokale Siemens-PublicAPI-Pfade | beim Öffnen der TIA-Ansicht |
+| verwendete FEE-SDK-Version | `FS.SDK.dll` neben der laufenden Anwendung | beim Öffnen von Project Settings |
+| lokal installierte FEE-Version | lokale Installationsordner und Uninstall-Registry | beim Öffnen von Project Settings |
 
 ## Häufige Fehler
 
@@ -61,6 +63,12 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 ### Connect zeigt trotzdem nicht „verbunden“
 
 Das ist korrekt, wenn FEE die Verbindung nicht bestätigt. Die Anwendung setzt `Connected to` erst nach `WaitForConnectedAsync`. Status-/Logmeldung prüfen, Servernamen und FEE-Service kontrollieren und danach erneut verbinden.
+
+Project Settings zeigt zusätzlich **Verwendete SDK-Version** und **Installierte FEE-Version**. Die erste Angabe stammt vorrangig aus der tatsächlich geladenen `FS.SDK.dll`, die zweite aus lokalen FEE-Installationsinformationen. Eine rote Abweichung ist ein Diagnosehinweis: Sie verhindert den Start nicht, sollte aber vor FEE-Schreiboperationen mit der freigegebenen Kompatibilitätsmatrix abgeglichen werden.
+
+### Remote-FEE-Version ist nicht als Spalte vorhanden
+
+Das ist eine bewusste Zuverlässigkeitsgrenze. Eine direkte Remote-Ermittlung über Registry, WMI/CIM, Admin-Share oder Dateiversion benötigt je nach PC andere Rechte und Dienste. Side-by-Side- oder portable Installationen machen selbst einen erfolgreichen Einzelwert mehrdeutig. Die Anwendung zeigt deshalb keine vermeintlich exakte Remote-Version an. Als kurzfristige betriebliche Angabe kann `KONFIGURATION → SW` verwendet werden. Für einen belastbaren Ist-Wert wird ein zentral verwalteter Inventardienst oder kleiner lokaler Agent empfohlen, der die aktive FEE-Binärdatei ermittelt und authentifiziert bereitstellt.
 
 ### RDP-Sitzung steht auf „Nicht abrufbar“
 
@@ -93,9 +101,15 @@ Keinen Synchronisieren-Lauf erzwingen. Prüfen, ob die betroffene Quellkarte ein
 1. Exakt passende TIA-Version auswählen und das Projekt vollständig öffnen. Openness arbeitet nicht im Versions-Kompatibilitätsmodus.
 2. Bei mehreren TIA-Fenstern nur das gewünschte Projekt geöffnet lassen. Die Bridge priorisiert `ProjectPath`, wartet bei großen Projekten bis zu 90 Sekunden auf die Openness-Projektfreigabe und unterstützt sowohl `Projects` als auch eine bereits geöffnete `LocalSessions[n].Project`-Sitzung.
 3. Gruppe `Siemens TIA Openness`, TIA-Funktionsrecht **Edit project via Openness API**, Firewallfreigabe und installierte Optionen/HSPs prüfen.
-4. Im Diagnosepanel die Bridge-Fehler lesen.
+4. Im Diagnosepanel die Bridge-Fehler lesen. Bei `Projects=0` insbesondere PID, Modus, `ProjectPath`, `Projects`- und `LocalSessions`-Diagnose vergleichen. Ein Lesefehler ist nicht dasselbe wie eine tatsächlich leere Collection.
 5. Für Special Devices Gerätename/Gerätekopf, Modul/Typ, Firmware, E-/A-Adressbereich, Byte-Längen und Logik kontrollieren. Die Hardwareabfrage durchläuft `Project.Devices`, alle `DeviceGroups`/Untergruppen und `UngroupedDevicesGroup`, danach rekursiv `DeviceItems` und deren `Addresses`. Bei Modulen, die keine Openness-Adresse bereitstellen, fehlende Adressen manuell ergänzen.
 6. Die Bridge läuft als 64-Bit-fähiger .NET-Framework-Prozess. Nach einer Änderung der lokalen Gruppe `Siemens TIA Openness` Windows ab- und wieder anmelden; ein bloßer Neustart des Tools aktualisiert das Windows-Gruppentoken nicht.
+
+Mit **TIA trennen / abbrechen** kann ein laufender Attach beendet werden. Bei einem in Siemens Openness blockierten synchronen Aufruf wird nur der für diese Seite gestartete Bridge-Prozess beendet; der TIA-Portal-Prozess und das geöffnete Projekt bleiben unangetastet. PLC- und Hardwarelisten werden anschließend bewusst geleert.
+
+### Open Interface File meldet `FontMetrics.TryGetGlyphMetrics`
+
+ClosedXML/NPOI wurden mit einer anderen `SixLabors.Fonts.dll` gestartet als beim Build vorgesehen. Die Solution pinnt Version `1.0.1`; der Publish übernimmt keine gleichnamige FEE-Drittanbieter-DLL mehr. Alte Ausgabe- oder Installationsordner vollständig bereinigen und das neue Paket geschlossen neu bauen/installieren. Der automatisierte Test `Tests/ContainerGenerationSmokeTests` muss sowohl `Interface5.xlsx` als auch `Interface7.xlsx` erfolgreich verarbeiten.
 
 Unterstützt werden lokal erkannte PublicAPI-Installationen V15 bis V22. Es wird immer die Assembly der ausgewählten Version geladen; V20 verwendet ausschließlich `Portal V20/PublicAPI/V20/Siemens.Engineering.dll`.
 

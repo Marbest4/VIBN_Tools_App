@@ -3,20 +3,24 @@ param(
     [string]$FeeScreenSimRoot,
     [string]$AdditionalPackageSource,
     [ValidateSet('win-x64')]
-    [string]$Runtime = 'win-x64'
+    [string]$Runtime = 'win-x64',
+    [switch]$SkipArchive
 )
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Build-Common.ps1')
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $feeRoot = Resolve-FeeScreenSimRoot -ExplicitRoot $FeeScreenSimRoot
-Assert-FeeRuntimeClosure -FeeRoot $feeRoot
+$feeRuntimeAssemblies = @(Get-FeeRuntimeClosure -FeeRoot $feeRoot)
+Write-Host "FEE-Runtimeclosure: $($feeRuntimeAssemblies.Count) FS-Assembly(s)."
 $artifactsRoot = Join-Path $repositoryRoot 'artifacts\publish'
 $publishRoot = Join-Path $artifactsRoot "VIBN_Tools-$Runtime"
 $zipPath = Join-Path $artifactsRoot "VIBN_Tools-$Runtime.zip"
 $hashPath = "$zipPath.sha256.txt"
+$feeRuntimeManifest = Join-Path $artifactsRoot 'fee-runtime-assemblies.txt'
 
 New-Item -ItemType Directory -Path $artifactsRoot -Force | Out-Null
+$feeRuntimeAssemblies.FullName | Set-Content -LiteralPath $feeRuntimeManifest -Encoding utf8
 foreach ($target in @($publishRoot, $zipPath, $hashPath)) {
     $absoluteTarget = [IO.Path]::GetFullPath($target)
     if (-not $absoluteTarget.StartsWith($artifactsRoot, [StringComparison]::OrdinalIgnoreCase)) {
@@ -56,7 +60,8 @@ try {
         '--no-restore',
         '-p:PublishSingleFile=false',
         '-p:PublishReadyToRun=false',
-        "-p:FEE_SCREEN_SIM_ROOT=$feeRoot"
+        "-p:FEE_SCREEN_SIM_ROOT=$feeRoot",
+        "-p:FeeRuntimeAssemblyManifest=$feeRuntimeManifest"
     )
     dotnet @publishArguments
     Assert-LastExitCode 'Portable Veröffentlichung'
@@ -65,12 +70,19 @@ try {
     Copy-Item -LiteralPath 'scripts\Configure-VIBN-Tools.ps1' -Destination $publishRoot
     Copy-Item -LiteralPath 'Configure-VIBN-Tools.cmd' -Destination $publishRoot
     Copy-Item -LiteralPath 'docs' -Destination (Join-Path $publishRoot 'docs') -Recurse
-    Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
-    $hash = Get-FileHash -LiteralPath $zipPath -Algorithm SHA256
-    Set-Content -LiteralPath $hashPath -Value "$($hash.Hash)  $([IO.Path]::GetFileName($zipPath))" -Encoding ascii
+    if (-not $SkipArchive) {
+        Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal
+        $hash = Get-FileHash -LiteralPath $zipPath -Algorithm SHA256
+        Set-Content -LiteralPath $hashPath -Value "$($hash.Hash)  $([IO.Path]::GetFileName($zipPath))" -Encoding ascii
+    }
 }
 finally {
     Pop-Location
 }
 
-Write-Host "Portable Paket: $zipPath"
+if ($SkipArchive) {
+    Write-Host "Publish-Verzeichnis: $publishRoot"
+}
+else {
+    Write-Host "Portable Paket: $zipPath"
+}

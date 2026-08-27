@@ -52,7 +52,7 @@ classDiagram
     }
 ```
 
-Die große ViewModel-Klasse ist eine bewusst dokumentierte Übergangsausnahme: Eine frühere Aufteilung wurde wegen einer ZULI-Regression zurückgenommen. Vor einer erneuten Zerlegung werden fachliche Golden-Master-Tests benötigt.
+Die große ViewModel-Klasse ist eine bewusst dokumentierte Übergangsausnahme: Eine frühere Aufteilung wurde wegen einer ZULI-Regression zurückgenommen. `Interface5.xlsx` und `Interface7.xlsx` sichern inzwischen Import und Generatorübergabe; vor einer erneuten Zerlegung wird zusätzlich ein Golden Master aus Requirements und erwarteter vollständiger Ausgabe benötigt.
 
 ## TIA-Hardwaredatenfluss
 

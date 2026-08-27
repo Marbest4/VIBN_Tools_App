@@ -19,6 +19,8 @@ internal sealed class FakeTiaBridgeClient : ITiaBridgeClient
 
     public Task ConnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+    public Task DisconnectAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
+
     public Task<bool> PingAsync(CancellationToken cancellationToken = default) => Task.FromResult(true);
 
     public Task SelectVersionAsync(string version, CancellationToken cancellationToken = default) => Task.CompletedTask;

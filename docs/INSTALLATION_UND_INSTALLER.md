@@ -27,9 +27,10 @@ Voraussetzungen:
 Aus dem Repository-Stamm:
 
 ```powershell
-.\Build.ps1
 .\Build-Installer.bat
 ```
+
+Dieser eine Befehl restauriert, veröffentlicht und kompiliert das Setup. Ein separates `Build.ps1` ist zur Setup-Erstellung nicht mehr erforderlich. Der Installer-Pfad erzeugt auch kein unbenutztes Portable-ZIP.
 
 Falls Grob.UX aus einem zusätzlichen lokalen Feed kommt:
 
@@ -49,7 +50,9 @@ Das fertige Setup liegt anschließend unter:
 artifacts\installer\VIBN_Tools_Setup.exe
 ```
 
-Die Datei `installer\VIBN_Tools.iss` ist nicht das fertige Setup, sondern das Inno-Setup-Rezept. Normalerweise wird sie nicht manuell geöffnet; `Build-Installer.bat` veröffentlicht zuerst die Anwendung und ruft danach den Inno-Compiler auf.
+Die Datei `installer\VIBN_Tools.iss` ist nicht das fertige Setup, sondern das Inno-Setup-Rezept. Normalerweise wird sie nicht manuell geöffnet; `Build-Installer.bat` veröffentlicht zuerst die Anwendung und ruft danach den Inno-Compiler auf. Inno Setup 6 baut nicht den C#-Code und löst keine NuGet-Pakete auf. Es verpackt den bereits self-contained veröffentlichten Ordner, erzeugt Verknüpfungen und stellt die Deinstallation bereit.
+
+Der Publish enthält nicht den vollständigen FEE-Installationsordner. Das Skript startet bei den direkten Projektverweisen und der `ReadingUnitPlugin.dll` und nimmt nur deren rekursiv benötigte `FS.*.dll` auf. Fremde FEE-Plugins, unbenutzte FS-Werkzeuge oder mitgelieferte Drittanbieter-DLLs werden nicht übernommen. Dadurch bleibt der Ordner kleiner und kann insbesondere keine NuGet-DLL wie `SixLabors.Fonts.dll` überschreiben.
 
 ## 3. SDK-Auswahl
 
@@ -70,7 +73,23 @@ ausgegeben. Visual Studio erkennt automatisch genau eine vollständige Installat
 
 ### Direktes Debuggen in Visual Studio
 
-`VIBN_Tools_App.sln` öffnen, in der Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Falls eine ältere Visual-Studio-Version `.slnLaunch` noch nicht anzeigt, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Die Debug-Konfiguration erzeugt eine selbstenthaltende x64-Anwendung unter `artifacts\build\Debug\net8.0-windows\win-x64`. Damit hängt F5 nicht von einer global installierten .NET-8-Patchversion ab. Benötigte NuGet-Runtime-Pakete werden von Visual Studio beim üblichen Restore bezogen; es ist keine separate Runtime-Konfiguration erforderlich.
+Auf einem neuen Entwicklungsrechner:
+
+1. Repository vollständig klonen oder entpacken.
+2. `VIBN_Tools_App.sln` öffnen. Visual Studio liest die eingecheckte `.vsconfig` und bietet fehlende Komponenten an: .NET-Desktop, .NET 8, .NET-Framework-4.8-SDK/Targeting Pack und NuGet.
+3. Einmal `Prepare-Development.cmd` starten. Das Skript überspringt unvollständige FEE-Installationsordner, wählt die höchste vollständige SDK-Version, setzt `FEE_SCREEN_SIM_ROOT` für den Benutzer und restauriert alle NuGet-Pakete.
+4. Visual Studio nach dem erstmaligen Setzen der Umgebungsvariable neu starten.
+5. In der Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Falls eine ältere Visual-Studio-Version `.slnLaunch` noch nicht anzeigt, `VIBN_Tools` per Rechtsklick als Startprojekt festlegen.
+
+Die Debug-Konfiguration erzeugt eine selbstenthaltende x64-Anwendung unter `artifacts\build\Debug\net8.0-windows\win-x64`. Damit hängt F5 nicht von einer global installierten .NET-8-Patchversion ab. Visual Studio beziehungsweise das Vorbereitungsskript führt die NuGet-Wiederherstellung automatisch aus.
+
+Falls Grob.UX nicht aus einer bereits konfigurierten Paketquelle erreichbar ist:
+
+```powershell
+.\Prepare-Development.cmd -AdditionalPackageSource "D:\InternerNuGetFeed"
+```
+
+Nicht automatisierbar sind die Zugriffsberechtigung auf den privaten Grob.UX-Feed sowie die Bereitstellung eines vollständigen, lizenzkonform verwendbaren FEE-SDKs.
 
 ## 4. Fehler `Metadata file ... VIBN_Tools.dll could not be found`
 
@@ -97,4 +116,4 @@ Für Support- oder Offlinefälle kann ein self-contained ZIP erzeugt werden:
 .\Publish-Portable.bat
 ```
 
-Das ZIP vollständig entpacken und anschließend `VIBN_Tools.exe` starten. Dateien innerhalb des ZIPs dürfen nicht einzeln herauskopiert werden, weil FEE-, Plugin-, TIA-Bridge- und .NET-Laufzeitdateien gemeinsam benötigt werden.
+Das ZIP vollständig entpacken und anschließend `VIBN_Tools.exe` starten. Dateien innerhalb des ZIPs dürfen nicht einzeln herauskopiert werden, weil die kuratierten FEE-Assemblies, die TIA-Bridge und die .NET-Laufzeitdateien gemeinsam benötigt werden.

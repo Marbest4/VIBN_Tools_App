@@ -21,7 +21,9 @@ Grundlagen: [Microsoft – Windows-Verteilungswege](https://learn.microsoft.com/
 
 TIA Portal/Openness und fe.screen-sim bleiben fachliche Laufzeitvoraussetzungen, sofern die jeweilige Funktion genutzt wird.
 
-Das Publish-Skript prüft vorab die transitive `FS.*`-Assemblymenge. Ein reines Compile-Test-SDK wird abgelehnt, statt ein Paket zu erzeugen, das erst beim Benutzerstart mit `FileNotFoundException` endet. Alle DLLs im freigegebenen FEE-`Bin` sowie Plugin-Dateien werden automatisch in das Paket übernommen.
+Das Publish-Skript berechnet aus den direkten Projektverweisen und der `ReadingUnitPlugin.dll` rekursiv die tatsächlich benötigte `FS.*`-Assemblyclosure. Ein reines Compile-Test-SDK wird abgelehnt, statt ein Paket zu erzeugen, das erst beim Benutzerstart mit `FileNotFoundException` endet. Es wird **nicht** mehr der komplette FEE-`Bin`- oder Pluginordner kopiert. In das Publish gelangen nur diese errechneten `FS.*.dll` sowie die explizit referenzierte `ReadingUnitPlugin.dll`. NuGet- und .NET-Runtime-Dateien stammen weiterhin aus dem reproduzierbaren `dotnet publish`.
+
+Die Einschränkung verhindert zwei frühere Probleme: unnötige FEE-Plugins vergrößerten und verschmutzten den Publish-Ordner; gleichnamige Fremd-DLLs konnten nach dem Build NuGet-Abhängigkeiten überschreiben. Letzteres war die Ursache des `SixLabors.Fonts.FontMetrics.TryGetGlyphMetrics`-Fehlers beim ZuLi-Import.
 
 ## Befehle
 
@@ -38,6 +40,8 @@ Setup-EXE mit installiertem Inno Setup 6:
 ```powershell
 .\scripts\Build-Installer.ps1 -FeeScreenSimRoot 'C:\Program Files\fe.screen-sim V5\<Version>'
 ```
+
+`Build-Installer.ps1` führt Restore und self-contained Publish genau einmal aus und ruft danach den Inno-Compiler auf. Dabei wird kein zwischenzeitliches ZIP mehr erzeugt. Inno Setup 6 ist ausschließlich der Verpacker für Dateien, Verknüpfungen und Deinstallation; die Anwendung wird bereits vorher durch `dotnet publish` gebaut. Für das portable ZIP ist Inno Setup nicht erforderlich.
 
 Ergebnisse:
 

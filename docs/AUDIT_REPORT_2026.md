@@ -15,7 +15,7 @@ Validierter Zustand:
 - WPF-Startup-Test: alle integrierten Views ohne XAML- oder Bindingfehler initialisiert.
 - TIA-Bridge `net48`: separat mit 0 Warnungen, 0 Fehlern gebaut.
 - Synthetischer TIA-Test: Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte einschließlich Adressen bestanden.
-- Bekannte Ausnahme: `ContainerGenerationPageVM` besitzt wieder 2.387 Zeilen, weil die nicht ausreichend getestete Aufteilung den ZULI-Import beeinträchtigte und deshalb funktionssicher zurückgenommen wurde.
+- Bekannte Ausnahme: `ContainerGenerationPageVM` besitzt wieder 2.387 Zeilen, weil die frühere Aufteilung den ZULI-Import beeinträchtigte und deshalb funktionssicher zurückgenommen wurde. `Interface5.xlsx` und `Interface7.xlsx` sichern inzwischen Import und Generatorübergabe; für eine erneute UI-Aufteilung fehlt noch ein freigegebener Requirements-/Ausgabe-Golden-Master.
 
 ## 2. Priorisierte Befunde
 
@@ -23,7 +23,7 @@ Validierter Zustand:
 | --- | --- | --- | --- | --- | --- | --- |
 | A-01 | FEE-DLL-Pfade waren auf `5.0.9.44419` fest verdrahtet | Kritisch | Build/Start auf anderen PCs scheitert | Mittel | Sehr hoch | Behoben |
 | A-02 | Hardwarebaum wurde abgeflacht; Slot/Subslot, GSD und Netzwerkdienste fehlten | Kritisch | Falsche Special Devices und E/A-Adressen | Hoch | Sehr hoch | Implementiert und synthetisch geprüft; Live-Abnahme offen |
-| A-03 | `ContainerGenerationPageVM` bündelt 2.387 Zeilen | Hoch | Regressionen, geringe Testbarkeit | Hoch | Hoch | Aufteilung wegen ZULI-Regression zurückgerollt; Golden-Master-Test zuerst |
+| A-03 | `ContainerGenerationPageVM` bündelt 2.387 Zeilen | Hoch | Regressionen, geringe Testbarkeit | Hoch | Hoch | ZuLi-/Generator-Smoke-Test vorhanden; vollständigen Requirements-/Ausgabe-Golden-Master vor Aufteilung ergänzen |
 | A-04 | Paketversionen waren nicht reproduzierbar fixiert | Hoch | Versionsdrift/transitive Konflikte | Niedrig | Hoch | Explizit fixiert; zentrale Verwaltung erst nach VS-Vereinheitlichung |
 | A-05 | Zwei veraltete, vom Build ausgeschlossene Sensorimplementierungen | Mittel | Verwirrung und falsche Erweiterungspunkte | Niedrig | Mittel | Entfernt |
 | A-06 | Zweite Solution verwies außerhalb des Repositories | Hoch | Falscher Build-Einstieg | Niedrig | Hoch | Entfernt |
@@ -45,7 +45,7 @@ Der ältere FEE-/WPF-Bereich verwendet teilweise weiterhin globale Services. Ein
 
 ### MVVM und Separation of Concerns
 
-Die Views verwenden Commands und OneWay-Bindings für reine Statuswerte. Code-behind besteht überwiegend aus WPF-Lifecycle-Ereignissen. Der Versuch, den Container-Generator vor vollständigen fachlichen Regressionstests in Zustands-, Workflow- und UI-Klassen aufzuteilen, beeinträchtigte den ZULI-Import. Deshalb entspricht `ContainerGenerationPageVM` wieder exakt dem zuvor funktionierenden Stand. Eine erneute Zerlegung ist weiterhin sinnvoll, darf aber erst nach Golden-Master-Tests mit realen ZULI-/Containerdateien erfolgen.
+Die Views verwenden Commands und OneWay-Bindings für reine Statuswerte. Code-behind besteht überwiegend aus WPF-Lifecycle-Ereignissen. Der Versuch, den Container-Generator vor vollständigen fachlichen Regressionstests in Zustands-, Workflow- und UI-Klassen aufzuteilen, beeinträchtigte den ZULI-Import. Deshalb entspricht `ContainerGenerationPageVM` wieder exakt dem zuvor funktionierenden Stand. Reale ZuLi-Dateien sichern nun den Importpfad; eine erneute Zerlegung bleibt bis zu einem fachlich freigegebenen Requirements-/Ausgabe-Golden-Master zurückgestellt.
 
 ### Thread-Sicherheit und Speicher
 
@@ -104,4 +104,4 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 5. Legacy-Service-Locator strangweise durch Konstruktorinjektion ersetzen.
 6. Unit-/Contract-Tests für Container2FEE und Hardware-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
-8. ZULI-Import und Container-Generierung mit freigegebenen Referenzdateien als Golden-Master-Test absichern und erst danach `ContainerGenerationPageVM` erneut aufteilen.
+8. Den vorhandenen ZuLi-/Generator-Smoke-Test um eine freigegebene Requirements-Datei und erwartete vollständige Container-Ausgabe ergänzen; erst danach `ContainerGenerationPageVM` erneut aufteilen.

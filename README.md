@@ -29,11 +29,12 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 
 Die vollständige Solution ist `VIBN_Tools_App.sln`. Für einen Build werden Windows, .NET 8, Grob.UX und das FEE-SDK benötigt. Für reale TIA-Funktionen muss außerdem eine unterstützte Siemens-TIA-Portal-/Openness-Installation vorhanden sein.
 
-Für das normale Debuggen die Solution öffnen, in der Visual-Studio-Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Zeigt eine ältere Visual-Studio-Version das `.slnLaunch`-Profil nicht an, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Der Debug-Build ist selbstenthaltend für `win-x64`; eine separat passende globale .NET-Desktop-Runtime muss deshalb nicht eingerichtet werden. Visual Studio führt die normale NuGet-Wiederherstellung automatisch aus.
+Auf einem neuen Entwicklungsrechner zuerst `Prepare-Development.cmd` ausführen und Visual Studio danach neu starten. Die eingecheckte `.vsconfig` bietet fehlende Visual-Studio-Komponenten an; das Vorbereitungsskript erkennt eine vollständige FEE-SDK-Version und restauriert die Solution. Anschließend in der Visual-Studio-Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Zeigt eine ältere Visual-Studio-Version das `.slnLaunch`-Profil nicht an, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Der Debug-Build ist selbstenthaltend für `win-x64`.
 
 ```powershell
 .\Build.ps1
 dotnet run --project Tests/CoreSmokeTests/VIBN_Tools.Core.SmokeTests.csproj --configuration Release
+dotnet run --project Tests/ContainerGenerationSmokeTests/VIBN_Tools.ContainerGeneration.SmokeTests.csproj --configuration Release
 dotnet run --project Tests/UiStartupSmokeTests/VIBN_Tools.UiStartup.SmokeTests.csproj --configuration Release
 .\Tests\Test-TiaHardwareTraversal.ps1
 ```

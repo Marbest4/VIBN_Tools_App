@@ -66,6 +66,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     private SpecialDeviceLogicOption? _selectedLogic;
     private RobotType? _selectedRobotType;
     private bool _isAdded;
+    private bool _isConfigurationSaved;
 
     public TiaHardwareDeviceRowVM(TiaHardwareModuleInfo module)
     {
@@ -78,6 +79,22 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     }
 
     public TiaHardwareModuleInfo Module { get; }
+
+    /// <summary>
+    /// Stable across TIA reads as long as the physical device/module identity
+    /// is unchanged. Byte offsets are deliberately not part of the key so a
+    /// reviewed manual address correction can be restored.
+    /// </summary>
+    public string MappingKey => string.Join("|",
+        DeviceName.Trim(),
+        ProfinetName.Trim(),
+        ModulePath.Trim(),
+        Slot,
+        Subslot);
+
+    public string DeviceGroupName => string.IsNullOrWhiteSpace(DeviceName)
+        ? "Gerät ohne Namen"
+        : DeviceName;
 
     public int Slot => Module.Slot;
 
@@ -93,6 +110,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public string GsdName => Module.GsdName;
 
+    public string GsdDisplay => string.IsNullOrWhiteSpace(Module.GsdName)
+        ? Module.GsdType
+        : Module.GsdName;
+
     public string ProfinetName => Module.ProfinetName;
 
     public string IpAddress => Module.IpAddress;
@@ -102,6 +123,12 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     public string ModulePath => Module.ModulePath;
 
     public string ModuleType => Module.ModuleType;
+
+    public string ModuleTypeDisplay => !string.IsNullOrWhiteSpace(Module.ModuleType)
+        ? Module.ModuleType
+        : !string.IsNullOrWhiteSpace(Module.ModuleName)
+            ? Module.ModuleName
+            : Module.TypeIdentifier;
 
     public string TypeIdentifier => Module.TypeIdentifier;
 
@@ -121,6 +148,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _include = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(State));
         }
@@ -132,7 +160,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _prefix = value ?? string.Empty;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -142,8 +172,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _inputByte = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(InputAddressRange));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -153,8 +185,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _outputByte = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(OutputAddressRange));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -164,8 +198,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _selectedLogic = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RequiresRobotType));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -175,7 +211,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _selectedRobotType = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -192,7 +230,57 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         }
     }
 
-    public string State => IsAdded ? "In Warteschlange" : Include ? "Ausgewählt" : "Nicht ausgewählt";
+    public string State => IsAdded
+        ? "In Warteschlange"
+        : _isConfigurationSaved
+            ? "Gespeichert"
+            : Include ? "Ausgewählt" : "Nicht ausgewählt";
+
+    public TiaHardwareMapping ToMapping() => new(
+        MappingKey,
+        Include,
+        Prefix,
+        InputByte,
+        OutputByte,
+        SelectedLogic?.Manufacturer.ToString() ?? string.Empty,
+        SelectedLogic?.DeviceType.ToString() ?? string.Empty,
+        SelectedRobotType?.ToString() ?? string.Empty);
+
+    public bool ApplyMapping(TiaHardwareMapping mapping)
+    {
+        if (!string.Equals(MappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        _include = mapping.Include;
+        _prefix = mapping.Prefix ?? string.Empty;
+        _inputByte = mapping.InputByte;
+        _outputByte = mapping.OutputByte;
+        _selectedLogic = SpecialDeviceLogicOption.All.FirstOrDefault(option =>
+            string.Equals(option.Manufacturer.ToString(), mapping.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(option.DeviceType.ToString(), mapping.DeviceType, StringComparison.OrdinalIgnoreCase));
+        _selectedRobotType = Enum.TryParse<RobotType>(mapping.RobotType, ignoreCase: true, out var robotType)
+            ? robotType
+            : null;
+        _isConfigurationSaved = true;
+
+        OnPropertyChanged(nameof(Include));
+        OnPropertyChanged(nameof(Prefix));
+        OnPropertyChanged(nameof(InputByte));
+        OnPropertyChanged(nameof(OutputByte));
+        OnPropertyChanged(nameof(InputAddressRange));
+        OnPropertyChanged(nameof(OutputAddressRange));
+        OnPropertyChanged(nameof(SelectedLogic));
+        OnPropertyChanged(nameof(SelectedRobotType));
+        OnPropertyChanged(nameof(RequiresRobotType));
+        OnPropertyChanged(nameof(State));
+        return true;
+    }
+
+    public void MarkConfigurationSaved()
+    {
+        _isConfigurationSaved = true;
+        OnPropertyChanged(nameof(State));
+    }
 
     public bool TryCreate(out SpecialDevice? device, out string error)
     {

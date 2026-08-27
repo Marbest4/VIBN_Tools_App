@@ -89,6 +89,7 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 | Test | Ziel |
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
+| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly und Übergabe an den fachlichen Container-Generator |
 | `Tests/UiStartupSmokeTests` | Instanziierung integrierter WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings und Screenshot-Erzeugung |
 | `Tests/Test-TiaHardwareTraversal.ps1` | Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, `Items`-Fallback sowie synthetische E-/A-Adressen |
 | manuelle Abnahme | reale UNC-Pfade, echte Kanbanize-Berechtigung, FEE, Outlook, RDP und TIA Openness |
@@ -101,4 +102,4 @@ XML-Kommentare erklären öffentliche Modelle, Grenzen und Invarianten. Kommenta
 
 Neue Klassen sollen eine eng abgegrenzte Aufgabe haben. Wenn eine ViewModel-Datei mehrere eigenständige Präsentationsmodelle enthält, diese in getrennte Dateien auslagern – beispielsweise `ViCoWorkstationRowVM` gegenüber `ViCoSearchPageVM`.
 
-`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Diese Klasse erst wieder aufteilen, wenn reale ZULI-/Container-Referenzdateien den vollständigen Import- und Generierungsweg als Golden Master absichern.
+`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Die Referenzdateien sichern jetzt den Import und die Übergabe an `ContainerGenerator`; sie enthalten jedoch keine freigegebene Requirements-Datei samt erwarteter vollständiger Ausgabe. Die UI-Klasse daher erst weiter aufteilen, wenn zusätzlich dieser fachliche Golden Master vorliegt.

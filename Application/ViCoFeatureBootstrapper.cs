@@ -67,7 +67,11 @@ public static class ViCoFeatureBootstrapper
     }
 
     public static SpecialDevicePageVM CreateSpecialDeviceViewModel() =>
-        new(CreateTiaBridgeClient(), FindInstalledTiaVersions(), ApplicationLogService.Instance);
+        new(
+            CreateTiaBridgeClient(),
+            FindInstalledTiaVersions(),
+            JsonTiaHardwareMappingStore.CreateDefault(),
+            ApplicationLogService.Instance);
 
     public static ViCoCopyPageVM CreateCopyViewModel()
     {

@@ -6,6 +6,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] `dotnet build VIBN_Tools_App.sln --configuration Release` hat keine Fehler.
 - [ ] `Tests/CoreSmokeTests` ist erfolgreich.
+- [ ] `Tests/ContainerGenerationSmokeTests` liest `Interface5.xlsx` und `Interface7.xlsx` und meldet `SixLabors.Fonts 1.0.1.0`.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte.
 - [ ] Anwendung startet ohne XamlParseException.
@@ -23,6 +24,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] Project Settings zeigt nur erreichbare PCs und der Filter wirkt sofort.
 - [ ] Ein fehlgeschlagener FEE-Connect zeigt nicht fälschlich „verbunden“.
+- [ ] Project Settings zeigt verwendete SDK- und lokal installierte FEE-Version; eine künstlich abweichende Version wird rot hervorgehoben.
+- [ ] Ohne FEE-Verbindung sind alle dokumentierten FEE-Aktionen grau, nicht ausführbar und zeigen den Tooltip „Keine Verbindung zu FEE vorhanden.“.
 - [ ] ViCo-Suche findet PC, Benutzer und Projekt mit demselben Suchfeld.
 - [ ] Spalten Belegung, Software, Standort, Projekt-IP, Sonstiges, RDP-Sitzung, letzte Anmeldung und Benutzer sind plausibel.
 - [ ] Nur Planung/In-Arbeit-Projekte stehen in der aktiven Projektauswahl; Backlog/Abschluss stehen im Detailbereich.
@@ -38,6 +41,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Start ist Quell-Deadline minus 14 Tage.
 - [ ] Ziel-Deadline ist Quell-Deadline plus 56 Tage.
 - [ ] Nur in der Vorschau markierte Sync-Zeilen werden erstellt oder aktualisiert.
+- [ ] Neue Karten sind nach dem Prüfen markiert; Deadline-Updates nicht. Alle selektieren/deselektieren funktioniert.
+- [ ] Unterschiedliche Uhrzeiten am selben lokalen Kalendertag erzeugen kein Termin-Update.
 - [ ] Ein zweiter Lauf erzeugt keine Duplikate.
 - [ ] Mehrdeutige Zielkarte führt zu Konflikt ohne Änderung.
 - [ ] Bestehende generierte Karte ändert nur Startfeld und Deadline, nicht Titel/Position/Beschreibung.
@@ -46,7 +51,9 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 ## TIA und Special Devices
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
-- [ ] Die einzige Hardwareansicht unter Special Devices zeigt Gerätename, Modul, Slot, Modultyp/Typkennung, optionale Firmware, E-/A-Byte und Byte-Längen.
+- [ ] Die einzige Hardwareansicht unter Special Devices gruppiert gleiche Gerätenamen und zeigt GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
+- [ ] `TIA trennen / abbrechen` beendet Attach/Session, leert Listen und beendet TIA Portal selbst nicht.
 - [ ] Special-Device-Hardwaretabelle übernimmt nur bewusst ausgewählte/validierte Zeilen.
 - [ ] Geräte erscheinen zuerst in der Warteschlange.
 - [ ] Fehlerhafte FEE-Erzeugung bleibt prüfbar in der Warteschlange.

@@ -231,6 +231,13 @@
             <Border Margin="6,0,0,0" Padding="7,3" Background="#FFFCE4D6" CornerRadius="3"><TextBlock Text="Belegt: Planung/In Arbeit" /></Border>
             <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Foreground="#FF666666" Text="Online = grün, Offline = rot. RDP-Informationen sind bei fehlender Berechtigung als „Nicht abrufbar“ gekennzeichnet." />
         </WrapPanel>
-        <TextBlock Grid.Row="3" Margin="0,8,0,0" FontSize="13.5" Text="{Binding StatusText}" />
+        <StackPanel Grid.Row="3" Margin="0,8,0,0">
+            <TextBlock FontSize="13.5" Text="{Binding StatusText}" />
+            <TextBlock Margin="0,4,0,0"
+                       FontSize="12.5"
+                       Foreground="#FF666666"
+                       Text="Remote-FEE-Version: nicht zuverlässig direkt abrufbar. Eine verwaltete Angabe kann unter KONFIGURATION → SW gepflegt werden."
+                       TextWrapping="Wrap" />
+        </StackPanel>
     </Grid>
 </UserControl>

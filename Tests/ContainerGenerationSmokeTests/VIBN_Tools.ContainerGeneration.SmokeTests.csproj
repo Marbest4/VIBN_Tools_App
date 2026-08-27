@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\VIBN_Tools.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="..\..\Interface5.xlsx" Link="TestData\Interface5.xlsx" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\Interface7.xlsx" Link="TestData\Interface7.xlsx" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

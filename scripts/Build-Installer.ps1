@@ -10,7 +10,8 @@ $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Pat
 
 & (Join-Path $PSScriptRoot 'Publish-Portable.ps1') `
     -FeeScreenSimRoot $FeeScreenSimRoot `
-    -AdditionalPackageSource $AdditionalPackageSource
+    -AdditionalPackageSource $AdditionalPackageSource `
+    -SkipArchive
 if ($LASTEXITCODE -ne 0) { throw 'Portable Veröffentlichung fehlgeschlagen.' }
 
 $compilerCandidates = @(

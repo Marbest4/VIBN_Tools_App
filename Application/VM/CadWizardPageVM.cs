@@ -1,6 +1,7 @@
 ﻿using FS.API;
 using FS.SDK;
 using System.Windows.Input;
+using VIBN_Tools.Application;
 using VIBN_Tools.CAD_Wizard;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
@@ -15,6 +16,7 @@ namespace VIBN_Tools.Application.VM
     /// </summary>
     public class CadWizardPageVM : MvvmBase
     {
+        public FeeConnectionService Connection => Services.Connection;
 
 
         //===========================================================================================================================
@@ -147,6 +149,8 @@ namespace VIBN_Tools.Application.VM
 
         private async Task Create_Joints(object arg)
         {
+            if (!EnsureFeeConnection(nameof(CreateJoints)))
+                return;
 
             IsBusyCreateJoints = true;
 
@@ -176,6 +180,9 @@ namespace VIBN_Tools.Application.VM
 
         private async Task Create_Sensors(object arg)
         {
+            if (!EnsureFeeConnection(nameof(CreateSensors)))
+                return;
+
             IsBusyCreateSensors = true;
 
             SensorsList.Clear();
@@ -216,6 +223,8 @@ namespace VIBN_Tools.Application.VM
 
         private async Task Create_Templates(object arg)
         {
+            if (!EnsureFeeConnection(nameof(CreateTemplates)))
+                return;
 
             IsBusyCreateTemplates = true;
 
@@ -247,6 +256,9 @@ namespace VIBN_Tools.Application.VM
 
         private async Task Delete_EmptyNodes(object arg)
         {
+            if (!EnsureFeeConnection(nameof(DeleteEmptyNodes)))
+                return;
+
             IsBusyDeleteEmptyNodes = true;
             bool deleteSomething;
 
@@ -271,6 +283,17 @@ namespace VIBN_Tools.Application.VM
 
             IsBusyDeleteEmptyNodes = false;
 
+        }
+
+        private bool EnsureFeeConnection(string operation)
+        {
+            if (Connection.CanUseFeeFeatures)
+                return true;
+
+            ApplicationLogService.Instance.Warning(
+                "CAD Wizard",
+                $"{operation} wurde nicht ausgeführt: {FeeConnectionService.MissingConnectionMessage}");
+            return false;
         }
 
 

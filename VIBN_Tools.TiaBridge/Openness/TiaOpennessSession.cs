@@ -53,11 +53,14 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         if (processes.Length == 0)
             throw new InvalidOperationException($"Keine geöffnete TIA-Portal-Instanz {_selectedVersion} gefunden.");
 
-        var candidates = processes
+        var processInfos = processes
             .Select(process => new PortalProcess(
                 process,
                 ReadStringMember(process, "ProjectPath"),
-                ReadStringMember(process, "Id", "ProcessId")))
+                ReadStringMember(process, "Id", "ProcessId"),
+                ReadStringMember(process, "Mode")))
+            .ToArray();
+        var candidates = processInfos
             .Where(process => !string.IsNullOrWhiteSpace(process.ProjectPath))
             .ToArray();
         if (candidates.Length > 1)
@@ -73,8 +76,8 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
         // Older releases and a few project types do not expose ProjectPath.
         // With a single process attaching is still unambiguous.
-        var selected = candidates.FirstOrDefault()?.Process ?? processes[0];
-        dynamic selectedProcess = selected;
+        var selectedInfo = candidates.FirstOrDefault() ?? processInfos[0];
+        dynamic selectedProcess = selectedInfo.Process;
         _portal = selectedProcess.Attach();
 
         // TIA's process information is a snapshot and the Openness firewall
@@ -82,9 +85,11 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         // window. Also support an already opened Multiuser local session: its
         // project is exposed through LocalSessions[n].Project, not Projects[0].
         const int maximumProjectWaits = 360;
+        var projectProbe = ProjectProbe.Empty;
         for (var attempt = 0; attempt < maximumProjectWaits; attempt++)
         {
-            _project = TryResolveOpenProject(_portal);
+            projectProbe = ProbeOpenProject(_portal);
+            _project = projectProbe.Project;
             if (_project is not null)
                 break;
             Thread.Sleep(250);
@@ -95,34 +100,92 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             throw new InvalidOperationException(
                 $"Die verbundene TIA-Instanz {_selectedVersion} stellt nach 90 Sekunden weder ein Einzelprojekt noch eine geöffnete Multiuser-Local-Session über Openness bereit." +
                 (string.IsNullOrWhiteSpace(selectedPath) ? string.Empty : $" Gemeldeter ProjectPath: {selectedPath}.") +
+                $" Prozess: PID {selectedInfo.ProcessId}, Modus '{selectedInfo.Mode}'. Diagnose: {projectProbe.Diagnostics}." +
                 " Den Openness-Firewall-Dialog in TIA mit 'Immer zulassen' bestätigen und TIA sowie VIBN Tools nach einer Änderung der Gruppe 'Siemens TIA Openness' neu anmelden.");
         }
         _selectedPlcIndex = null;
     }
 
-    private static object? TryResolveOpenProject(object portal)
+    private static ProjectProbe ProbeOpenProject(object portal)
     {
-        var projects = ReadEnumerableProperty(portal, "Projects");
-        var project = projects.FirstOrDefault();
+        var projects = ProbeEnumerableProperty(portal, "Projects");
+        var project = projects.Values.FirstOrDefault();
         if (project is not null)
-            return project;
+            return new ProjectProbe(project, $"Projects={projects.Values.Count}; LocalSessions=nicht benötigt");
 
-        foreach (var localSession in ReadEnumerableProperty(portal, "LocalSessions"))
+        var localSessions = ProbeEnumerableProperty(portal, "LocalSessions");
+        var sessionErrors = new List<string>();
+        foreach (var localSession in localSessions.Values)
         {
             try
             {
-                var sessionProject = localSession.GetType().GetProperty("Project")?.GetValue(localSession, null);
+                var sessionProject = ReadPropertyWithInterfaces(localSession, "Project");
                 if (sessionProject is not null)
-                    return sessionProject;
+                {
+                    return new ProjectProbe(
+                        sessionProject,
+                        $"Projects={projects.Values.Count}; LocalSessions={localSessions.Values.Count}");
+                }
             }
-            catch (Exception)
+            catch (Exception exception)
             {
-                // A session can disappear while TIA is switching views.
+                sessionErrors.Add(Unwrap(exception).Message);
             }
+        }
+
+        var diagnostics = $"Projects={projects.Values.Count} ({projects.Diagnostics}); " +
+                          $"LocalSessions={localSessions.Values.Count} ({localSessions.Diagnostics})";
+        if (sessionErrors.Count > 0)
+            diagnostics += $"; LocalSession.Project: {string.Join(" | ", sessionErrors.Distinct().Take(3))}";
+        return new ProjectProbe(null, diagnostics);
+    }
+
+    private static CollectionProbe ProbeEnumerableProperty(object target, string propertyName)
+    {
+        try
+        {
+            var value = ReadPropertyWithInterfaces(target, propertyName);
+            if (value is not System.Collections.IEnumerable enumerable)
+                return new CollectionProbe(Array.Empty<object>(), "Member fehlt oder ist nicht aufzählbar");
+
+            return new CollectionProbe(
+                enumerable.Cast<object>().Where(item => item is not null).ToArray(),
+                "lesbar");
+        }
+        catch (Exception exception)
+        {
+            var root = Unwrap(exception);
+            return new CollectionProbe(Array.Empty<object>(), $"{root.GetType().Name}: {root.Message}");
+        }
+    }
+
+    private static object? ReadPropertyWithInterfaces(object target, string propertyName)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public |
+                                   BindingFlags.NonPublic | BindingFlags.DeclaredOnly;
+        for (var type = target.GetType(); type is not null; type = type.BaseType)
+        {
+            var property = type.GetProperties(flags).FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase));
+            if (property is not null)
+                return property.GetValue(target, null);
+        }
+
+        foreach (var interfaceType in target.GetType().GetInterfaces())
+        {
+            var property = interfaceType.GetProperties().FirstOrDefault(candidate =>
+                string.Equals(candidate.Name, propertyName, StringComparison.OrdinalIgnoreCase));
+            if (property is not null)
+                return property.GetValue(target, null);
         }
 
         return null;
     }
+
+    private static Exception Unwrap(Exception exception) =>
+        exception is TargetInvocationException { InnerException: not null } invocationException
+            ? invocationException.InnerException
+            : exception;
 
     private static IReadOnlyList<object> ReadEnumerableProperty(object? target, string propertyName)
     {
@@ -445,16 +508,43 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
     private sealed class PortalProcess
     {
-        public PortalProcess(object process, string projectPath, string processId)
+        public PortalProcess(object process, string projectPath, string processId, string mode)
         {
             Process = process;
             ProjectPath = projectPath;
             ProcessId = processId;
+            Mode = mode;
         }
 
         public object Process { get; }
         public string ProjectPath { get; }
         public string ProcessId { get; }
+        public string Mode { get; }
+    }
+
+    private sealed class ProjectProbe
+    {
+        public ProjectProbe(object? project, string diagnostics)
+        {
+            Project = project;
+            Diagnostics = diagnostics;
+        }
+
+        public static ProjectProbe Empty { get; } = new(null, "noch keine Abfrage");
+        public object? Project { get; }
+        public string Diagnostics { get; }
+    }
+
+    private sealed class CollectionProbe
+    {
+        public CollectionProbe(IReadOnlyList<object> values, string diagnostics)
+        {
+            Values = values;
+            Diagnostics = diagnostics;
+        }
+
+        public IReadOnlyList<object> Values { get; }
+        public string Diagnostics { get; }
     }
 
     private static void TraverseGroup(dynamic group, string parentPath, string itemCollection, TiaProjectTree tree)

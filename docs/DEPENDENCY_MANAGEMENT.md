@@ -28,6 +28,9 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 - Alle FS-Referenzen verwenden denselben Root und `Private=true`.
 - `Build.ps1` erkennt die höchste installierte Version automatisch.
 - Neue XML-Definitionen werden per Wildcard automatisch veröffentlicht.
+- `SixLabors.Fonts` ist explizit auf `1.0.1` festgelegt, weil ClosedXML und NPOI dieselbe binär kompatible Assembly laden müssen.
+- Build und Publish kopieren nicht mehr pauschal den FEE-`Bin`-/Pluginbaum. Der Releasepfad berechnet aus direkten Referenzen und `ReadingUnitPlugin.dll` die rekursiv benötigte `FS.*`-Closure. So gelangen weder unbenutzte FS-Werkzeuge noch Hersteller-Drittanbieterdateien in das Paket und können keine Paketabhängigkeiten überschreiben.
+- `.vsconfig` und `Prepare-Development.cmd` bilden die minimale Entwicklungsumgebung und die normale Solution-Wiederherstellung reproduzierbar ab.
 
 Eine spätere zentrale Paketverwaltung kann nach Vereinheitlichung und Prüfung der Entwicklerumgebungen nach [Microsofts NuGet Central Package Management](https://learn.microsoft.com/en-gb/nuget/consume-packages/central-package-management) erneut eingeführt werden.
 

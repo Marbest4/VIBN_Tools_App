@@ -8,6 +8,12 @@ public interface ITiaBridgeClient : IAsyncDisposable
 
     Task ConnectAsync(CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Closes the isolated bridge and releases its attached TIA Portal session.
+    /// A later <see cref="ConnectAsync"/> call starts a fresh bridge session.
+    /// </summary>
+    Task DisconnectAsync(CancellationToken cancellationToken = default);
+
     Task<bool> PingAsync(CancellationToken cancellationToken = default);
 
     Task SelectVersionAsync(string version, CancellationToken cancellationToken = default);

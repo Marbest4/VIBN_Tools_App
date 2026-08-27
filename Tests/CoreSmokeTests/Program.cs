@@ -452,7 +452,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         new[]
         {
             new KanbanizeCardInfo(201, 1541, 28125, 29373, "Bestehende Karte", "102", sourceDeadline.AddDays(-3), expectedStart.AddDays(-1)),
-            new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd.AddHours(4), expectedStart.AddHours(4)),
             new KanbanizeCardInfo(209, 1541, 28125, 29373, "*[Gen]* GM9000", null, expectedEnd, expectedStart),
             new KanbanizeCardInfo(206, 1541, 28125, 29373, "Doppelte Eins", "106", sourceDeadline),
             new KanbanizeCardInfo(207, 1541, 28125, 29373, "Doppelte Zwei", "106", sourceDeadline)
@@ -465,6 +465,17 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         "The preview must distinguish missing, stale and already-current target schedules.");
     Assert(preview.Items.Single(item => item.SourceCard.Id == 109).Action == VibnWorkplaceSynchronizationAction.Unchanged,
         "A legacy generated title must prevent duplicates even if its custom source ID is absent.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 105).Action == VibnWorkplaceSynchronizationAction.Unchanged,
+        "Different times on the same local calendar dates must not trigger a schedule update.");
+    var localDate = new DateTime(2026, 8, 27);
+    var localOffset = TimeZoneInfo.Local.GetUtcOffset(localDate);
+    Assert(VibnWorkplaceSynchronizationPolicy.HasEquivalentDeadline(
+            new DateTimeOffset(2026, 8, 27, 8, 0, 0, localOffset),
+            new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset)) &&
+           !VibnWorkplaceSynchronizationPolicy.HasEquivalentDeadline(
+               new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset),
+               new DateTimeOffset(2026, 8, 28, 8, 0, 0, TimeZoneInfo.Local.GetUtcOffset(localDate.AddDays(1)))),
+        "Kanbanize planning dates must be compared by local calendar date and ignore the time component.");
     Assert(preview.ConflictCount == 1 && preview.ExcludedSourceCardCount == 1,
         "Duplicate target IDs must be reported and archived source cards excluded.");
     Assert(preview.Items.Where(item => item.SourceCard.Deadline is not null).All(item =>

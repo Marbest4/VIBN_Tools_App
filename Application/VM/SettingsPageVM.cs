@@ -165,6 +165,14 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
+        public string UsedFeeSdkVersion { get; }
+
+        public string InstalledFeeVersion { get; }
+
+        public bool HasFeeVersionMismatch { get; }
+
+        public string FeeVersionStatus { get; }
+
 
 
         // Toggle Buttons Displays
@@ -365,7 +373,8 @@ namespace VIBN_Tools.Application.VM
             FeeConnectionService connectionService,
             IWorkstationDirectory workstations,
             INetworkAvailabilityService? availability = null,
-            IApplicationLog? log = null)
+            IApplicationLog? log = null,
+            IFeeVersionInfoProvider? feeVersionInfoProvider = null)
         {
             _projectSettings = projectSettings;
             _connectionService = connectionService;
@@ -373,6 +382,17 @@ namespace VIBN_Tools.Application.VM
             _workstations = workstations;
             _availability = availability ?? new NetworkAvailabilityService();
             _log = log ?? NullApplicationLog.Instance;
+
+            var feeVersionInfo = (feeVersionInfoProvider ?? new FeeVersionInfoProvider()).Read();
+            UsedFeeSdkVersion = feeVersionInfo.UsedSdkVersion;
+            InstalledFeeVersion = feeVersionInfo.InstalledFeeVersion;
+            HasFeeVersionMismatch = feeVersionInfo.HasVersionMismatch;
+            FeeVersionStatus = feeVersionInfo.StatusMessage;
+            _log.Information(
+                "Project Settings",
+                $"Verwendete SDK-Version: {UsedFeeSdkVersion}; installierte FEE-Version: {InstalledFeeVersion}.");
+            if (HasFeeVersionMismatch)
+                _log.Warning("Project Settings", FeeVersionStatus);
 
             _workstations.PcNames.CollectionChanged += (_, _) => _ = RefreshOnlineServersAsync();
 

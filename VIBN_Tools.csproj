@@ -51,13 +51,21 @@
   </ItemGroup>
 
   <ItemGroup>
+	<!-- Expose only the selected SDK version (not the machine-specific path) to
+	     Project Settings for runtime diagnostics. -->
+	<AssemblyMetadata Include="FeeSdkVersion" Value="$([System.IO.Path]::GetFileName('$(FeeScreenSimRoot)'))" />
+
 	<PackageReference Include="ClosedXML" Version="0.105.0" />
 	<PackageReference Include="Grob.UX" Version="1.8.93" />
 	<PackageReference Include="Microsoft.ML" Version="5.0.0" />
 	<PackageReference Include="Microsoft.ML.LightGbm" Version="5.0.0" />
 	<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
 	<PackageReference Include="NLog.Extensions.Logging" Version="6.1.0" />
-    <PackageReference Include="NPOI" Version="2.7.5" />
+	<PackageReference Include="NPOI" Version="2.7.5" />
+	<!-- ClosedXML and NPOI must load the same binary-compatible Fonts build.
+	     Keep this direct pin so a vendor SDK cannot silently replace the
+	     transitive NuGet asset at runtime. -->
+	<PackageReference Include="SixLabors.Fonts" Version="1.0.1" />
     <!-- Required at runtime by the FEE SDK; declare it explicitly so a
          deployed desktop build does not depend on a machine-wide GAC entry. -->
     <PackageReference Include="System.ComponentModel.Composition" Version="8.0.0" />
@@ -153,16 +161,21 @@
     <Copy SourceFiles="@(TiaBridgeOutput)" DestinationFiles="@(TiaBridgeOutput->'$(TargetDir)TiaBridge\%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
-  <Target Name="CopyFeeRuntimeToOutput" AfterTargets="Build">
+  <!-- Only the FEE assembly family is added to the runtime closure. Copying
+       every vendor DLL used to overwrite NuGet assets such as
+       SixLabors.Fonts and also shipped unrelated plugins. ReadingUnitPlugin
+       itself is already copied by its explicit Private reference above. -->
+  <Target Name="CopyFeeDependenciesToOutput" AfterTargets="Build">
+    <!-- Remove the directory created by older builds which copied the whole
+         vendor plugin tree. Incremental Visual Studio builds do not otherwise
+         delete files produced by a removed custom Copy target. -->
+    <RemoveDir Directories="$(TargetDir)Plugins"
+               Condition="Exists('$(TargetDir)Plugins')" />
     <ItemGroup>
-      <FeeRuntimeRootAssembly Include="$(FeeScreenSimRoot)\Bin\*.dll" />
-      <FeeRuntimePluginFile Include="$(FeeScreenSimRoot)\Bin\Plugins\**\*" />
+      <FeeRuntimeAssembly Include="$(FeeScreenSimRoot)\Bin\FS.*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(FeeRuntimeRootAssembly)"
+    <Copy SourceFiles="@(FeeRuntimeAssembly)"
           DestinationFolder="$(TargetDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(FeeRuntimePluginFile)"
-          DestinationFiles="@(FeeRuntimePluginFile->'$(TargetDir)Plugins\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
@@ -179,16 +192,20 @@
           SkipUnchangedFiles="true" />
   </Target>
 
-  <Target Name="CopyFeeRuntimeToPublish" AfterTargets="Publish">
-    <ItemGroup>
-      <FeePublishRootAssembly Include="$(FeeScreenSimRoot)\Bin\*.dll" />
-      <FeePublishPluginFile Include="$(FeeScreenSimRoot)\Bin\Plugins\**\*" />
+  <Target Name="CopyFeeDependenciesToPublish" AfterTargets="Publish">
+    <ReadLinesFromFile File="$(FeeRuntimeAssemblyManifest)"
+                       Condition="'$(FeeRuntimeAssemblyManifest)' != '' and Exists('$(FeeRuntimeAssemblyManifest)')">
+      <Output TaskParameter="Lines" ItemName="FeePublishAssembly" />
+    </ReadLinesFromFile>
+    <ItemGroup Condition="'@(FeePublishAssembly)' == ''">
+      <!-- Release scripts provide the dependency closure calculated from the
+           project's direct references. The fallback keeps direct IDE publish
+           functional, but the supported installer path always uses the lean
+           closure. -->
+      <FeePublishAssembly Include="$(FeeScreenSimRoot)\Bin\FS.*.dll" />
     </ItemGroup>
-    <Copy SourceFiles="@(FeePublishRootAssembly)"
+    <Copy SourceFiles="@(FeePublishAssembly)"
           DestinationFolder="$(PublishDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(FeePublishPluginFile)"
-          DestinationFiles="@(FeePublishPluginFile->'$(PublishDir)Plugins\%(RecursiveDir)%(Filename)%(Extension)')"
           SkipUnchangedFiles="true" />
   </Target>
 
