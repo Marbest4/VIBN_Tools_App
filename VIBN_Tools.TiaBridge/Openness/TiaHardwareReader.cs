@@ -21,7 +21,7 @@ internal sealed class TiaHardwareReader
 
     public IReadOnlyList<TiaHardwareModuleInfo> Read(object project, int selectedDeviceIndex)
     {
-        var devices = ReadEnumerableMember(project, "Devices");
+        var devices = EnumerateDevices(project);
         var result = new List<TiaHardwareModuleInfo>();
         for (var deviceIndex = 0; deviceIndex < devices.Count; deviceIndex++)
         {
@@ -36,7 +36,7 @@ internal sealed class TiaHardwareReader
                 parentPath: string.Empty,
                 depth: 0,
                 parentSlot: -1,
-                inheritedNetwork: NetworkMetadata.Empty);
+                inheritedNetwork: ReadNetworkMetadata(device));
         }
 
         return result
@@ -46,6 +46,46 @@ internal sealed class TiaHardwareReader
             .ThenBy(module => module.Slot < 0 ? int.MaxValue : module.Slot)
             .ThenBy(module => module.Subslot < 0 ? int.MaxValue : module.Subslot)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Enumerates the complete TIA project device tree in a stable order:
+    /// root devices, user groups (including nested groups), then the system
+    /// group for ungrouped distributed devices. Root devices stay first so
+    /// existing PLC indices remain stable.
+    /// </summary>
+    internal IReadOnlyList<object> EnumerateDevices(object project)
+    {
+        if (project is null)
+            throw new ArgumentNullException(nameof(project));
+
+        var devices = new List<object>();
+        AddUniqueDevices(ReadEnumerableMember(project, "Devices"), devices);
+
+        foreach (var group in ReadEnumerableMember(project, "DeviceGroups"))
+            AddDeviceGroup(group, devices);
+
+        var ungroupedDevices = ReadMember(project, "UngroupedDevicesGroup");
+        if (ungroupedDevices is not null)
+            AddUniqueDevices(ReadEnumerableMember(ungroupedDevices, "Devices"), devices);
+
+        return devices;
+    }
+
+    private static void AddDeviceGroup(object group, ICollection<object> devices)
+    {
+        AddUniqueDevices(ReadEnumerableMember(group, "Devices"), devices);
+        foreach (var childGroup in ReadEnumerableMember(group, "Groups"))
+            AddDeviceGroup(childGroup, devices);
+    }
+
+    private static void AddUniqueDevices(IEnumerable<object> candidates, ICollection<object> devices)
+    {
+        foreach (var candidate in candidates)
+        {
+            if (!devices.Any(existing => ReferenceEquals(existing, candidate)))
+                devices.Add(candidate);
+        }
     }
 
     private void Traverse(
@@ -58,7 +98,7 @@ internal sealed class TiaHardwareReader
         int parentSlot,
         NetworkMetadata inheritedNetwork)
     {
-        foreach (var item in ReadEnumerableMember(parent, "DeviceItems"))
+        foreach (var item in ReadDeviceItems(parent))
         {
             var moduleName = ReadString(item, "Name");
             var position = ReadInt(item, "PositionNumber", "Slot");
@@ -252,6 +292,14 @@ internal sealed class TiaHardwareReader
         return value is IEnumerable enumerable
             ? enumerable.Cast<object>().Where(item => item is not null).ToArray()
             : Array.Empty<object>();
+    }
+
+    private static IReadOnlyList<object> ReadDeviceItems(object parent)
+    {
+        var deviceItems = ReadEnumerableMember(parent, "DeviceItems");
+        return deviceItems.Count > 0
+            ? deviceItems
+            : ReadEnumerableMember(parent, "Items");
     }
 
     private static string ReadString(object? target, params string[] names)

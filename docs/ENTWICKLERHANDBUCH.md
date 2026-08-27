@@ -62,6 +62,8 @@ Die Reihenfolge ist verbindlich:
 
 Die Hauptanwendung darf keine Siemens-Openness-Assembly direkt laden. TIA-Fehler sind im ViewModel zu fangen und über `IApplicationLog` zu dokumentieren.
 
+`TiaHardwareReader` ist kein unerreichbarer Code: Er wird über Named Pipe im separaten Prozess `VIBN_Tools.TiaBridge.exe` ausgeführt. Ein Breakpoint dort wird bei normalem F5 im WPF-Prozess nicht automatisch getroffen. Zum Debuggen nach dem Start der Hardwareabfrage in Visual Studio **Debuggen → An Prozess anfügen** wählen und `VIBN_Tools.TiaBridge.exe` auswählen. Die Bridge-Quellen sind als `UpToDateCheckInput` registriert, damit F5 nach einer Änderung keine alte kopierte Bridge startet.
+
 ### Neues Special Device
 
 1. konkrete Geräteklasse unter `SpecialDevices/Devices` ergänzen;
@@ -88,6 +90,7 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
 | `Tests/UiStartupSmokeTests` | Instanziierung integrierter WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings und Screenshot-Erzeugung |
+| `Tests/Test-TiaHardwareTraversal.ps1` | Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, `Items`-Fallback sowie synthetische E-/A-Adressen |
 | manuelle Abnahme | reale UNC-Pfade, echte Kanbanize-Berechtigung, FEE, Outlook, RDP und TIA Openness |
 
 Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausführen. Für reale Systeme zusätzlich [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md) abarbeiten.
@@ -97,3 +100,5 @@ Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausf�
 XML-Kommentare erklären öffentliche Modelle, Grenzen und Invarianten. Kommentare innerhalb einer Methode erklären ausschließlich nicht offensichtliche Entscheidungen, beispielsweise Timeout-, Cache- oder Datenintegritätsgründe. Sie dürfen keinen Code in eigenen Worten wiederholen.
 
 Neue Klassen sollen eine eng abgegrenzte Aufgabe haben. Wenn eine ViewModel-Datei mehrere eigenständige Präsentationsmodelle enthält, diese in getrennte Dateien auslagern – beispielsweise `ViCoWorkstationRowVM` gegenüber `ViCoSearchPageVM`.
+
+`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Diese Klasse erst wieder aufteilen, wenn reale ZULI-/Container-Referenzdateien den vollständigen Import- und Generierungsweg als Golden Master absichern.

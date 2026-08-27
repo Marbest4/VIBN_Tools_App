@@ -16,6 +16,7 @@
 - [Quellcode-Dokumentation](QUELLCODE_DOKUMENTATION.md) – Kommentarregeln und Lesereihenfolge.
 - [Datenflüsse](DATENFLUESSE.md) – PC-Daten, RDP, Konfiguration, Kanbanize, TIA und FEE.
 - [Architektur](ARCHITECTURE.md) – kurze technische Übersicht in Englisch.
+- [Umsetzungsstatus 2026](UMSETZUNGSSTATUS_2026.md) – Abgleich zwischen implementiert, automatisch geprüft und fachlich noch offen.
 
 ## Kompatibilitätshinweis
 

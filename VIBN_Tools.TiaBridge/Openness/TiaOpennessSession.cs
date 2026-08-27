@@ -124,11 +124,14 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         return null;
     }
 
-    private static IReadOnlyList<object> ReadEnumerableProperty(object target, string propertyName)
+    private static IReadOnlyList<object> ReadEnumerableProperty(object? target, string propertyName)
     {
+        if (target is null)
+            return Array.Empty<object>();
+
         try
         {
-            var value = target.GetType().GetProperty(propertyName)?.GetValue(target, null);
+            var value = ReadMemberValue(target, propertyName);
             return value is System.Collections.IEnumerable enumerable
                 ? enumerable.Cast<object>().Where(item => item is not null).ToArray()
                 : Array.Empty<object>();
@@ -141,20 +144,20 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
     public IReadOnlyList<TiaPlcInfo> ListPlcs()
     {
-        var project = RequireProject();
+        var devices = GetProjectDevices();
         var plcs = new List<TiaPlcInfo>();
 
-        for (var index = 0; index < project.Devices.Count; index++)
+        for (var index = 0; index < devices.Count; index++)
         {
-            dynamic device = project.Devices[index];
-            if (TryGetSoftware(index) == null)
+            var device = devices[index];
+            if (TryGetSoftware(device) == null)
                 continue;
 
             plcs.Add(new TiaPlcInfo
             {
                 Index = index,
-                Name = Convert.ToString(device.Name) ?? string.Empty,
-                TypeIdentifier = Convert.ToString(device.TypeIdentifier) ?? string.Empty
+                Name = ReadStringMember(device, "Name"),
+                TypeIdentifier = ReadStringMember(device, "TypeIdentifier")
             });
         }
 
@@ -163,11 +166,11 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
     public void SelectPlc(int plcIndex)
     {
-        var project = RequireProject();
-        if (plcIndex < 0 || plcIndex >= project.Devices.Count)
+        var devices = GetProjectDevices();
+        if (plcIndex < 0 || plcIndex >= devices.Count)
             throw new ArgumentOutOfRangeException(nameof(plcIndex));
 
-        if (TryGetSoftware(plcIndex) == null)
+        if (TryGetSoftware(devices[plcIndex]) == null)
             throw new InvalidOperationException($"Device at index {plcIndex} has no PLC software container.");
 
         _selectedPlcIndex = plcIndex;
@@ -291,27 +294,75 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         if (_project == null || _engineeringAssembly == null)
             return null;
 
-        var engineeringAssembly = _engineeringAssembly
-            ?? throw new InvalidOperationException("Select a TIA version first.");
-        object projectObject = _project
-            ?? throw new InvalidOperationException("Attach to a TIA project first.");
-        dynamic project = projectObject;
+        var devices = GetProjectDevices();
+        if (deviceIndex < 0 || deviceIndex >= devices.Count)
+            return null;
 
-        var softwareContainerType = engineeringAssembly.GetType(
+        return TryGetSoftware(devices[deviceIndex]);
+    }
+
+    private dynamic? TryGetSoftware(object device)
+    {
+        if (_engineeringAssembly == null)
+            return null;
+
+        var softwareContainerType = RequireAssembly().GetType(
             "Siemens.Engineering.HW.Features.SoftwareContainer",
             throwOnError: true)!;
 
-        foreach (dynamic deviceItem in project.Devices[deviceIndex].DeviceItems)
+        foreach (var deviceItem in EnumerateDeviceItems(device))
         {
-            var getService = deviceItem.GetType().GetMethod("GetService")?.MakeGenericMethod(softwareContainerType);
-            if (getService == null)
-                continue;
-
-            dynamic? container = getService.Invoke(deviceItem, null);
-            if (container != null)
-                return container.Software;
+            var container = GetService(deviceItem, softwareContainerType);
+            var software = container is null ? null : ReadMemberValue(container, "Software");
+            if (software is not null)
+                return software;
         }
 
+        return null;
+    }
+
+    private IReadOnlyList<object> GetProjectDevices()
+    {
+        var project = (object)RequireProject();
+        return new TiaHardwareReader(RequireAssembly()).EnumerateDevices(project);
+    }
+
+    private static IEnumerable<object> EnumerateDeviceItems(object parent)
+    {
+        var items = ReadEnumerableProperty(parent, "DeviceItems");
+        if (items.Count == 0)
+            items = ReadEnumerableProperty(parent, "Items");
+
+        foreach (var item in items)
+        {
+            yield return item;
+            foreach (var child in EnumerateDeviceItems(item))
+                yield return child;
+        }
+    }
+
+    private static object? GetService(object target, Type serviceType)
+    {
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+        var methods = target.GetType().GetMethods(flags)
+            .Concat(target.GetType().GetInterfaces().SelectMany(type => type.GetMethods()))
+            .Where(method => method.Name == "GetService" &&
+                             method.IsGenericMethodDefinition &&
+                             method.GetParameters().Length == 0);
+
+        foreach (var method in methods)
+        {
+            try
+            {
+                var service = method.MakeGenericMethod(serviceType).Invoke(target, null);
+                if (service is not null)
+                    return service;
+            }
+            catch (Exception)
+            {
+                // DeviceItems expose only the services supported by their type.
+            }
+        }
         return null;
     }
 

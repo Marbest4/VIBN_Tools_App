@@ -68,6 +68,10 @@ FEE SDK erkannt: Version ... unter '...'
 
 ausgegeben. Visual Studio erkennt automatisch genau eine vollständige Installation. Sind mehrere vollständige SDKs vorhanden, `Build.ps1` verwenden oder `FEE_SCREEN_SIM_ROOT` einmalig setzen.
 
+### Direktes Debuggen in Visual Studio
+
+`VIBN_Tools_App.sln` öffnen, in der Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Falls eine ältere Visual-Studio-Version `.slnLaunch` noch nicht anzeigt, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Die Debug-Konfiguration erzeugt eine selbstenthaltende x64-Anwendung unter `artifacts\build\Debug\net8.0-windows\win-x64`. Damit hängt F5 nicht von einer global installierten .NET-8-Patchversion ab. Benötigte NuGet-Runtime-Pakete werden von Visual Studio beim üblichen Restore bezogen; es ist keine separate Runtime-Konfiguration erforderlich.
+
 ## 4. Fehler `Metadata file ... VIBN_Tools.dll could not be found`
 
 Diese Meldung kommt normalerweise aus einem nachgelagerten Projekt, beispielsweise dem UI-Startup-Test. Sie bedeutet, dass das Hauptprojekt `VIBN_Tools` vorher nicht erfolgreich gebaut wurde. Die Metadatenmeldung ist nicht die eigentliche Ursache.
@@ -94,4 +98,3 @@ Für Support- oder Offlinefälle kann ein self-contained ZIP erzeugt werden:
 ```
 
 Das ZIP vollständig entpacken und anschließend `VIBN_Tools.exe` starten. Dateien innerhalb des ZIPs dürfen nicht einzeln herauskopiert werden, weil FEE-, Plugin-, TIA-Bridge- und .NET-Laufzeitdateien gemeinsam benötigt werden.
-

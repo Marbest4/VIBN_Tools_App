@@ -26,7 +26,9 @@ public sealed record SpecialDeviceLogicOption(DeviceManufacturer Manufacturer, E
     /// </summary>
     public static SpecialDeviceLogicOption? Suggest(TiaHardwareModuleInfo module)
     {
-        var text = $"{module.ModuleName} {module.ModuleType} {module.TypeIdentifier}";
+        var text = $"{module.DeviceName} {module.DeviceType} {module.Manufacturer} " +
+                   $"{module.ModuleName} {module.ModulePath} {module.ModuleType} " +
+                   $"{module.TypeIdentifier} {module.GsdName} {module.GsdType}";
         return All.FirstOrDefault(option => option switch
         {
             { Manufacturer: DeviceManufacturer.Cognex } => text.Contains("COGNEX", StringComparison.OrdinalIgnoreCase),

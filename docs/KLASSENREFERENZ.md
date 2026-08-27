@@ -45,7 +45,7 @@
 | `ViCoCopyPageVM` | Transfer zwischen Quell- und Zielpfaden |
 | `ViCoWorkspacePageVM` | Sichtbarkeit des Verwaltungsreiters ab Level8 |
 | `ViCoAdministrationPageVM` | Rollen, Termine, Versionen; nur Level9 schreibt Rollen |
-| `TiaPortalPageVM` | PLC-, Library-, Achsen- und Hardwareansicht mit abgefangenen Bridge-Fehlern |
+| `TiaPortalPageVM` | PLC-, Library- und Achsenansicht mit abgefangenen Bridge-Fehlern |
 
 ## Kanbanize
 
@@ -75,7 +75,7 @@
 | TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `SpecialDevices/DeviceFactory.cs` |
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
-| Container Generation | `ContainerGenerationStateVM.cs` (Zustand), `ContainerGenerationWorkflowVM.cs` (Import/Generierung/Reimport) und `ContainerGenerationPageVM.cs` (WPF-Interaktion), `ContainerGeneration/` (Fachlogik) |
+| Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |
 | Container2Fee | `ContainerToFeePageVM.cs`, `ContainerToFee/` |
 | Model Validation | `ModelValidationPageVM.cs` |
 | Model Control | `ModelControlPageVM.cs` |

@@ -103,10 +103,12 @@ Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken. Bestehende Un
 
 1. lokale TIA-Version wählen;
 2. **Verbinden** drücken und die gefundene PLC auswählen;
-3. optional Programmbereiche, Datentypen, Achsen oder die Hardware-Konfiguration laden;
+3. optional Programmbereiche, Datentypen oder Achsen laden;
 4. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
+
+Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **Special Devices**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
 ### Verwaltung
 

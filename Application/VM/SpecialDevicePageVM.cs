@@ -352,10 +352,14 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         {
             await _tiaClient.SelectPlcAsync(SelectedTiaPlc.Index);
             var modules = await _tiaClient.ListHardwareAsync();
-            Replace(TiaHardwareRows, modules.Select(module => new TiaHardwareDeviceRowVM(module)));
-            var addressed = modules.Count(module =>
-                module.InputStartByte >= 0 || module.OutputStartByte >= 0);
-            StatusText = $"{TiaHardwareRows.Count} Hardwareelement(e) geladen; {addressed} mit E-/A-Adresse. " +
+            var candidates = modules
+                .Select(module => new TiaHardwareDeviceRowVM(module))
+                .Where(row => row.InputByte.HasValue || row.OutputByte.HasValue || row.SelectedLogic is not null)
+                .ToArray();
+            Replace(TiaHardwareRows, candidates);
+            var addressed = candidates.Count(row => row.InputByte.HasValue || row.OutputByte.HasValue);
+            StatusText = $"{modules.Count} Hardwareelement(e) traversiert; " +
+                         $"{candidates.Length} relevante Modulzeile(n), davon {addressed} mit E-/A-Adresse. " +
                          "Logik und Byteadressen prüfen, dann in die Warteschlange übernehmen.";
         });
     }

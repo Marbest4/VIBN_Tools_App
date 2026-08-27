@@ -32,28 +32,27 @@ flowchart TD
 
 ```mermaid
 classDiagram
-    MvvmBase <|-- ContainerGenerationStateVM
-    ContainerGenerationStateVM <|-- ContainerGenerationWorkflowVM
-    ContainerGenerationWorkflowVM <|-- ContainerGenerationPageVM
-    class ContainerGenerationStateVM {
+    MvvmBase <|-- ContainerGenerationPageVM
+    ContainerGenerationPageVM --> ContainerGenerator
+    ContainerGenerationPageVM --> XmlHandler
+    ContainerGenerationPageVM --> GenerationWorkspaceSnapshot
+    class ContainerGenerationPageVM {
       +ContainerList
       +UnassignedEntries
       +FilteredEntries
       +Settings
       +ActivityLog
-    }
-    class ContainerGenerationWorkflowVM {
-      #Open_InterfaceFile()
-      #Generate_Containers()
-      #Validate_Workspace()
-      #Undo_LastAction()
-    }
-    class ContainerGenerationPageVM {
       +ICommand bindings
       +Drag/drop handlers
       +Grid filters
+      +Open_InterfaceFile()
+      +Generate_Containers()
+      +Validate_Workspace()
+      +Undo_LastAction()
     }
 ```
+
+Die große ViewModel-Klasse ist eine bewusst dokumentierte Übergangsausnahme: Eine frühere Aufteilung wurde wegen einer ZULI-Regression zurückgenommen. Vor einer erneuten Zerlegung werden fachliche Golden-Master-Tests benötigt.
 
 ## TIA-Hardwaredatenfluss
 
@@ -67,7 +66,8 @@ sequenceDiagram
     U->>W: Hardware auslesen
     W->>C: ListHardwareAsync
     C->>B: Named-Pipe Request
-    B->>T: Project.Devices / DeviceItems lesen
+    B->>T: Root-, Gruppen- und Ungrouped-Geräte lesen
+    B->>T: DeviceItems rekursiv traversieren
     B->>T: Addresses, NetworkInterface, GSD Services lesen
     T-->>B: Read-only Openness-Objekte
     B-->>C: TiaHardwareModuleInfo[]
@@ -88,4 +88,3 @@ flowchart LR
     SEARCH --> CFG[KONFIGURATION bearbeiten]
     CFG --> KB
 ```
-

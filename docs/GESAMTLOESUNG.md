@@ -11,10 +11,10 @@ Die Solution verbindet die bestehende VIBN-Tools-Oberfläche mit ViCo, Kanbanize
 | Project Settings | FEE-PC wählen, Verbindung bestätigen, Projektbasis anlegen | `SettingsPageVM`, `FeeConnectionService`, `WorkstationDirectory` |
 | ViCo Übersicht | Arbeitsplätze, Belegung, Projekte, Konfiguration, RDP und Pfade | `ViCoSearchPageVM`, `ViCoWorkstationRowVM`, `LegacyWorkstationCatalog` |
 | ViCo Projekte/Transfer | Projekte öffnen, Favoriten speichern, Dateien übertragen | `ViCoPageVM`, `ViCoCopyPageVM`, `BoundedFileCopyService` |
-| ViCo TIA | PLC-/Bibliotheks-/Achsen-/Hardwarefunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
+| ViCo TIA | PLC-, Bibliotheks- und Achsenfunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
 | ViCo Verwaltung | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
 | Kanbanize | sichere VIBN-Übernahme und eigene Karten | `VibnWorkplaceSynchronizationService`, `KanbanizeCardApiService` |
-| Special Devices | manuelle und TIA-basierte Geräteerzeugung | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| Special Devices | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
 | bestehende VIBN-Reiter | CAD, Zuli, Container, Modell und Schnittstellen | bestehende ViewModels und FEE-Services |
 
 ## Projektstruktur

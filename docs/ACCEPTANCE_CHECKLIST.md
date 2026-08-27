@@ -7,6 +7,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] `dotnet build VIBN_Tools_App.sln --configuration Release` hat keine Fehler.
 - [ ] `Tests/CoreSmokeTests` ist erfolgreich.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
+- [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte.
 - [ ] Anwendung startet ohne XamlParseException.
 
 ## Rollen und Navigation
@@ -45,7 +46,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 ## TIA und Special Devices
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
-- [ ] Hardwareansicht zeigt Gerätename, Modul, Slot, Modultyp/Typkennung, optionale Firmware, E-/A-Byte und Byte-Längen.
+- [ ] Die einzige Hardwareansicht unter Special Devices zeigt Gerätename, Modul, Slot, Modultyp/Typkennung, optionale Firmware, E-/A-Byte und Byte-Längen.
 - [ ] Special-Device-Hardwaretabelle übernimmt nur bewusst ausgewählte/validierte Zeilen.
 - [ ] Geräte erscheinen zuerst in der Warteschlange.
 - [ ] Fehlerhafte FEE-Erzeugung bleibt prüfbar in der Warteschlange.
