@@ -8,7 +8,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] `Tests/CoreSmokeTests` ist erfolgreich.
 - [ ] `Tests/ContainerGenerationSmokeTests` liest `Interface5.xlsx` und `Interface7.xlsx` und meldet `SixLabors.Fonts 1.0.1.0`.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
-- [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte.
+- [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
 - [ ] Anwendung startet ohne XamlParseException.
 
 ## Rollen und Navigation
@@ -53,6 +53,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
 - [ ] Die einzige Hardwareansicht unter Special Devices gruppiert gleiche Gerätenamen und zeigt GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
+- [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
 - [ ] `TIA trennen / abbrechen` beendet Attach/Session, leert Listen und beendet TIA Portal selbst nicht.
 - [ ] Special-Device-Hardwaretabelle übernimmt nur bewusst ausgewählte/validierte Zeilen.
 - [ ] Geräte erscheinen zuerst in der Warteschlange.
@@ -61,6 +62,9 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 ## Bestehende VIBN-Funktionen
 
 - [ ] CAD Wizard, Zuli Converter, Container Generation und Container2Fee funktionieren mit einer bekannten Testvorlage.
+- [ ] Der bestehende Container2Fee-Reiter arbeitet unverändert.
+- [ ] Container2FEE Visual lädt dieselbe XML ohne FEE, zeigt Container/Signale/Links, speichert und lädt den Sidecar und erlaubt nur kompatible Drag-and-drop-Ziele.
+- [ ] Container2FEE Visual erzeugt mit denselben Zuordnungen fachlich dasselbe Ergebnis wie der bestehende Executor; Erzeugen und Überspringen sind geprüft.
 - [ ] Model Validation, Model Control und Interface Operation funktionieren mit dem Testmodell.
 - [ ] Keine bestehende Funktion wurde durch ViCo-/Kanbanize-Aufrufe verändert.
 

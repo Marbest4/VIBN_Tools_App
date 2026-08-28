@@ -2,7 +2,7 @@
 
 ## Ursache der bisherigen Falschdaten
 
-Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Element als flachen Datensatz dar. Der sichtbare Gerätename wurde mit dem Namen des ersten DeviceItems kombiniert. Die Deduplizierung verwendete nur Geräteindex, Slot, Modulname und Typkennung. Gleichartige Submodule an demselben Slot konnten dadurch kollidieren. `Subslot`, Hierarchiepfad, `NetworkInterface`, Nodes und GSD-Dienste wurden nicht ausgewertet.
+Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchieelement als flachen Datensatz dar und übernahm `Address.Length` fälschlich direkt als Bytezahl. Siemens liefert diese Länge in Bits. Dadurch wurden aus 96 Bit scheinbar 96 Byte und aus `E 62` fälschlich `E 62–157`. Adresslose Kopf-, Rack- und Interfaceelemente erzeugten zusätzliche Leerzeilen. Außerdem basierte die Deduplizierung auf Proxyreferenzen beziehungsweise zu groben Identitäten, obwohl Openness dasselbe Engineering-Objekt über mehrere Proxyinstanzen liefern kann.
 
 ## Implementierter Leseweg
 
@@ -11,11 +11,13 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Element a
 1. Root-Geräte aus `Project.Devices`, Benutzerordner aus `Project.DeviceGroups` samt Unterordnern und dezentrale Geräte aus `Project.UngroupedDevicesGroup.Devices` werden in stabiler Reihenfolge gelesen.
 2. Jede gefundene `DeviceItem.DeviceItems`-Hierarchie wird vollständig durchlaufen; `Items` dient als versionsrobuster Fallback.
 3. Pro DeviceItem wird `AddressComposition` gelesen.
-4. `Address.IoType`, `StartAddress` und `Length` bilden getrennte E-/A-Bereiche.
+4. `Address.IoType`, `StartAddress` und die rohe Bitlänge bilden getrennte E-/A-Bereiche. Die Anzeige verwendet `ceil(bits / 8)` Bytes; Bereiche verschiedener Module werden nie zusammengeführt.
 5. `PositionNumber` wird abhängig von der Hierarchiestufe als Slot oder Subslot interpretiert.
 6. `NetworkInterface.Nodes` liefert `Address` und `PnDeviceName`; `IoControllers`/`IoConnectors` liefern die Rolle.
 7. `GsdDevice`/`GsdDeviceItem` liefern GSD-Name und -Typ, soweit das jeweilige Objekt den Dienst anbietet.
 8. Dynamische Attribute ergänzen Typname, Hersteller, Bestellnummer und Firmware.
+9. Adresslose Hierarchieknoten liefern Metadaten an ihre Kinder, erzeugen aber keine eigene Tabellenzeile.
+10. Eine semantische Identität aus Gerät, Modultyp, Slot/Subslot und exaktem E-/A-Satz verhindert doppelte Proxyzeilen, ohne zwei reale PROFIsafe-Module zusammenzufassen.
 
 ## Ergebnisdaten
 
@@ -27,7 +29,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Element a
 - ProfinetName, IpAddress, NetworkRole
 - Slot, Subslot
 - ModuleName, ModulePath, ModuleType, TypeIdentifier
-- InputStartByte/InputLength und OutputStartByte/OutputLength
+- InputStartByte/InputLengthBits/InputLength und OutputStartByte/OutputLengthBits/OutputLength
 
 Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter Special Devices werden adressierbare beziehungsweise eindeutig einer Logik zuordenbare Module als Kandidaten angezeigt. Zeilen mit demselben Gerätenamen werden in einer aufklappbaren Gerätegruppe zusammengefasst. Sichtbar bleiben nur GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik und Status. E-/A-Startadressen sind weiterhin editierbar.
 
@@ -35,6 +37,8 @@ Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter 
 
 `JsonTiaHardwareMappingStore` speichert die geprüfte Auswahl unter
 `%LOCALAPPDATA%\GROB\VIBN_Tools\tia-hardware-mappings.json`. Der Schlüssel besteht aus Gerätename, PROFINET-Name, Modulpfad, Slot und Subslot. Adressen gehören bewusst nicht zum Schlüssel, damit manuelle Korrekturen nach einem erneuten Auslesen wiederhergestellt werden können.
+
+Mehrere getrennte Adresssätze desselben DeviceItems erhalten zusätzlich einen stabilen nullbasierten Adresssatzindex. Alte gespeicherte Schlüssel ohne Index werden ausschließlich auf den ersten Satz migriert; dadurch wird eine frühere zusammengefasste Zuordnung nicht versehentlich dupliziert.
 
 Gespeichert werden Übernahmeauswahl, Präfix, E-/A-Start, Logik und gegebenenfalls der Robotertyp. Der Schreibvorgang ersetzt die JSON-Datei atomar. Nach dem nächsten Hardwareauslesen werden passende Zuordnungen automatisch geladen; nicht mehr vorhandene Hardware wird nicht auf neue Zeilen übertragen.
 
@@ -65,6 +69,9 @@ Der Leser wartet weiterhin bis zu 90 Sekunden, damit ein Projekt nach Firewall-F
 4. TIA und VIBN Tools mit demselben Windows-Benutzer und derselben Erhöhungsebene ausführen.
 5. Im Bridge-Prozess `VIBN_Tools.TiaBridge.exe` debuggen; Breakpoints im Reader werden nicht vom Hauptprozess getroffen.
 6. Kleines und großes Projekt mit identischer TIA-Version und identischem Projekttyp vergleichen. Erst wenn die Diagnose einen lesbaren Projekt- oder Local-Session-Eintrag zeigt, ist die nachfolgende Gerätetraversierung relevant.
+7. Prüfen, ob das geöffnete Fenster nur ein **Referenzprojekt** darstellt. Referenzprojekte erscheinen nicht als geöffnetes Primärprojekt in `TiaPortal.Projects`; das eigentliche Projekt muss geöffnet sein.
+8. Für das Projekt erforderliche Optionspakete und HSPs vollständig in genau dieser TIA-Hauptversion installieren. Openness bietet keine Kompatibilitätsansicht, die fehlende Engineering-Pakete ersetzt.
+9. Bei UMAC-/geschützten Projekten den aktuellen Projektbenutzer mit den für den benötigten Lese-/Änderungsumfang erforderlichen Rechten anmelden. Windows-Administratorrechte ersetzen keine Projektberechtigung.
 
 Ein automatisches Öffnen, Konvertieren oder Speichern des Projekts wurde bewusst nicht ergänzt, weil dies das Projekt verändern könnte. Für weiterhin nicht exponierte Project-Server-Sessions ist die sichere Alternative, in TIA eine lokale/exklusive Session zu öffnen und danach erneut zu verbinden.
 
@@ -79,15 +86,14 @@ Für einen PN/PN-Coupler ist mindestens zu prüfen:
 | Erwartung | Beispiel |
 | --- | --- |
 | Gerät | `PNPN-Koppler_1` |
-| Typ | `PN/PN Coupler X1` |
-| Modul | `PROFIsafe IN/OUT 12Byte/6Byte` |
-| Eingang | `62–73`, Länge 12 |
-| Ausgang | `62–67`, Länge 6 |
+| Typ | `PN/PN Coupler X2` |
+| Modul 1 | `PROFIsafe IN/OUT 12 Byte / 6 Byte`: Eingang `62–73` (96 Bit = 12 Byte), Ausgang `62–67` (48 Bit = 6 Byte) |
+| Modul 2 | `PROFIsafe IN/OUT 6 Byte / 12 Byte`: Eingang `74–79` (48 Bit = 6 Byte), Ausgang `68–79` (96 Bit = 12 Byte) |
 | Struktur | Kopfgerät → Modul → Submodul mit Slot/Subslot |
 
 Zusätzlich sind ein Siemens-Standardmodul, ein GSDML-Gerät, ein Gerät ohne Prozessabbild und ein großes Projekt zu testen. Die Bridge- und UI-Logs müssen bei nicht unterstützten Attributen weiterlaufen und dürfen das TIA-Projekt nicht speichern oder verändern.
 
-Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback sowie synthetische E-/A-Adressen. Er ersetzt nicht die Live-Abnahme mit Siemens Openness.
+Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback, doppelte Proxyobjekte, eine Multiuser-Local-Session und exakt die beiden oben genannten PN/PN-Adresszeilen. Er ersetzt nicht die Live-Abnahme mit Siemens Openness.
 
 ## Offizielle API-Grundlage
 

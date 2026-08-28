@@ -83,18 +83,44 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     /// <summary>
     /// Stable across TIA reads as long as the physical device/module identity
     /// is unchanged. Byte offsets are deliberately not part of the key so a
-    /// reviewed manual address correction can be restored.
+    /// reviewed manual address correction can be restored. The address-set
+    /// ordinal keeps separate areas of the same DeviceItem distinguishable.
     /// </summary>
     public string MappingKey => string.Join("|",
         DeviceName.Trim(),
         ProfinetName.Trim(),
         ModulePath.Trim(),
         Slot,
+        Subslot,
+        Module.AddressSetIndex);
+
+    /// <summary>
+    /// Compatibility key used before separate address areas were introduced.
+    /// It is considered only for the first area so an old merged mapping can
+    /// never be duplicated across multiple new rows.
+    /// </summary>
+    public string LegacyMappingKey => string.Join("|",
+        DeviceName.Trim(),
+        ProfinetName.Trim(),
+        ModulePath.Trim(),
+        Slot,
         Subslot);
 
-    public string DeviceGroupName => string.IsNullOrWhiteSpace(DeviceName)
-        ? "Gerät ohne Namen"
-        : DeviceName;
+    public string DeviceGroupName
+    {
+        get
+        {
+            var name = !string.IsNullOrWhiteSpace(DeviceName)
+                ? DeviceName
+                : !string.IsNullOrWhiteSpace(ProfinetName)
+                    ? ProfinetName
+                    : "Gerät ohne Namen";
+            return string.IsNullOrWhiteSpace(DeviceType) ||
+                   name.Contains(DeviceType, StringComparison.OrdinalIgnoreCase)
+                ? name
+                : $"{name} ({DeviceType})";
+        }
+    }
 
     public int Slot => Module.Slot;
 
@@ -136,7 +162,11 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public int InputLength => Module.InputLength;
 
+    public int InputLengthBits => Module.InputLengthBits;
+
     public int OutputLength => Module.OutputLength;
+
+    public int OutputLengthBits => Module.OutputLengthBits;
 
     public string InputAddressRange => FormatAddressRange(InputByte, InputLength);
 
@@ -248,7 +278,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public bool ApplyMapping(TiaHardwareMapping mapping)
     {
-        if (!string.Equals(MappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase))
+        var matchesCurrentKey = string.Equals(MappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase);
+        var matchesLegacyKey = Module.AddressSetIndex == 0 &&
+                               string.Equals(LegacyMappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase);
+        if (!matchesCurrentKey && !matchesLegacyKey)
             return false;
 
         _include = mapping.Include;

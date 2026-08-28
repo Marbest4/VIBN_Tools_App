@@ -26,6 +26,30 @@ public sealed class FakeTiaProject
     public FakeTiaGroup UngroupedDevicesGroup { get; private set; }
 }
 
+public sealed class FakeTiaPortal
+{
+    public FakeTiaPortal()
+    {
+        Projects = new List<object>();
+        LocalSessions = new List<object>();
+    }
+
+    public List<object> Projects { get; private set; }
+    public List<object> LocalSessions { get; private set; }
+}
+
+public sealed class FakeLocalSession
+{
+    public FakeLocalSession(object project)
+    {
+        Name = "LargeProjectLocalSession";
+        Project = project;
+    }
+
+    public string Name { get; private set; }
+    public object Project { get; private set; }
+}
+
 public sealed class FakeTiaGroup
 {
     public FakeTiaGroup()
@@ -98,7 +122,8 @@ function New-FakeDevice([string]$Name, [int]$InputAddress) {
     $item.PositionNumber = 1
     $address = [FakeTiaAddress]::new()
     $address.StartAddress = $InputAddress
-    $address.Length = 4
+    # Siemens Openness Address.Length is measured in bits.
+    $address.Length = 32
     $item.Addresses.Add($address)
     $device.DeviceItems.Add($item)
     return $device
@@ -113,9 +138,79 @@ function New-FallbackDevice([string]$Name, [int]$OutputAddress) {
     $address = [FakeTiaAddress]::new()
     $address.IoType = 'Output'
     $address.StartAddress = $OutputAddress
-    $address.Length = 6
+    $address.Length = 48
     $item.Addresses.Add($address)
     $device.Items.Add($item)
+    return $device
+}
+
+function New-PnPnDevice() {
+    $device = [FakeTiaDevice]::new()
+    $device.Name = 'GSD-Gerät_2'
+    $device.TypeName = 'GSD device'
+    $device.TypeIdentifier = 'GSDML-V2.35-SIEMENS-PNPNIOC-20200924.XML'
+
+    $head = [FakeTiaItem]::new()
+    $head.Name = 'PN-PN-Coupler_1'
+    $head.TypeName = 'PN/PN Coupler X2'
+    $head.PositionNumber = 0
+
+    $interface = [FakeTiaItem]::new()
+    $interface.Name = 'PN/PN Coupler Interface'
+    $interface.TypeName = 'Interface'
+    $interface.PositionNumber = 0
+
+    $safeTwelveSix = [FakeTiaItem]::new()
+    $safeTwelveSix.Name = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
+    $safeTwelveSix.TypeName = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
+    $safeTwelveSix.PositionNumber = 1
+    $inputOne = [FakeTiaAddress]::new()
+    $inputOne.IoType = 'Input'
+    $inputOne.StartAddress = 62
+    $inputOne.Length = 96
+    $outputOne = [FakeTiaAddress]::new()
+    $outputOne.IoType = 'Output'
+    $outputOne.StartAddress = 62
+    $outputOne.Length = 48
+    $safeTwelveSix.Addresses.Add($inputOne)
+    $safeTwelveSix.Addresses.Add($outputOne)
+
+    $safeSixTwelve = [FakeTiaItem]::new()
+    $safeSixTwelve.Name = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
+    $safeSixTwelve.TypeName = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
+    $safeSixTwelve.PositionNumber = 2
+    $inputTwo = [FakeTiaAddress]::new()
+    $inputTwo.IoType = 'Input'
+    $inputTwo.StartAddress = 74
+    $inputTwo.Length = 48
+    $outputTwo = [FakeTiaAddress]::new()
+    $outputTwo.IoType = 'Output'
+    $outputTwo.StartAddress = 68
+    $outputTwo.Length = 96
+    $safeSixTwelve.Addresses.Add($inputTwo)
+    $safeSixTwelve.Addresses.Add($outputTwo)
+
+    $interface.DeviceItems.Add($safeTwelveSix)
+    $interface.DeviceItems.Add($safeSixTwelve)
+    # A second proxy/path with identical semantic data must not create a row.
+    $duplicate = [FakeTiaItem]::new()
+    $duplicate.Name = $safeTwelveSix.Name
+    $duplicate.TypeName = $safeTwelveSix.TypeName
+    $duplicate.PositionNumber = $safeTwelveSix.PositionNumber
+    $duplicateInput = [FakeTiaAddress]::new()
+    $duplicateInput.IoType = 'Input'
+    $duplicateInput.StartAddress = 62
+    $duplicateInput.Length = 96
+    $duplicateOutput = [FakeTiaAddress]::new()
+    $duplicateOutput.IoType = 'Output'
+    $duplicateOutput.StartAddress = 62
+    $duplicateOutput.Length = 48
+    $duplicate.Addresses.Add($duplicateInput)
+    $duplicate.Addresses.Add($duplicateOutput)
+    $interface.DeviceItems.Add($duplicate)
+
+    $head.DeviceItems.Add($interface)
+    $device.DeviceItems.Add($head)
     return $device
 }
 
@@ -129,6 +224,10 @@ $group.Groups.Add($subgroup)
 $project.DeviceGroups.Add($group)
 $project.UngroupedDevicesGroup.Devices.Add((New-FakeDevice 'UngroupedDevice' 30))
 $project.UngroupedDevicesGroup.Devices.Add((New-FallbackDevice 'FallbackDevice' 40))
+$pnPnDevice = New-PnPnDevice
+$project.UngroupedDevicesGroup.Devices.Add($pnPnDevice)
+# Same logical device through another Openness proxy collection.
+$project.DeviceGroups[0].Devices.Add((New-PnPnDevice))
 
 $resolvedBridge = (Resolve-Path -LiteralPath $BridgePath).Path
 $bridge = [Reflection.Assembly]::LoadFrom($resolvedBridge)
@@ -136,8 +235,8 @@ $readerType = $bridge.GetType('VIBN_Tools.TiaBridge.Openness.TiaHardwareReader',
 $reader = [Activator]::CreateInstance($readerType, [object[]]@([FakeTiaProject].Assembly))
 $rows = @($readerType.GetMethod('Read').Invoke($reader, [object[]]@($project, 0)))
 
-if ($rows.Count -ne 5) {
-    throw "Fünf Hardwarezeilen erwartet, aber $($rows.Count) erhalten."
+if ($rows.Count -ne 7) {
+    throw "Sieben adressführende Hardwarezeilen erwartet, aber $($rows.Count) erhalten."
 }
 
 $names = @($rows | ForEach-Object DeviceName)
@@ -148,7 +247,7 @@ foreach ($expected in @('RootPLC', 'GroupedDevice', 'NestedDevice', 'UngroupedDe
 }
 
 $inputStarts = @($rows | Where-Object InputStartByte -ge 0 | ForEach-Object InputStartByte | Sort-Object)
-if (($inputStarts -join ',') -ne '0,10,20,30') {
+if (($inputStarts -join ',') -ne '0,10,20,30,62,74') {
     throw "Unerwartete Eingangsadressen: $($inputStarts -join ',')"
 }
 
@@ -157,4 +256,40 @@ if ($null -eq $fallbackRow -or $fallbackRow.OutputStartByte -ne 40 -or $fallback
     throw 'Items-Fallback oder Ausgangsadressen wurden nicht korrekt gelesen.'
 }
 
-Write-Host "TIA-Traversierung erfolgreich: $($names -join ', ')"
+$pnPnRows = @($rows | Where-Object DeviceName -eq 'PN-PN-Coupler_1' | Sort-Object Slot)
+if ($pnPnRows.Count -ne 2) {
+    throw "Exakt zwei semantisch eindeutige PN/PN-Zeilen erwartet, aber $($pnPnRows.Count) erhalten."
+}
+
+$firstSafe = $pnPnRows[0]
+if ($firstSafe.DeviceType -ne 'PN/PN Coupler X2' -or
+    $firstSafe.Slot -ne 1 -or
+    $firstSafe.InputStartByte -ne 62 -or $firstSafe.InputLengthBits -ne 96 -or
+    $firstSafe.InputLength -ne 12 -or $firstSafe.InputEndByte -ne 73 -or
+    $firstSafe.OutputStartByte -ne 62 -or $firstSafe.OutputLengthBits -ne 48 -or
+    $firstSafe.OutputLength -ne 6 -or $firstSafe.OutputEndByte -ne 67) {
+    throw 'Erster PROFIsafe-Bereich wurde nicht als E 62–73 / A 62–67 ausgewertet.'
+}
+
+$secondSafe = $pnPnRows[1]
+if ($secondSafe.Slot -ne 2 -or
+    $secondSafe.InputStartByte -ne 74 -or $secondSafe.InputLengthBits -ne 48 -or
+    $secondSafe.InputLength -ne 6 -or $secondSafe.InputEndByte -ne 79 -or
+    $secondSafe.OutputStartByte -ne 68 -or $secondSafe.OutputLengthBits -ne 96 -or
+    $secondSafe.OutputLength -ne 12 -or $secondSafe.OutputEndByte -ne 79) {
+    throw 'Zweiter PROFIsafe-Bereich wurde nicht als E 74–79 / A 68–79 ausgewertet.'
+}
+
+$portal = [FakeTiaPortal]::new()
+$portal.LocalSessions.Add([FakeLocalSession]::new($project))
+$sessionType = $bridge.GetType('VIBN_Tools.TiaBridge.Openness.TiaOpennessSession', $true)
+$probeMethod = $sessionType.GetMethod('ProbeOpenProject', [Reflection.BindingFlags]'Static,NonPublic')
+$probe = $probeMethod.Invoke($null, [object[]]@($portal))
+$probeType = $probe.GetType()
+$probeProject = $probeType.GetProperty('Project').GetValue($probe)
+$probeDiagnostics = [string]$probeType.GetProperty('Diagnostics').GetValue($probe)
+if ($null -eq $probeProject -or $probeDiagnostics -notmatch 'LocalSessions=1' -or $probeDiagnostics -notmatch 'LargeProjectLocalSession') {
+    throw "Multiuser-Local-Session oder Attach-Diagnose unvollständig: $probeDiagnostics"
+}
+
+Write-Host "TIA-Traversierung erfolgreich: $($names -join ', '); PN/PN E62-73/A62-67 und E74-79/A68-79"

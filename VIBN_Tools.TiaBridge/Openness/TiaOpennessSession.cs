@@ -58,21 +58,22 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
                 process,
                 ReadStringMember(process, "ProjectPath"),
                 ReadStringMember(process, "Id", "ProcessId"),
-                ReadStringMember(process, "Mode")))
+                ReadStringMember(process, "Mode"),
+                DescribeCollectionMember(process, "AttachedSessions")))
             .ToArray();
         var candidates = processInfos
             .Where(process => !string.IsNullOrWhiteSpace(process.ProjectPath))
             .ToArray();
         if (candidates.Length > 1)
         {
-            var projects = string.Join(" | ", candidates.Select(candidate =>
-                $"{candidate.ProjectPath} (PID {candidate.ProcessId})"));
             throw new InvalidOperationException(
-                $"Mehrere TIA-Projekte sind geöffnet. Nur ein Projekt in {_selectedVersion} geöffnet lassen: {projects}");
+                $"Mehrere TIA-Projekte sind geöffnet. Nur ein Projekt in {_selectedVersion} geöffnet lassen. " +
+                $"Prozesse: {FormatProcessDiagnostics(candidates)}");
         }
         if (candidates.Length == 0 && processes.Length > 1)
             throw new InvalidOperationException(
-                $"Mehrere TIA-Portal-Instanzen {_selectedVersion} sind geöffnet, aber keine meldet einen ProjectPath. Nur die Instanz mit dem gewünschten Projekt geöffnet lassen.");
+                $"Mehrere TIA-Portal-Instanzen {_selectedVersion} sind geöffnet, aber keine meldet einen ProjectPath. " +
+                $"Nur die Instanz mit dem gewünschten Projekt geöffnet lassen. Prozesse: {FormatProcessDiagnostics(processInfos)}");
 
         // Older releases and a few project types do not expose ProjectPath.
         // With a single process attaching is still unambiguous.
@@ -96,12 +97,11 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         }
         if (_project is null)
         {
-            var selectedPath = candidates.FirstOrDefault()?.ProjectPath;
             throw new InvalidOperationException(
                 $"Die verbundene TIA-Instanz {_selectedVersion} stellt nach 90 Sekunden weder ein Einzelprojekt noch eine geöffnete Multiuser-Local-Session über Openness bereit." +
-                (string.IsNullOrWhiteSpace(selectedPath) ? string.Empty : $" Gemeldeter ProjectPath: {selectedPath}.") +
-                $" Prozess: PID {selectedInfo.ProcessId}, Modus '{selectedInfo.Mode}'. Diagnose: {projectProbe.Diagnostics}." +
-                " Den Openness-Firewall-Dialog in TIA mit 'Immer zulassen' bestätigen und TIA sowie VIBN Tools nach einer Änderung der Gruppe 'Siemens TIA Openness' neu anmelden.");
+                $" Prozessdiagnose: {FormatProcessDiagnostics(processInfos)}. Projektdiagnose: {projectProbe.Diagnostics}." +
+                " Referenzprojekte werden von TiaPortal.Projects nicht als geöffnetes Primärprojekt bereitgestellt; bei Multiuser muss eine lokale oder exklusive Session tatsächlich geöffnet sein." +
+                " Den Openness-Firewall-Dialog in TIA mit 'Immer zulassen' bestätigen, UMAC-/Openness-Rechte sowie installierte Optionspakete/HSPs prüfen und TIA sowie VIBN Tools nach einer Änderung der Gruppe 'Siemens TIA Openness' neu anmelden.");
         }
         _selectedPlcIndex = null;
     }
@@ -111,7 +111,10 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         var projects = ProbeEnumerableProperty(portal, "Projects");
         var project = projects.Values.FirstOrDefault();
         if (project is not null)
-            return new ProjectProbe(project, $"Projects={projects.Values.Count}; LocalSessions=nicht benötigt");
+            return new ProjectProbe(
+                project,
+                $"Projects={projects.Values.Count} ({projects.Diagnostics}; {DescribeObjects(projects.Values)}); " +
+                "LocalSessions=nicht benötigt");
 
         var localSessions = ProbeEnumerableProperty(portal, "LocalSessions");
         var sessionErrors = new List<string>();
@@ -124,7 +127,9 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
                 {
                     return new ProjectProbe(
                         sessionProject,
-                        $"Projects={projects.Values.Count}; LocalSessions={localSessions.Values.Count}");
+                        $"Projects={projects.Values.Count} ({projects.Diagnostics}); " +
+                        $"LocalSessions={localSessions.Values.Count} ({localSessions.Diagnostics}; {DescribeObjects(localSessions.Values)}); " +
+                        $"SessionProject={DescribeObject(sessionProject)}");
                 }
             }
             catch (Exception exception)
@@ -133,8 +138,8 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             }
         }
 
-        var diagnostics = $"Projects={projects.Values.Count} ({projects.Diagnostics}); " +
-                          $"LocalSessions={localSessions.Values.Count} ({localSessions.Diagnostics})";
+        var diagnostics = $"Projects={projects.Values.Count} ({projects.Diagnostics}; {DescribeObjects(projects.Values)}); " +
+                          $"LocalSessions={localSessions.Values.Count} ({localSessions.Diagnostics}; {DescribeObjects(localSessions.Values)})";
         if (sessionErrors.Count > 0)
             diagnostics += $"; LocalSession.Project: {string.Join(" | ", sessionErrors.Distinct().Take(3))}";
         return new ProjectProbe(null, diagnostics);
@@ -158,6 +163,32 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             return new CollectionProbe(Array.Empty<object>(), $"{root.GetType().Name}: {root.Message}");
         }
     }
+
+    private static string DescribeCollectionMember(object target, string propertyName)
+    {
+        var probe = ProbeEnumerableProperty(target, propertyName);
+        return $"{propertyName}={probe.Values.Count} ({probe.Diagnostics})";
+    }
+
+    private static string DescribeObjects(IReadOnlyList<object> values) => values.Count == 0
+        ? "keine Einträge"
+        : string.Join(" | ", values.Take(3).Select(DescribeObject));
+
+    private static string DescribeObject(object value)
+    {
+        var name = ReadStringMember(value, "Name");
+        var path = ReadStringMember(value, "Path", "ProjectPath", "LocalSessionPath");
+        var type = value.GetType().FullName ?? value.GetType().Name;
+        return $"Typ='{type}', Name='{ValueOrDash(name)}', Pfad='{ValueOrDash(path)}'";
+    }
+
+    private static string FormatProcessDiagnostics(IEnumerable<PortalProcess> processes) =>
+        string.Join(" | ", processes.Select(process =>
+            $"PID={ValueOrDash(process.ProcessId)}, Modus='{ValueOrDash(process.Mode)}', " +
+            $"ProjectPath='{ValueOrDash(process.ProjectPath)}', {process.AttachedSessions}"));
+
+    private static string ValueOrDash(string value) =>
+        string.IsNullOrWhiteSpace(value) ? "—" : value.Trim();
 
     private static object? ReadPropertyWithInterfaces(object target, string propertyName)
     {
@@ -242,7 +273,8 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
     /// <summary>
     /// Enumerates the selected PLC first and then every device tree in the open
     /// project, reading the input/output address compositions exposed by TIA
-    /// Openness. Address offsets are kept in bytes; no project data is modified.
+    /// Openness. Address offsets are kept in bytes; raw lengths are retained in
+    /// bits and exposed as rounded-up byte lengths. No project data is modified.
     /// </summary>
     public IReadOnlyList<TiaHardwareModuleInfo> ListHardware()
     {
@@ -508,18 +540,25 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
     private sealed class PortalProcess
     {
-        public PortalProcess(object process, string projectPath, string processId, string mode)
+        public PortalProcess(
+            object process,
+            string projectPath,
+            string processId,
+            string mode,
+            string attachedSessions)
         {
             Process = process;
             ProjectPath = projectPath;
             ProcessId = processId;
             Mode = mode;
+            AttachedSessions = attachedSessions;
         }
 
         public object Process { get; }
         public string ProjectPath { get; }
         public string ProcessId { get; }
         public string Mode { get; }
+        public string AttachedSessions { get; }
     }
 
     private sealed class ProjectProbe

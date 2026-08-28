@@ -19,7 +19,22 @@ namespace VIBN_Tools.GlobalClasses
 
         public static void Initialize()
         {
-            ApiInstance = new CoreApi();
+            try
+            {
+                ApiInstance = new CoreApi();
+            }
+            catch (Exception exception)
+            {
+                // A machine may contain enough SDK assemblies to build while a
+                // runtime-only dependency (for example FS.SDK.Localization) is
+                // still missing. Keep non-FEE tools usable and let the central
+                // connection gate disable every FEE action.
+                ApiInstance = null;
+                VIBN_Tools.Application.ApplicationLogService.Instance.Error(
+                    "FEE SDK",
+                    "Die FEE-Laufzeit konnte nicht initialisiert werden. FEE-Funktionen bleiben deaktiviert.",
+                    exception);
+            }
 
             if (!DesignerProperties.GetIsInDesignMode(new DependencyObject()))
             {

@@ -75,6 +75,23 @@ sequenceDiagram
     W-->>U: Tabelle und optionale Special-Device-Zuordnung
 ```
 
+## Container2FEE-Visual-Datenfluss
+
+```mermaid
+flowchart LR
+    XML[Container XML, nur lesen] --> PARSER[Visual Plan Parser]
+    PARSER --> PLAN[VisualPlan: Knoten und Kanten]
+    PLAN <--> VM[Visual Page VM / Drag-and-drop]
+    VM <--> SIDE[JSON-Sidecar mit SHA-256]
+    FEE[FEE SimObjects] --> DISC[Discovery Adapter]
+    DISC --> VM
+    PLAN --> EXEC[Legacy Execution Adapter]
+    EXEC --> LEGACY[bestehende Containerklassen und ContainerToFeeService]
+    LEGACY --> FEE
+```
+
+Der Adapter überträgt nur typgeprüfte SimObject-Zuordnungen und Erzeugungswünsche. Signal-/Slot-Kanten sind sichtbar, bleiben aber Eigentum des bestehenden Executors.
+
 ## ViCo/Kanbanize-Datenfluss
 
 ```mermaid

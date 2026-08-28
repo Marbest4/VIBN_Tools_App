@@ -10,6 +10,7 @@ using VIBN_Tools.Application.View;
 using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
+using VIBN_Tools.ContainerToFeeVisual;
 using VIBN_Tools.Settings;
 using VIBN_Tools.Tia.Contracts;
 
@@ -93,6 +94,16 @@ internal static class Program
                 }));
             VerifyTiaHardwareMappingPersistence();
 
+            var visualPlanService = VerifyContainerToFeeVisualPlan();
+            var visualContainerViewModel = new ContainerToFeeVisualPageVM(visualPlanService);
+            visualContainerViewModel.SelectedTreeNode = visualContainerViewModel.TreeRoots
+                .SelectMany(root => root.SelfAndDescendants())
+                .First(node => node.Kind == VisualNodeKind.Container);
+            var visualContainerPage = new ContainerToFeeVisualPage
+            {
+                DataContext = visualContainerViewModel
+            };
+
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
             // Populate the deferred DataGrid template as well: this catches
@@ -145,6 +156,7 @@ internal static class Program
                 administrationPage,
                 kanbanizeCardPage,
                 specialDevicePage,
+                visualContainerPage,
                 new DiagnosticsPanel()
             ];
 
@@ -166,6 +178,7 @@ internal static class Program
                 SavePreview(workspacePage, Path.Combine(AppContext.BaseDirectory, "vico-workspace-preview.png"));
                 SavePreview(kanbanizeCardPage, Path.Combine(AppContext.BaseDirectory, "kanbanize-cards-preview.png"));
                 SavePreview(specialDevicePage, Path.Combine(AppContext.BaseDirectory, "special-devices-preview.png"));
+                SavePreview(visualContainerPage, Path.Combine(AppContext.BaseDirectory, "container2fee-visual-preview.png"));
             }
 
             Dispatcher.CurrentDispatcher.Invoke(
@@ -228,11 +241,108 @@ internal static class Program
             var restored = store.LoadAsync().GetAwaiter().GetResult();
             if (!restored.TryGetValue(expected.Key, out var actual) || actual != expected)
                 throw new InvalidOperationException("Persisted TIA hardware mapping was not restored unchanged.");
+
+            var legacyFirstArea = new TiaHardwareDeviceRowVM(new TiaHardwareModuleInfo
+            {
+                DeviceName = "Device",
+                ProfinetName = "pn-device",
+                ModulePath = "Module/Slot3",
+                Slot = 3,
+                Subslot = 1,
+                AddressSetIndex = 0,
+                InputStartByte = 62,
+                InputLengthBits = 96,
+                InputLength = 12,
+                OutputStartByte = 62,
+                OutputLengthBits = 48,
+                OutputLength = 6,
+            });
+            var secondArea = new TiaHardwareDeviceRowVM(new TiaHardwareModuleInfo
+            {
+                DeviceName = "Device",
+                ProfinetName = "pn-device",
+                ModulePath = "Module/Slot3",
+                Slot = 3,
+                Subslot = 1,
+                AddressSetIndex = 1,
+                InputStartByte = 74,
+                InputLengthBits = 48,
+                InputLength = 6,
+                OutputStartByte = 68,
+                OutputLengthBits = 96,
+                OutputLength = 12,
+            });
+            if (!legacyFirstArea.ApplyMapping(expected) || secondArea.ApplyMapping(expected))
+                throw new InvalidOperationException("Legacy mapping keys must migrate only to the first address area.");
         }
         finally
         {
             if (File.Exists(path))
                 File.Delete(path);
+        }
+    }
+
+    private static ContainerToFeeVisualPlanService VerifyContainerToFeeVisualPlan()
+    {
+        var directory = Path.Combine(
+            Path.GetTempPath(),
+            $"vibn-container2fee-visual-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var xmlPath = Path.Combine(directory, "Container.xml");
+        try
+        {
+            File.WriteAllText(
+                xmlPath,
+                """
+                <AutoCreate>
+                  <Container id="sensor-1">
+                    <Component>Sensor_1</Component>
+                    <Type>Sensor</Type>
+                    <Entries>
+                      <Entry>
+                        <Slot>PLC_IN_PartPresent_Ch1</Slot>
+                        <Signal>Sensor_1_Present</Signal>
+                        <Address>%I10.0</Address>
+                        <DataType>Bool</DataType>
+                        <ID>1</ID>
+                      </Entry>
+                    </Entries>
+                  </Container>
+                </AutoCreate>
+                """);
+
+            var service = new ContainerToFeeVisualPlanService();
+            var loaded = service.LoadXmlAsync(xmlPath).GetAwaiter().GetResult();
+            if (!loaded.Success || loaded.Plan is null)
+                throw new InvalidOperationException($"Visual plan could not be loaded: {loaded.Message}");
+            if (loaded.Plan.Targets.Count != 1 ||
+                loaded.Plan.Nodes.Count(node => node.Kind == VisualNodeKind.Signal) != 1 ||
+                loaded.Plan.Edges.Count == 0)
+                throw new InvalidOperationException("Visual plan does not contain the expected target, signal and edges.");
+
+            var container = loaded.Plan.Nodes.Single(node => node.Kind == VisualNodeKind.Container);
+            if (!container.SupportsCreation || !service.SetCreationRequested(container.Id, true))
+                throw new InvalidOperationException("Visual creation request could not be enabled.");
+            if (!service.Undo() || service.CurrentPlan!.IsCreationRequested(container.Id))
+                throw new InvalidOperationException("Visual creation-request undo failed.");
+            if (!service.Redo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
+                throw new InvalidOperationException("Visual creation-request redo failed.");
+
+            service.SaveSidecarAsync().GetAwaiter().GetResult();
+            var restored = new ContainerToFeeVisualPlanService();
+            var restoredResult = restored.LoadSidecarAsync(service.CurrentPlan.SidecarPath)
+                .GetAwaiter()
+                .GetResult();
+            if (!restoredResult.Success ||
+                restored.CurrentPlan?.IsCreationRequested(container.Id) != true)
+                throw new InvalidOperationException("Visual sidecar was not restored correctly.");
+
+            return restored;
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
         }
     }
 

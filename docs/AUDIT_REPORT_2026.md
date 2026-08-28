@@ -1,6 +1,6 @@
 # Software-Audit VIBN Tools App
 
-Stand: 27. August 2026. Prüfobjekt ist die vollständige Solution `VIBN_Tools_App.sln` am Branch `codex/architecture-quality-deployment-audit`.
+Stand: 28. August 2026. Prüfobjekt ist die vollständige Solution `VIBN_Tools_App.sln` am Branch `codex/architecture-quality-deployment-audit`.
 
 ## 1. Executive Summary
 
@@ -102,6 +102,6 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 3. Setup signieren und über eine definierte Updatequelle verteilen.
 4. Secret-Speicherung auf Credential Manager/DPAPI migrieren.
 5. Legacy-Service-Locator strangweise durch Konstruktorinjektion ersetzen.
-6. Unit-/Contract-Tests für Container2FEE und Hardware-Snapshots ergänzen.
+6. Die vorhandenen synthetischen Container2FEE-Plan-/Sidecar- und PN/PN-Hardwaretests um freigegebene produktive Golden-Master-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
 8. Den vorhandenen ZuLi-/Generator-Smoke-Test um eine freigegebene Requirements-Datei und erwartete vollständige Container-Ausgabe ergänzen; erst danach `ContainerGenerationPageVM` erneut aufteilen.

@@ -109,6 +109,16 @@ namespace VIBN_Tools.Settings
 
         private void CheckConnection()
         {
+            // Project Settings initializes the shared SDK before normal UI use.
+            // A disconnected design-time or smoke-test view must nevertheless
+            // remain loadable without constructing the complete FEE runtime.
+            if (Services.ApiInstance is null)
+            {
+                IsConnected = false;
+                IsConnecting = false;
+                return;
+            }
+
             // API Call for Connection State
             var state = Services.ApiInstance.ApiState;
 

@@ -23,11 +23,14 @@ internal sealed class TiaHardwareReader
     {
         var devices = EnumerateDevices(project);
         var result = new List<TiaHardwareModuleInfo>();
+        // Openness may surface the same engineering object through different
+        // proxy instances and hierarchy paths. Semantic identities deliberately
+        // span the complete read, rather than relying on proxy reference equality.
+        var identities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (var deviceIndex = 0; deviceIndex < devices.Count; deviceIndex++)
         {
             var device = devices[deviceIndex];
             var context = ReadDeviceContext(device, deviceIndex);
-            var identities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             Traverse(
                 device,
                 context,
@@ -60,31 +63,44 @@ internal sealed class TiaHardwareReader
             throw new ArgumentNullException(nameof(project));
 
         var devices = new List<object>();
-        AddUniqueDevices(ReadEnumerableMember(project, "Devices"), devices);
+        var semanticIdentities = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        AddUniqueDevices(ReadEnumerableMember(project, "Devices"), devices, semanticIdentities);
 
         foreach (var group in ReadEnumerableMember(project, "DeviceGroups"))
-            AddDeviceGroup(group, devices);
+            AddDeviceGroup(group, devices, semanticIdentities);
 
         var ungroupedDevices = ReadMember(project, "UngroupedDevicesGroup");
         if (ungroupedDevices is not null)
-            AddUniqueDevices(ReadEnumerableMember(ungroupedDevices, "Devices"), devices);
+            AddUniqueDevices(ReadEnumerableMember(ungroupedDevices, "Devices"), devices, semanticIdentities);
 
         return devices;
     }
 
-    private static void AddDeviceGroup(object group, ICollection<object> devices)
+    private static void AddDeviceGroup(
+        object group,
+        ICollection<object> devices,
+        ISet<string> semanticIdentities)
     {
-        AddUniqueDevices(ReadEnumerableMember(group, "Devices"), devices);
+        AddUniqueDevices(ReadEnumerableMember(group, "Devices"), devices, semanticIdentities);
         foreach (var childGroup in ReadEnumerableMember(group, "Groups"))
-            AddDeviceGroup(childGroup, devices);
+            AddDeviceGroup(childGroup, devices, semanticIdentities);
     }
 
-    private static void AddUniqueDevices(IEnumerable<object> candidates, ICollection<object> devices)
+    private static void AddUniqueDevices(
+        IEnumerable<object> candidates,
+        ICollection<object> devices,
+        ISet<string> semanticIdentities)
     {
         foreach (var candidate in candidates)
         {
-            if (!devices.Any(existing => ReferenceEquals(existing, candidate)))
-                devices.Add(candidate);
+            if (devices.Any(existing => ReferenceEquals(existing, candidate)))
+                continue;
+
+            var identity = CreateDeviceIdentity(candidate);
+            if (identity.Length > 0 && !semanticIdentities.Add(identity))
+                continue;
+
+            devices.Add(candidate);
         }
     }
 
@@ -102,45 +118,68 @@ internal sealed class TiaHardwareReader
         {
             var moduleName = ReadString(item, "Name");
             var position = ReadInt(item, "PositionNumber", "Slot");
-            var slot = depth >= 2 ? parentSlot : position;
-            var subslot = depth >= 2 ? position : -1;
-            // Slot belongs to the module; deeper hierarchy levels represent
-            // submodules and must retain their owning module slot.
-            var nextParentSlot = depth >= 2 ? parentSlot : position;
+            var explicitSlot = ReadInt(item, "SlotNumber", "Slot");
+            var explicitSubslot = ReadInt(item, "SubslotNumber", "Subslot", "SubPositionNumber");
+            var slot = explicitSlot >= 0
+                ? explicitSlot
+                : depth >= 3 && parentSlot >= 0 ? parentSlot : position;
+            var subslot = explicitSubslot >= 0
+                ? explicitSubslot
+                : depth >= 3 ? position : -1;
+            // A directly nested module owns its PositionNumber as slot. Only
+            // deeper submodules inherit that slot and use their position as a
+            // best-effort subslot when the API exposes no explicit attribute.
+            var nextParentSlot = slot >= 0 ? slot : parentSlot;
 
             var modulePath = string.IsNullOrWhiteSpace(parentPath)
                 ? moduleName
                 : $"{parentPath}/{moduleName}";
             var typeIdentifier = ReadString(item, "TypeIdentifier");
             var moduleType = ReadString(item, "TypeName", "Classification");
+            var localNetwork = ReadNetworkMetadata(item);
+            var network = MergeNetworkMetadata(inheritedNetwork, localNetwork);
+            var effectiveDevice = depth == 0
+                ? device.WithHeadIdentity(moduleName, moduleType, network)
+                : device;
             var deviceType = depth == 0 && moduleType.Length > 0
                 ? moduleType
-                : device.DeviceType;
+                : effectiveDevice.DeviceType;
             var manufacturer = FirstNotEmpty(
                 ReadString(item, "Author", "Manufacturer"),
-                device.Manufacturer);
+                effectiveDevice.Manufacturer);
             var orderNumber = FirstNotEmpty(
                 ReadString(item, "OrderNumber"),
                 ParseOrderNumber(typeIdentifier),
-                device.OrderNumber);
+                effectiveDevice.OrderNumber);
             var firmware = FirstNotEmpty(
                 ReadString(item, "FirmwareVersion"),
                 ParseFirmware(typeIdentifier),
-                device.FirmwareVersion);
+                effectiveDevice.FirmwareVersion);
             var gsd = ReadGsdMetadata(item, "Siemens.Engineering.HW.Features.GsdDeviceItem");
             if (gsd.IsEmpty)
-                gsd = device.Gsd;
-            var localNetwork = ReadNetworkMetadata(item);
-            var network = MergeNetworkMetadata(inheritedNetwork, localNetwork);
+                gsd = effectiveDevice.Gsd;
             var addresses = ReadAddresses(item);
 
-            var identity = $"{device.DeviceIndex}|{modulePath}|{slot}|{subslot}|{typeIdentifier}";
-            if (identities.Add(identity))
+            // Do not create rows for rack, interface and other hierarchy
+            // containers without process-image addresses. Their metadata is
+            // inherited by address-bearing descendants instead.
+            foreach (var addressSet in addresses.CreateSets())
             {
+                var identity = CreateModuleIdentity(
+                    effectiveDevice.SemanticIdentity,
+                    moduleName,
+                    moduleType,
+                    typeIdentifier,
+                    slot,
+                    subslot,
+                    addressSet);
+                if (!identities.Add(identity))
+                    continue;
+
                 result.Add(new TiaHardwareModuleInfo
                 {
-                    DeviceIndex = device.DeviceIndex,
-                    DeviceName = device.DeviceName,
+                    DeviceIndex = effectiveDevice.DeviceIndex,
+                    DeviceName = effectiveDevice.DeviceName,
                     DeviceType = deviceType,
                     Manufacturer = manufacturer,
                     OrderNumber = orderNumber,
@@ -152,20 +191,23 @@ internal sealed class TiaHardwareReader
                     NetworkRole = network.Role,
                     Slot = slot,
                     Subslot = subslot,
+                    AddressSetIndex = addressSet.Index,
                     ModuleName = moduleName,
                     ModulePath = modulePath,
                     ModuleType = moduleType,
                     TypeIdentifier = typeIdentifier,
-                    InputStartByte = addresses.InputStart,
-                    InputLength = addresses.InputLength,
-                    OutputStartByte = addresses.OutputStart,
-                    OutputLength = addresses.OutputLength
+                    InputStartByte = addressSet.Input?.StartByte ?? -1,
+                    InputLengthBits = addressSet.Input?.RawLengthBits ?? 0,
+                    InputLength = addressSet.Input?.ByteLength ?? 0,
+                    OutputStartByte = addressSet.Output?.StartByte ?? -1,
+                    OutputLengthBits = addressSet.Output?.RawLengthBits ?? 0,
+                    OutputLength = addressSet.Output?.ByteLength ?? 0
                 });
             }
 
             Traverse(
                 item,
-                device.WithMetadata(
+                effectiveDevice.WithMetadata(
                     deviceType,
                     manufacturer,
                     orderNumber,
@@ -183,9 +225,14 @@ internal sealed class TiaHardwareReader
     private DeviceContext ReadDeviceContext(object device, int deviceIndex)
     {
         var typeIdentifier = ReadString(device, "TypeIdentifier");
+        var deviceName = ReadString(device, "Name");
+        var semanticIdentity = CreateDeviceIdentity(device);
         return new DeviceContext(
             deviceIndex,
-            ReadString(device, "Name"),
+            deviceName,
+            semanticIdentity.Length > 0
+                ? semanticIdentity
+                : $"UNNAMED-DEVICE-{deviceIndex}",
             ReadString(device, "TypeName", "Classification"),
             ReadString(device, "Author", "Manufacturer"),
             FirstNotEmpty(ReadString(device, "OrderNumber"), ParseOrderNumber(typeIdentifier)),
@@ -195,21 +242,32 @@ internal sealed class TiaHardwareReader
 
     private AddressMetadata ReadAddresses(object item)
     {
-        var inputStart = -1;
-        var inputLength = 0;
-        var outputStart = -1;
-        var outputLength = 0;
+        var inputs = new List<AddressRange>();
+        var outputs = new List<AddressRange>();
         foreach (var address in ReadEnumerableMember(item, "Addresses"))
         {
             var ioType = ReadString(address, "IoType", "IOType");
             var start = ReadInt(address, "StartAddress", "StartAdress");
-            var length = Math.Max(0, ReadInt(address, "Length"));
+            var rawLengthBits = Math.Max(0, ReadInt(address, "Length"));
+            if (start < 0 || rawLengthBits <= 0)
+                continue;
+
+            var range = new AddressRange(start, rawLengthBits);
             if (ioType.IndexOf("Input", StringComparison.OrdinalIgnoreCase) >= 0)
-                MergeRange(ref inputStart, ref inputLength, start, length);
+                AddUniqueAddress(inputs, range);
             else if (ioType.IndexOf("Output", StringComparison.OrdinalIgnoreCase) >= 0)
-                MergeRange(ref outputStart, ref outputLength, start, length);
+                AddUniqueAddress(outputs, range);
         }
-        return new AddressMetadata(inputStart, inputLength, outputStart, outputLength);
+        return new AddressMetadata(inputs, outputs);
+    }
+
+    private static void AddUniqueAddress(ICollection<AddressRange> ranges, AddressRange candidate)
+    {
+        if (!ranges.Any(existing => existing.StartByte == candidate.StartByte &&
+                                    existing.RawLengthBits == candidate.RawLengthBits))
+        {
+            ranges.Add(candidate);
+        }
     }
 
     private NetworkMetadata ReadNetworkMetadata(object item)
@@ -378,23 +436,41 @@ internal sealed class TiaHardwareReader
         }
     }
 
-    private static void MergeRange(ref int currentStart, ref int currentLength, int start, int length)
-    {
-        if (start < 0)
-            return;
-        if (currentStart < 0)
-        {
-            currentStart = start;
-            currentLength = length;
-            return;
-        }
-        var endExclusive = Math.Max(currentStart + currentLength, start + length);
-        currentStart = Math.Min(currentStart, start);
-        currentLength = Math.Max(0, endExclusive - currentStart);
-    }
-
     private static string FirstNotEmpty(params string[] values) =>
         values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
+
+    private static string CreateDeviceIdentity(object device)
+    {
+        var name = NormalizeIdentityPart(ReadString(device, "Name"));
+        if (name.Length == 0)
+            return string.Empty;
+
+        var typeIdentifier = NormalizeIdentityPart(ReadString(device, "TypeIdentifier"));
+        var type = NormalizeIdentityPart(ReadString(device, "TypeName", "Classification"));
+        return $"{name}|{typeIdentifier}|{type}";
+    }
+
+    private static string CreateModuleIdentity(
+        string deviceIdentity,
+        string moduleName,
+        string moduleType,
+        string typeIdentifier,
+        int slot,
+        int subslot,
+        AddressSet addressSet) => string.Join("|",
+        deviceIdentity,
+        NormalizeIdentityPart(moduleName),
+        NormalizeIdentityPart(moduleType),
+        NormalizeIdentityPart(typeIdentifier),
+        slot,
+        subslot,
+        addressSet.Input?.StartByte ?? -1,
+        addressSet.Input?.RawLengthBits ?? 0,
+        addressSet.Output?.StartByte ?? -1,
+        addressSet.Output?.RawLengthBits ?? 0);
+
+    private static string NormalizeIdentityPart(string value) =>
+        Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim().ToUpperInvariant();
 
     private static string ParseOrderNumber(string typeIdentifier)
     {
@@ -413,6 +489,7 @@ internal sealed class TiaHardwareReader
         public DeviceContext(
             int deviceIndex,
             string deviceName,
+            string semanticIdentity,
             string deviceType,
             string manufacturer,
             string orderNumber,
@@ -421,6 +498,7 @@ internal sealed class TiaHardwareReader
         {
             DeviceIndex = deviceIndex;
             DeviceName = deviceName;
+            SemanticIdentity = semanticIdentity;
             DeviceType = deviceType;
             Manufacturer = manufacturer;
             OrderNumber = orderNumber;
@@ -430,11 +508,32 @@ internal sealed class TiaHardwareReader
 
         public int DeviceIndex { get; }
         public string DeviceName { get; }
+        public string SemanticIdentity { get; }
         public string DeviceType { get; }
         public string Manufacturer { get; }
         public string OrderNumber { get; }
         public string FirmwareVersion { get; }
         public GsdMetadata Gsd { get; }
+
+        public DeviceContext WithHeadIdentity(
+            string headName,
+            string headType,
+            NetworkMetadata network)
+        {
+            var name = ShouldPreferHeadName(DeviceName, headName)
+                ? headName
+                : FirstNotEmpty(DeviceName, headName, network.ProfinetName);
+            var type = FirstNotEmpty(headType, DeviceType);
+            return new DeviceContext(
+                DeviceIndex,
+                name,
+                SemanticIdentity,
+                type,
+                Manufacturer,
+                OrderNumber,
+                FirmwareVersion,
+                Gsd);
+        }
 
         public DeviceContext WithMetadata(
             string deviceType,
@@ -444,11 +543,25 @@ internal sealed class TiaHardwareReader
             GsdMetadata gsd) => new(
             DeviceIndex,
             DeviceName,
+            SemanticIdentity,
             deviceType,
             manufacturer,
             orderNumber,
             firmwareVersion,
             gsd);
+
+        private static bool ShouldPreferHeadName(string deviceName, string headName)
+        {
+            if (string.IsNullOrWhiteSpace(headName))
+                return false;
+            if (string.IsNullOrWhiteSpace(deviceName))
+                return true;
+
+            return Regex.IsMatch(
+                deviceName,
+                @"^(GSD[-_ ]?(GERÄT|GERAET|DEVICE)|DEVICE|GERÄT|GERAET)[-_ ]*\d*$",
+                RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+        }
     }
 
     private sealed class GsdMetadata
@@ -480,19 +593,56 @@ internal sealed class TiaHardwareReader
         public bool IsEmpty => ProfinetName.Length == 0 && IpAddress.Length == 0 && Role.Length == 0;
     }
 
-    private sealed class AddressMetadata
+    private sealed class AddressRange
     {
-        public AddressMetadata(int inputStart, int inputLength, int outputStart, int outputLength)
+        public AddressRange(int startByte, int rawLengthBits)
         {
-            InputStart = inputStart;
-            InputLength = inputLength;
-            OutputStart = outputStart;
-            OutputLength = outputLength;
+            StartByte = startByte;
+            RawLengthBits = rawLengthBits;
         }
 
-        public int InputStart { get; }
-        public int InputLength { get; }
-        public int OutputStart { get; }
-        public int OutputLength { get; }
+        public int StartByte { get; }
+        public int RawLengthBits { get; }
+        public int ByteLength => RawLengthBits <= 0 ? 0 : checked((RawLengthBits + 7) / 8);
+    }
+
+    private sealed class AddressSet
+    {
+        public AddressSet(int index, AddressRange? input, AddressRange? output)
+        {
+            Index = index;
+            Input = input;
+            Output = output;
+        }
+
+        public int Index { get; }
+        public AddressRange? Input { get; }
+        public AddressRange? Output { get; }
+    }
+
+    private sealed class AddressMetadata
+    {
+        public AddressMetadata(
+            IReadOnlyList<AddressRange> inputs,
+            IReadOnlyList<AddressRange> outputs)
+        {
+            Inputs = inputs;
+            Outputs = outputs;
+        }
+
+        public IReadOnlyList<AddressRange> Inputs { get; }
+        public IReadOnlyList<AddressRange> Outputs { get; }
+
+        public IEnumerable<AddressSet> CreateSets()
+        {
+            var count = Math.Max(Inputs.Count, Outputs.Count);
+            for (var index = 0; index < count; index++)
+            {
+                yield return new AddressSet(
+                    index,
+                    index < Inputs.Count ? Inputs[index] : null,
+                    index < Outputs.Count ? Outputs[index] : null);
+            }
+        }
     }
 }

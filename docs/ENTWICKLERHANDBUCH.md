@@ -64,6 +64,21 @@ Die Hauptanwendung darf keine Siemens-Openness-Assembly direkt laden. TIA-Fehler
 
 `TiaHardwareReader` ist kein unerreichbarer Code: Er wird über Named Pipe im separaten Prozess `VIBN_Tools.TiaBridge.exe` ausgeführt. Ein Breakpoint dort wird bei normalem F5 im WPF-Prozess nicht automatisch getroffen. Zum Debuggen nach dem Start der Hardwareabfrage in Visual Studio **Debuggen → An Prozess anfügen** wählen und `VIBN_Tools.TiaBridge.exe` auswählen. Die Bridge-Quellen sind als `UpToDateCheckInput` registriert, damit F5 nach einer Änderung keine alte kopierte Bridge startet.
 
+`Address.Length` ist im Bridge-Modell eine Bitlänge. Nur `TiaHardwareReader` konvertiert mit Aufrundung in die zusätzlichen Bytefelder. UI oder Special-Device-Code dürfen die rohe Länge nicht ein zweites Mal umrechnen. Adresslose Hierarchieknoten liefern nur geerbte Metadaten; eine Tabellenzeile entsteht ausschließlich für einen konkreten E-/A-Adresssatz.
+
+### Container2FEE Visual erweitern
+
+Der alte Reiter und `ContainerToFeePageVM` bleiben die Verhaltensreferenz. Neue Planfunktionen gehören unter `ContainerToFeeVisual/`:
+
+1. reine Struktur in `Domain` ergänzen;
+2. XML-Metadaten in `Planning` erweitern, ohne FEE-Aufrufe auszuführen;
+3. persistente, versionierte Nutzerdaten ausschließlich in `Persistence` ändern;
+4. SDK-Objekte in `Discovery` kapseln;
+5. tatsächliche Erzeugung weiterhin über `LegacyContainerToFeeExecutionAdapter` und `ContainerToFeeService` ausführen;
+6. Bindings auf schreibgeschützte Eigenschaften explizit `Mode=OneWay` setzen und den UI-Smoke-Test erweitern.
+
+Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
+
 ### Neues Special Device
 
 1. konkrete Geräteklasse unter `SpecialDevices/Devices` ergänzen;
@@ -90,8 +105,8 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
 | `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly und Übergabe an den fachlichen Container-Generator |
-| `Tests/UiStartupSmokeTests` | Instanziierung integrierter WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings und Screenshot-Erzeugung |
-| `Tests/Test-TiaHardwareTraversal.ps1` | Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, `Items`-Fallback sowie synthetische E-/A-Adressen |
+| `Tests/UiStartupSmokeTests` | integrierte WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings, visueller XML-Plan, Sidecar, Undo/Redo und Screenshot-Erzeugung |
+| `Tests/Test-TiaHardwareTraversal.ps1` | Gerätegruppen, Proxy-Deduplizierung, Local Session und exakte PN/PN-Bit-/Bytebereiche |
 | manuelle Abnahme | reale UNC-Pfade, echte Kanbanize-Berechtigung, FEE, Outlook, RDP und TIA Openness |
 
 Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausführen. Für reale Systeme zusätzlich [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md) abarbeiten.

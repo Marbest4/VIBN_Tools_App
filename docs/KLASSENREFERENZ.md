@@ -11,6 +11,7 @@
 | `Application/View/DiagnosticsPanel.xaml` | sichtbares Diagnosefenster im Hauptfenster |
 | `Settings/FeeVersionInfoProvider.cs` | ermittelt verwendete SDK- und höchste lokal installierte FEE-Version für Project Settings |
 | `Settings/ConnectionService.cs` | bestätigt den SDK-Verbindungszustand und stellt das zentrale FEE-Funktions-Gate bereit |
+| `GlobalClasses/Services.cs` | initialisiert FEE-Dienste; hält bei unvollständiger Runtime die restliche Anwendung lauffähig und das FEE-Gate geschlossen |
 
 ## ViCo-Modelle und Fachregeln (`VIBN_Tools.Core/ViCo`)
 
@@ -69,6 +70,20 @@
 | `VIBN_Tools.TiaBridge/Bridge/TiaCommandDispatcher.cs` | ordnet Protokollkommandos Sessionmethoden zu |
 | `VIBN_Tools.TiaBridge/Openness/TiaOpennessSession.cs` | versionsgebundene Siemens-Openness-Implementierung; `ListHardware` liest Modul- und E/A-Adressdaten |
 | `Application/VM/TiaPortalPageVM.cs` | WPF-Steuerung und protokollierter Fehlerpfad |
+| `VIBN_Tools.TiaBridge/Openness/TiaHardwareReader.cs` | read-only Traversierung aller Geräte; filtert adresslose Eltern, bildet getrennte Adresssätze und konvertiert Bit- in Byte-Längen |
+
+## Container2FEE Visual
+
+| Datei/Typ | Aufgabe |
+| --- | --- |
+| `VisualPlanModels.cs` | unveränderlich nach außen sichtbare Knoten, Kanten, Ziele, Zuordnungen und Validierungsergebnisse |
+| `ContainerXmlVisualPlanParser.cs` | begrenztes, DTD-freies XML-Lesen, Fingerabdruck und deklarativer Plan |
+| `ContainerMetadataCatalog.cs` | Metadaten der bestehenden Containerklassen und ihrer `SimObjectTarget`s |
+| `VisualPlanSidecarStore.cs` | versionierte JSON-Persistenz ohne Änderung der Quell-XML |
+| `FeeSimObjectDiscovery.cs` | SDK-Objekte in stabile, UI-neutrale Identitäten übersetzen |
+| `ContainerToFeeVisualPlanService.cs` | Zuordnung, Eindeutigkeit, Auto-Matching, Undo/Redo, Validierung und Orchestrierung |
+| `LegacyContainerToFeeExecutionAdapter.cs` | Plan auf frische Legacy-Container anwenden und bestehenden Generator aufrufen |
+| `ContainerToFeeVisualPageVM.cs` / `.xaml` | Commands, Filter, Drag-and-drop und dreigeteilte Darstellung |
 
 ## Special Devices und bestehende VIBN-Bereiche
 
@@ -78,7 +93,8 @@
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
 | Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |
-| Container2Fee | `ContainerToFeePageVM.cs`, `ContainerToFee/` |
+| Container2Fee (bestehend) | `ContainerToFeePageVM.cs`, `ContainerToFee/` |
+| Container2FEE Visual (zusätzlich) | `ContainerToFeeVisual/`, `ContainerToFeeVisualPageVM.cs`, `ContainerToFeeVisualPage.xaml` |
 | Model Validation | `ModelValidationPageVM.cs` |
 | Model Control | `ModelControlPageVM.cs` |
 | Interface Operation | `InterfaceOperationPageVM.cs` |

@@ -441,7 +441,9 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             var restored = 0;
             foreach (var candidate in candidates)
             {
-                if (savedMappings.TryGetValue(candidate.MappingKey, out var mapping) &&
+                if ((savedMappings.TryGetValue(candidate.MappingKey, out var mapping) ||
+                     (candidate.Module.AddressSetIndex == 0 &&
+                      savedMappings.TryGetValue(candidate.LegacyMappingKey, out mapping))) &&
                     candidate.ApplyMapping(mapping))
                 {
                     restored++;

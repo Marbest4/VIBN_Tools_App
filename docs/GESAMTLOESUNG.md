@@ -15,6 +15,7 @@ Die Solution verbindet die bestehende VIBN-Tools-Oberfläche mit ViCo, Kanbanize
 | ViCo Verwaltung | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
 | Kanbanize | sichere VIBN-Übernahme und eigene Karten | `VibnWorkplaceSynchronizationService`, `KanbanizeCardApiService` |
 | Special Devices | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| Container2FEE Visual | zusätzlicher XML-Plan, Sidecar und typgeprüftes Drag-and-drop bei unverändertem Executor | `ContainerToFeeVisual/*`, `ContainerToFeeVisualPageVM` |
 | bestehende VIBN-Reiter | CAD, Zuli, Container, Modell und Schnittstellen | bestehende ViewModels und FEE-Services |
 
 ## Projektstruktur
@@ -38,6 +39,7 @@ VIBN_Tools.Tia.Client/          Typed Named-Pipe-Client und Bibliotheksservice
 VIBN_Tools.TiaBridge/           isolierter .NET-Framework-/TIA-Openness-Prozess
 
 SpecialDevices/                 Gerätefactory, Katalog und konkrete Gerätekategorien
+ContainerToFeeVisual/           visueller Plan, Persistenz, Discovery und Legacy-Adapter
 Tests/CoreSmokeTests/           fachliche und transportnahe Smoke-Tests
 Tests/UiStartupSmokeTests/      WPF-XAML-/Binding-Starttest und Anleitungsbilder
 docs/                           Anwender-, Betriebs- und Entwicklerdokumentation
