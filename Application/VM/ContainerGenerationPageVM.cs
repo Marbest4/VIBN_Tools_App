@@ -288,8 +288,14 @@ namespace VIBN_Tools.Application.VM
             get { return _settings; }
             set
             {
+                if (ReferenceEquals(_settings, value))
+                    return;
+
+                _settings.PropertyChanged -= Settings_PropertyChanged;
                 _settings = value;
+                _settings.PropertyChanged += Settings_PropertyChanged;
                 OnPropertyChanged();
+                ConfigureAutoSaveTimer();
             }
         }
 
@@ -400,6 +406,26 @@ namespace VIBN_Tools.Application.VM
         private readonly DispatcherTimer _debounceTimerContainerData;
         private readonly DispatcherTimer _debounceTimerUnassignedData;
         private readonly DispatcherTimer _debounceTimerFilteredData;
+        private readonly DispatcherTimer _autoSaveTimer = new();
+        private string _workspaceDataPath = string.Empty;
+        private bool _isAutoSaveRunning;
+
+        public string WorkspaceDataPath
+        {
+            get => _workspaceDataPath;
+            private set
+            {
+                _workspaceDataPath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AutoSaveStatus));
+            }
+        }
+
+        public string AutoSaveStatus => !Settings.AutoSaveEnabled
+            ? "AutoSave ist deaktiviert."
+            : string.IsNullOrWhiteSpace(WorkspaceDataPath)
+                ? $"AutoSave alle {Settings.AutoSaveIntervalMinutes} Min. – zuerst Save Data oder Load Data ausführen."
+                : $"AutoSave alle {Settings.AutoSaveIntervalMinutes} Min.: {Path.GetFileName(WorkspaceDataPath)}";
 
 
 
@@ -477,7 +503,17 @@ namespace VIBN_Tools.Application.VM
         /// <summary>
         /// Instance of a AutoCreate XML.
         /// </summary>
-        public IRequirementsXml RequirementsFile { get; private set; }
+        private IRequirementsXml _requirementsFile = new RequirementsXml();
+        public IRequirementsXml RequirementsFile
+        {
+            get => _requirementsFile;
+            private set
+            {
+                _requirementsFile = value ?? throw new ArgumentNullException(nameof(value));
+                OnPropertyChanged(nameof(CanLoadData));
+                OnPropertyChanged(nameof(CanGenerate));
+            }
+        }
 
         /// <summary>
         /// Module to generate container data.
@@ -535,6 +571,9 @@ namespace VIBN_Tools.Application.VM
                 _debounceTimerFilteredData.Stop();
                 FilterFilteredEntriesGrid();
             };
+
+            _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+            ConfigureAutoSaveTimer();
 
             SelectedReviewFilter = ReviewFilterOptions[0];
 
@@ -967,31 +1006,33 @@ namespace VIBN_Tools.Application.VM
 
         private void Save_Data(object parameter)
         {
-            SaveFileDialog saveFileDialog = new SaveFileDialog();
-            saveFileDialog.Filter = "xml (*.xml)|*.xml";
-            saveFileDialog.Title = "Choose save location";
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "xml (*.xml)|*.xml",
+                Title = "Choose save location"
+            };
 
             if (saveFileDialog.ShowDialog() == true)
             {
-                //Get the path of specified file
                 string[] FoundFiles = saveFileDialog.FileNames;
                 if (FoundFiles.Length == 1)
                 {
-                    AddActivity(
-                        "Datei",
-                        "Arbeitsstand gespeichert",
-                        FoundFiles[0]);
-                    SavedData CreatedSaveData = new SavedData
+                    try
                     {
-                        ContainerList = ContainerList.ToList(),
-                        FilteredEntries = FilteredEntries.ToList(),
-                        UnassignedEntries = UnassignedEntries.ToList(),
-                        ActivityLog = ActivityLog.ToList(),
-                        FilePath = FoundFiles[0],
-                    };
-
-                    CreatedSaveData.CaptureEntryStates();
-                    CreatedSaveData.SetSettings();
+                        AddActivity(
+                            "Datei",
+                            "Arbeitsstand gespeichert",
+                            FoundFiles[0]);
+                        SaveWorkspaceData(FoundFiles[0]);
+                        WorkspaceDataPath = FoundFiles[0];
+                        ConfigureAutoSaveTimer();
+                        StatusText = $"Arbeitsstand gespeichert: {FoundFiles[0]}";
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Error(ex, "Could not save workspace to {FilePath}.", FoundFiles[0]);
+                        StatusText = "Der Arbeitsstand konnte nicht gespeichert werden. Details stehen im Protokoll.";
+                    }
                 }
             }
 
@@ -999,11 +1040,18 @@ namespace VIBN_Tools.Application.VM
 
         private void Load_Data(object parameter)
         {
+            if (!CanLoadData)
+            {
+                StatusText = "Vor Load Data muss eine gültige Requirements-XML geladen werden.";
+                return;
+            }
 
-            OpenFileDialog openFileDialog = new OpenFileDialog();
-            openFileDialog.Filter = "xml (*.xml)|*.xml";
-            openFileDialog.Multiselect = false;
-            openFileDialog.Title = "Select the data to load";
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "xml (*.xml)|*.xml",
+                Multiselect = false,
+                Title = "Select the data to load"
+            };
 
             if (openFileDialog.ShowDialog() == true)
             {
@@ -1042,6 +1090,8 @@ namespace VIBN_Tools.Application.VM
                             "Datei",
                             "Arbeitsstand geladen",
                             FoundFiles[0]);
+                        WorkspaceDataPath = FoundFiles[0];
+                        ConfigureAutoSaveTimer();
                         WasGenerated = true;
                         StatusText = "Gespeicherter Arbeitsstand wurde geladen.";
                     }
@@ -1059,6 +1109,91 @@ namespace VIBN_Tools.Application.VM
 
 
 
+        }
+
+        private SavedData CreateWorkspaceData(string filePath)
+        {
+            var snapshot = WorkspaceUndoState.Capture(
+                "Arbeitsstand speichern",
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries);
+            var savedData = new SavedData
+            {
+                ContainerList = snapshot.Containers.ToList(),
+                FilteredEntries = snapshot.Filtered.ToList(),
+                UnassignedEntries = snapshot.Unassigned.ToList(),
+                ActivityLog = ActivityLog.Select(entry => new WorkspaceActivityLogEntry
+                {
+                    Timestamp = entry.Timestamp,
+                    Category = entry.Category,
+                    Action = entry.Action,
+                    Details = entry.Details
+                }).ToList(),
+                FilePath = filePath,
+            };
+            savedData.CaptureEntryStates();
+            return savedData;
+        }
+
+        private void SaveWorkspaceData(string filePath)
+        {
+            var savedData = CreateWorkspaceData(filePath);
+            savedData.SetSettings();
+        }
+
+        private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+        {
+            if (eventArgs.PropertyName is not nameof(ContainerGenerationSettings.AutoSaveEnabled) and
+                not nameof(ContainerGenerationSettings.AutoSaveIntervalMinutes))
+            {
+                return;
+            }
+
+            ConfigureAutoSaveTimer();
+            OnPropertyChanged(nameof(AutoSaveStatus));
+        }
+
+        private void ConfigureAutoSaveTimer()
+        {
+            _autoSaveTimer.Stop();
+            _autoSaveTimer.Interval = TimeSpan.FromMinutes(
+                Math.Clamp(Settings.AutoSaveIntervalMinutes, 1, 1440));
+            if (Settings.AutoSaveEnabled && !string.IsNullOrWhiteSpace(WorkspaceDataPath))
+                _autoSaveTimer.Start();
+            OnPropertyChanged(nameof(AutoSaveStatus));
+        }
+
+        private async void AutoSaveTimer_Tick(object? sender, EventArgs eventArgs)
+        {
+            if (_isAutoSaveRunning ||
+                !Settings.AutoSaveEnabled ||
+                string.IsNullOrWhiteSpace(WorkspaceDataPath))
+            {
+                return;
+            }
+
+            _isAutoSaveRunning = true;
+            try
+            {
+                var targetPath = WorkspaceDataPath;
+                var savedData = CreateWorkspaceData(targetPath);
+                await Task.Run(savedData.SetSettings);
+                AddActivity(
+                    "AutoSave",
+                    "Arbeitsstand automatisch gespeichert",
+                    targetPath);
+                StatusText = $"AutoSave abgeschlossen: {Path.GetFileName(targetPath)}";
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex, "AutoSave failed for {FilePath}.", WorkspaceDataPath);
+                StatusText = "AutoSave fehlgeschlagen. Details stehen im Protokoll.";
+            }
+            finally
+            {
+                _isAutoSaveRunning = false;
+            }
         }
 
         private void Apply_ReimportSelection(object parameter)

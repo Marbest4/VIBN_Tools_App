@@ -16,6 +16,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
     public async Task<VisualExecutionResult> ExecuteAsync(
         VisualPlan plan,
         IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
+        IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
         CancellationToken cancellationToken)
     {
         if (Services.Connection?.CanUseFeeFeatures != true)
@@ -28,27 +29,62 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             if (!binding.Success)
                 return new VisualExecutionResult(false, binding.Issue!.Message, [binding.Issue]);
 
-            var selectedContainers = binding.Containers
+            var selectedBindings = binding.Containers
                 .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
+                .ToArray();
+            var createSignalBindings = selectedBindings
+                .Where(item => plan.ShouldCreateSignals(item.PlanNode.Id))
+                .ToArray();
+            var reuseSignalBindings = selectedBindings
+                .Where(item => !plan.ShouldCreateSignals(item.PlanNode.Id))
+                .ToArray();
+
+            FeeInterface? existingInterface = null;
+            if (reuseSignalBindings.Length > 0)
+            {
+                var selectedInterface = plan.ExistingInterfaceSelection;
+                if (selectedInterface is null ||
+                    !runtimeInterfaces.TryGetValue(selectedInterface.InterfaceGuid, out existingInterface))
+                {
+                    return Failure(
+                        "Das ausgewählte Interface für vorhandene Signale ist nicht verfügbar.",
+                        "EXISTING_INTERFACE_MISSING");
+                }
+
+                var signalIssues = ExistingInterfaceSignalBinder.Bind(
+                    reuseSignalBindings,
+                    existingInterface);
+                if (signalIssues.Count > 0)
+                {
+                    return new VisualExecutionResult(
+                        false,
+                        "Vorhandene Signale konnten nicht eindeutig aufgelöst werden.",
+                        signalIssues);
+                }
+            }
+
+            var selectedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
                 .ToArray();
             ContainerToFeeService.LinkAddonContainers(selectedContainers);
-            var sortedContainers = selectedContainers
+            var sortedCreateSignalContainers = createSignalBindings
+                .Select(item => item.RuntimeContainer)
+                .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
+                .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
+                .ToArray();
+            var sortedReuseSignalContainers = reuseSignalBindings
+                .Select(item => item.RuntimeContainer)
                 .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
                 .ToArray();
 
             var timestamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
-            var generatedInterface = new FeeInterface
-            {
-                Name = $"Auto Generated (at {timestamp})",
-            };
             var unknownInterface = new FeeInterface
             {
                 Name = $"Unknown Signals (generated at {timestamp})",
             };
 
-            if (sortedContainers.Length > 0)
+            if (selectedContainers.Length > 0)
             {
                 var basicFrame = new FeeBasicFrame
                 {
@@ -58,11 +94,31 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 await basicFrame.SendAndWaitAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await generatedInterface.CreateInterfaceAsync();
-                await ContainerToFeeService.CreateAllContainersAsync(
-                    sortedContainers,
-                    generatedInterface,
-                    basicFrame);
+                if (sortedCreateSignalContainers.Length > 0)
+                {
+                    var generatedInterface = new FeeInterface
+                    {
+                        Name = $"Auto Generated (at {timestamp})",
+                    };
+                    if (!await generatedInterface.CreateInterfaceAsync())
+                    {
+                        return Failure(
+                            "Das neue FEE-Interface wurde nicht verfügbar; es wurden keine Signale erzeugt.",
+                            "GENERATED_INTERFACE_NOT_AVAILABLE");
+                    }
+                    await ContainerToFeeService.CreateAllContainersAsync(
+                        sortedCreateSignalContainers,
+                        generatedInterface,
+                        basicFrame);
+                }
+
+                if (sortedReuseSignalContainers.Length > 0)
+                {
+                    await ContainerToFeeService.CreateAllContainersAsync(
+                        sortedReuseSignalContainers,
+                        existingInterface!,
+                        basicFrame);
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -80,11 +136,14 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             }
 
             logger.Information(
-                $"Visuelle Generierung abgeschlossen: {sortedContainers.Length} Container, " +
+                $"Visuelle Generierung abgeschlossen: {selectedContainers.Length} Container " +
+                $"({sortedCreateSignalContainers.Length} mit neuen, " +
+                $"{sortedReuseSignalContainers.Length} mit vorhandenen Signalen), " +
                 $"{binding.UnknownSignals.Count} unbekannte Signale.");
             return new VisualExecutionResult(
                 true,
-                $"Generierung abgeschlossen: {sortedContainers.Length} Container wurden verarbeitet.",
+                $"Generierung abgeschlossen: {selectedContainers.Length} Container wurden verarbeitet; " +
+                $"{sortedReuseSignalContainers.Length} davon verwenden vorhandene Signale ohne Überschreiben.",
                 []);
         }
         catch (OperationCanceledException)

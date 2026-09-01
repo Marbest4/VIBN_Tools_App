@@ -3,6 +3,7 @@ using System.Xml.Linq;
 using SixLabors.Fonts;
 using VIBN_Tools.ContainerGeneration.BusinessLogic;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ZuLiData;
+using VIBN_Tools.ContainerGeneration.Models;
 
 namespace VIBN_Tools.ContainerGeneration.SmokeTests;
 
@@ -30,9 +31,43 @@ internal static class Program
         foreach (var file in files)
             await ValidateImportAndGenerationAsync(file);
 
+        ValidateWorkspacePersistenceAndAutoSaveSettings();
+
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
         return 0;
+    }
+
+    private static void ValidateWorkspacePersistenceAndAutoSaveSettings()
+    {
+        var settings = new ContainerGenerationSettings
+        {
+            AutoSaveEnabled = true,
+            AutoSaveIntervalMinutes = 17,
+        };
+        var restoredSettings = new ContainerGenerationSettings();
+        if (!restoredSettings.SetSettings(settings.GetSettings()) ||
+            !restoredSettings.AutoSaveEnabled ||
+            restoredSettings.AutoSaveIntervalMinutes != 17)
+        {
+            throw new InvalidOperationException("Container Generation autosave settings were not restored.");
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"vibn-workspace-{Guid.NewGuid():N}.xml");
+        try
+        {
+            var data = new SavedData { FilePath = path };
+            data.CaptureEntryStates();
+            data.SetSettings();
+            var restored = SavedData.DeserializeProject(path);
+            if (restored.ContainerList.Count != 0 || restored.FilePath != path)
+                throw new InvalidOperationException("Container Generation workspace round-trip failed.");
+        }
+        finally
+        {
+            if (File.Exists(path))
+                File.Delete(path);
+        }
     }
 
     private static async Task ValidateImportAndGenerationAsync(string file)

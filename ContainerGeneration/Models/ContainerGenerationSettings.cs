@@ -28,6 +28,9 @@ namespace VIBN_Tools.ContainerGeneration.Models
         private bool _groupById = false;
         private bool _groupByAddress = false;
 
+        private bool _autoSaveEnabled = true;
+        private int _autoSaveIntervalMinutes = 5;
+
         private string _selectedOption = ComponentOption;
 
         /// <summary>
@@ -170,6 +173,31 @@ namespace VIBN_Tools.ContainerGeneration.Models
         }
 
         /// <summary>
+        /// Gets or sets whether the current workspace is periodically written
+        /// to the file most recently selected with Save Data or Load Data.
+        /// </summary>
+        public bool AutoSaveEnabled
+        {
+            get => _autoSaveEnabled;
+            set
+            {
+                _autoSaveEnabled = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>Gets or sets the autosave interval in complete minutes.</summary>
+        public int AutoSaveIntervalMinutes
+        {
+            get => _autoSaveIntervalMinutes;
+            set
+            {
+                _autoSaveIntervalMinutes = Math.Clamp(value, 1, 1440);
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
         /// Empty constructor.
         /// </summary>
         public ContainerGenerationSettings() { }
@@ -191,7 +219,9 @@ namespace VIBN_Tools.ContainerGeneration.Models
                     new XElement("GroupByType", GroupByType),
                     new XElement("GroupById", GroupById),
                     new XElement("GroupByAddress", GroupByAddress),
-                    new XElement("SelectedOption", SelectedOption)
+                    new XElement("SelectedOption", SelectedOption),
+                    new XElement("AutoSaveEnabled", AutoSaveEnabled),
+                    new XElement("AutoSaveIntervalMinutes", AutoSaveIntervalMinutes)
                 )
             );
             return doc;
@@ -241,6 +271,16 @@ namespace VIBN_Tools.ContainerGeneration.Models
                 // RadioButton
                 value = root.Element("SelectedOption")?.Value;
                 SelectedOption = string.IsNullOrEmpty(value) ? _selectedOption : value;
+
+                value = root.Element("AutoSaveEnabled")?.Value;
+                AutoSaveEnabled = bool.TryParse(value, out var autoSaveEnabled)
+                    ? autoSaveEnabled
+                    : _autoSaveEnabled;
+
+                value = root.Element("AutoSaveIntervalMinutes")?.Value;
+                AutoSaveIntervalMinutes = int.TryParse(value, out var autoSaveIntervalMinutes)
+                    ? autoSaveIntervalMinutes
+                    : _autoSaveIntervalMinutes;
 
                 return true;
             }

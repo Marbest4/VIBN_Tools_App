@@ -142,6 +142,30 @@ public sealed class VisualFeeObject
     public IReadOnlyCollection<string> AssignableTypeNames { get; }
 }
 
+/// <summary>Read-only identity of an existing FEE interface selectable by the user.</summary>
+public sealed class VisualFeeInterface
+{
+    public VisualFeeInterface(
+        string guidString,
+        string name,
+        string providerName,
+        int signalCount)
+    {
+        GuidString = guidString;
+        Name = name;
+        ProviderName = providerName;
+        SignalCount = signalCount;
+    }
+
+    public string GuidString { get; }
+
+    public string Name { get; }
+
+    public string ProviderName { get; }
+
+    public int SignalCount { get; }
+}
+
 /// <summary>A typed drop target declared by the unchanged legacy container.</summary>
 public sealed class VisualSimObjectTarget
 {
@@ -195,6 +219,15 @@ public sealed record VisualCreationRequest(string ContainerId, bool IsRequested)
 public sealed record VisualGenerationSelection(string ContainerId, bool IsSelected);
 
 /// <summary>
+/// Selects whether signals are created for a container. Missing entries mean
+/// <c>true</c> so plans from older versions retain their previous behavior.
+/// </summary>
+public sealed record VisualSignalCreationSelection(string ContainerId, bool CreateSignals);
+
+/// <summary>Persistent reference to the interface used when existing signals are reused.</summary>
+public sealed record VisualExistingInterfaceSelection(string InterfaceGuid, string InterfaceName);
+
+/// <summary>
 /// Complete immutable-facing plan. Mutations are restricted to the plan
 /// service so every change remains validated and undoable.
 /// </summary>
@@ -203,6 +236,7 @@ public sealed class VisualPlan
     private readonly List<VisualAssignment> _assignments;
     private readonly List<VisualCreationRequest> _creationRequests;
     private readonly List<VisualGenerationSelection> _generationSelections;
+    private readonly List<VisualSignalCreationSelection> _signalCreationSelections;
     private readonly List<VisualEdge> _edges;
 
     internal VisualPlan(
@@ -216,6 +250,8 @@ public sealed class VisualPlan
         IReadOnlyList<VisualAssignment>? assignments,
         IReadOnlyList<VisualCreationRequest>? creationRequests,
         IReadOnlyList<VisualGenerationSelection>? generationSelections,
+        IReadOnlyList<VisualSignalCreationSelection>? signalCreationSelections,
+        VisualExistingInterfaceSelection? existingInterfaceSelection,
         IReadOnlyList<VisualIssue> issues)
     {
         SourceXmlPath = sourceXmlPath;
@@ -228,6 +264,8 @@ public sealed class VisualPlan
         _assignments = assignments is null ? [] : [.. assignments];
         _creationRequests = creationRequests is null ? [] : [.. creationRequests];
         _generationSelections = generationSelections is null ? [] : [.. generationSelections];
+        _signalCreationSelections = signalCreationSelections is null ? [] : [.. signalCreationSelections];
+        ExistingInterfaceSelection = existingInterfaceSelection;
         Issues = issues;
     }
 
@@ -251,6 +289,11 @@ public sealed class VisualPlan
 
     public IReadOnlyList<VisualGenerationSelection> GenerationSelections => _generationSelections;
 
+    public IReadOnlyList<VisualSignalCreationSelection> SignalCreationSelections =>
+        _signalCreationSelections;
+
+    public VisualExistingInterfaceSelection? ExistingInterfaceSelection { get; private set; }
+
     public IReadOnlyList<VisualIssue> Issues { get; }
 
     public VisualNode? FindNode(string id) =>
@@ -267,6 +310,11 @@ public sealed class VisualPlan
     public bool IsGenerationSelected(string containerId) =>
         !_generationSelections.Any(selection =>
             !selection.IsSelected &&
+            string.Equals(selection.ContainerId, containerId, StringComparison.Ordinal));
+
+    public bool ShouldCreateSignals(string containerId) =>
+        !_signalCreationSelections.Any(selection =>
+            !selection.CreateSignals &&
             string.Equals(selection.ContainerId, containerId, StringComparison.Ordinal));
 
     internal void ReplaceAssignments(IEnumerable<VisualAssignment> assignments)
@@ -287,6 +335,15 @@ public sealed class VisualPlan
         _generationSelections.Clear();
         _generationSelections.AddRange(selections.Where(selection => !selection.IsSelected));
     }
+
+    internal void ReplaceSignalCreationSelections(IEnumerable<VisualSignalCreationSelection> selections)
+    {
+        _signalCreationSelections.Clear();
+        _signalCreationSelections.AddRange(selections.Where(selection => !selection.CreateSignals));
+    }
+
+    internal void SetExistingInterfaceSelection(VisualExistingInterfaceSelection? selection) =>
+        ExistingInterfaceSelection = selection;
 
     internal void RebuildAssignmentEdges()
     {

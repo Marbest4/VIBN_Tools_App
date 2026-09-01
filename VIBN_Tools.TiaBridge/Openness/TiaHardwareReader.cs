@@ -595,7 +595,8 @@ internal sealed class TiaHardwareReader
 
             return Regex.IsMatch(
                 deviceName,
-                @"^(GSD[-_ ]?(GERÄT|GERAET|DEVICE)|DEVICE|GERÄT|GERAET)[-_ ]*\d*$",
+                @"^(GSD[-_ ]?(GERÄT|GERAET|DEVICE)|DEVICE|GERÄT|GERAET|" +
+                @"BAUGRUPPENTRÄGER|BAUGRUPPENTRAEGER|RACK|RAIL)[-_ ]*\d*$",
                 RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
     }

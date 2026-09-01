@@ -158,7 +158,9 @@ function New-FallbackDevice([string]$Name, [int]$OutputAddress) {
 
 function New-PnPnDevice() {
     $device = [FakeTiaDevice]::new()
-    $device.Name = 'GSD-Gerät_2'
+    # Some TIA projects expose the root station only as a generic rack name.
+    # The reader must still promote the actual device-head name below it.
+    $device.Name = 'Baugruppenträger'
     $device.TypeName = 'GSD device'
     $device.TypeIdentifier = 'GSDML-V2.35-SIEMENS-PNPNIOC-20200924.XML'
 

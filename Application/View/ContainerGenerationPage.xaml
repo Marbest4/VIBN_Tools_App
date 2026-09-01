@@ -833,6 +833,16 @@
             <StackPanel Grid.Row="2" Orientation="Vertical" VerticalAlignment="Bottom">
                 <ux:Button Margin="5,5,5,0" Content="Save Data" DebounceInterval="150" Command="{Binding SaveData}" />
                 <ux:Button Margin="5,0,5,5" Content="Load Data" DebounceInterval="150" Command="{Binding LoadData}" IsEnabled="{Binding CanLoadData}"/>
+                <CheckBox Margin="7,3,5,2"
+                          Content="AutoSave aktiv"
+                          IsChecked="{Binding Settings.AutoSaveEnabled, Mode=TwoWay}" />
+                <StackPanel Margin="7,0,5,2" Orientation="Horizontal">
+                    <TextBlock VerticalAlignment="Center" Text="Intervall (Min.):" />
+                    <TextBox Width="48" Margin="6,0,0,0" HorizontalContentAlignment="Right"
+                             Text="{Binding Settings.AutoSaveIntervalMinutes, Mode=TwoWay, UpdateSourceTrigger=LostFocus}" />
+                </StackPanel>
+                <TextBlock Margin="7,0,5,5" FontSize="10" Foreground="#666666"
+                           Text="{Binding AutoSaveStatus}" TextWrapping="Wrap" />
             </StackPanel>
 
         </Grid>

@@ -13,6 +13,7 @@ public sealed class ContainerToFeeVisualPlanService
     private readonly ContainerXmlVisualPlanParser _parser;
     private readonly VisualPlanSidecarStore _sidecarStore;
     private readonly FeeSimObjectDiscovery _discovery;
+    private readonly FeeInterfaceDiscovery _interfaceDiscovery;
     private readonly LegacyContainerToFeeExecutionAdapter _executor;
     private readonly ExistingSimObjectLinkAdapter _linkExecutor;
     private readonly Stack<PlanState> _undo = new();
@@ -20,7 +21,11 @@ public sealed class ContainerToFeeVisualPlanService
     private IReadOnlyList<VisualFeeObject> _feeObjects = [];
     private IReadOnlyDictionary<string, FeeAbstractObject> _runtimeObjects =
         new Dictionary<string, FeeAbstractObject>(StringComparer.Ordinal);
+    private IReadOnlyList<VisualFeeInterface> _feeInterfaces = [];
+    private IReadOnlyDictionary<string, FeeInterface> _runtimeInterfaces =
+        new Dictionary<string, FeeInterface>(StringComparer.OrdinalIgnoreCase);
     private bool _hasDiscoveredFeeObjects;
+    private bool _hasDiscoveredFeeInterfaces;
 
     public ContainerToFeeVisualPlanService()
         : this(new VisualPlanLogger())
@@ -33,6 +38,7 @@ public sealed class ContainerToFeeVisualPlanService
         _parser = new ContainerXmlVisualPlanParser(logger);
         _sidecarStore = new VisualPlanSidecarStore(logger);
         _discovery = new FeeSimObjectDiscovery(logger);
+        _interfaceDiscovery = new FeeInterfaceDiscovery(logger);
         _executor = new LegacyContainerToFeeExecutionAdapter(logger);
         _linkExecutor = new ExistingSimObjectLinkAdapter(logger);
     }
@@ -46,6 +52,8 @@ public sealed class ContainerToFeeVisualPlanService
     public bool CanRedo => _redo.Count > 0;
 
     public IReadOnlyList<VisualFeeObject> DiscoveredFeeObjects => _feeObjects;
+
+    public IReadOnlyList<VisualFeeInterface> DiscoveredFeeInterfaces => _feeInterfaces;
 
     public async Task<VisualPlanLoadResult> LoadXmlAsync(
         string xmlPath,
@@ -163,6 +171,16 @@ public sealed class ContainerToFeeVisualPlanService
         _runtimeObjects = result.RuntimeObjects;
         _hasDiscoveredFeeObjects = true;
         return _feeObjects;
+    }
+
+    public async Task<IReadOnlyList<VisualFeeInterface>> DiscoverFeeInterfacesAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _interfaceDiscovery.DiscoverAsync(cancellationToken);
+        _feeInterfaces = result.Interfaces;
+        _runtimeInterfaces = result.RuntimeInterfaces;
+        _hasDiscoveredFeeInterfaces = true;
+        return _feeInterfaces;
     }
 
     /// <summary>
@@ -345,6 +363,54 @@ public sealed class ContainerToFeeVisualPlanService
         return changed;
     }
 
+    /// <summary>
+    /// Controls whether one container creates its signals. When disabled the
+    /// executor resolves the signals in the selected existing interface and
+    /// only writes the slot assignments.
+    /// </summary>
+    public bool SetSignalCreation(string containerId, bool createSignals)
+    {
+        var plan = CurrentPlan;
+        var container = plan?.FindNode(containerId);
+        if (plan is null || container?.Kind != VisualNodeKind.Container ||
+            !ContainerMetadataCatalog.TryGet(container.TypeName, out _))
+        {
+            return false;
+        }
+        if (plan.ShouldCreateSignals(containerId) == createSignals)
+            return true;
+
+        var before = Capture(plan);
+        var selections = plan.SignalCreationSelections
+            .Where(item => item.ContainerId != containerId)
+            .ToList();
+        if (!createSignals)
+            selections.Add(new VisualSignalCreationSelection(containerId, false));
+        plan.ReplaceSignalCreationSelections(selections);
+        RecordMutation(before);
+        RaisePlanChanged();
+        return true;
+    }
+
+    public bool SetExistingInterface(VisualFeeInterface? feeInterface)
+    {
+        var plan = CurrentPlan;
+        if (plan is null)
+            return false;
+
+        var next = feeInterface is null
+            ? null
+            : new VisualExistingInterfaceSelection(feeInterface.GuidString, feeInterface.Name);
+        if (Equals(plan.ExistingInterfaceSelection, next))
+            return true;
+
+        var before = Capture(plan);
+        plan.SetExistingInterfaceSelection(next);
+        RecordMutation(before);
+        RaisePlanChanged();
+        return true;
+    }
+
     public VisualValidationResult Validate()
     {
         var plan = CurrentPlan;
@@ -416,6 +482,32 @@ public sealed class ContainerToFeeVisualPlanService
             }
         }
 
+        var reuseSignalContainers = plan.Nodes.Where(node =>
+                node.Kind == VisualNodeKind.Container &&
+                ContainerMetadataCatalog.TryGet(node.TypeName, out _) &&
+                plan.IsGenerationSelected(node.Id) &&
+                !plan.ShouldCreateSignals(node.Id))
+            .ToArray();
+        if (reuseSignalContainers.Length > 0)
+        {
+            var interfaceSelection = plan.ExistingInterfaceSelection;
+            if (interfaceSelection is null)
+            {
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Error,
+                    "EXISTING_INTERFACE_NOT_SELECTED",
+                    "Für Container ohne Signalerzeugung muss ein vorhandenes FEE-Interface ausgewählt werden."));
+            }
+            else if (_hasDiscoveredFeeInterfaces &&
+                     !_runtimeInterfaces.ContainsKey(interfaceSelection.InterfaceGuid))
+            {
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Error,
+                    "EXISTING_INTERFACE_MISSING",
+                    $"Das ausgewählte FEE-Interface '{interfaceSelection.InterfaceName}' ist nicht mehr vorhanden."));
+            }
+        }
+
         if (!plan.Nodes.Any(node =>
                 node.Kind == VisualNodeKind.Container &&
                 ContainerMetadataCatalog.TryGet(node.TypeName, out _) &&
@@ -456,6 +548,15 @@ public sealed class ContainerToFeeVisualPlanService
             AutoAssignMatches();
         }
 
+        if (plan.Nodes.Any(node =>
+                node.Kind == VisualNodeKind.Container &&
+                plan.IsGenerationSelected(node.Id) &&
+                !plan.ShouldCreateSignals(node.Id)) &&
+            !_hasDiscoveredFeeInterfaces)
+        {
+            await DiscoverFeeInterfacesAsync(cancellationToken);
+        }
+
         var validation = Validate();
         if (!validation.IsValid)
         {
@@ -465,7 +566,11 @@ public sealed class ContainerToFeeVisualPlanService
                 validation.Issues);
         }
 
-        return await _executor.ExecuteAsync(plan, _runtimeObjects, cancellationToken);
+        return await _executor.ExecuteAsync(
+            plan,
+            _runtimeObjects,
+            _runtimeInterfaces,
+            cancellationToken);
     }
 
     /// <summary>
@@ -524,7 +629,10 @@ public sealed class ContainerToFeeVisualPlanService
         _redo.Clear();
         _feeObjects = [];
         _runtimeObjects = new Dictionary<string, FeeAbstractObject>(StringComparer.Ordinal);
+        _feeInterfaces = [];
+        _runtimeInterfaces = new Dictionary<string, FeeInterface>(StringComparer.OrdinalIgnoreCase);
         _hasDiscoveredFeeObjects = false;
+        _hasDiscoveredFeeInterfaces = false;
         RaisePlanChanged();
     }
 
@@ -536,6 +644,7 @@ public sealed class ContainerToFeeVisualPlanService
         var assignments = document.Assignments ?? [];
         var requests = document.CreationRequests ?? [];
         var generationSelections = document.GenerationSelections ?? [];
+        var signalCreationSelections = document.SignalCreationSelections ?? [];
 
         foreach (var assignment in assignments)
         {
@@ -593,6 +702,19 @@ public sealed class ContainerToFeeVisualPlanService
                     selection.ContainerId));
             }
         }
+        foreach (var selection in signalCreationSelections)
+        {
+            var node = plan.FindNode(selection.ContainerId);
+            if (node?.Kind != VisualNodeKind.Container ||
+                !ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+            {
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Warning,
+                    "SIDECAR_SIGNAL_TARGET_MISSING",
+                    "Eine nicht mehr vorhandene Signalerzeugungs-Auswahl wurde ignoriert.",
+                    selection.ContainerId));
+            }
+        }
 
         if (issues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
             return issues;
@@ -603,6 +725,10 @@ public sealed class ContainerToFeeVisualPlanService
         plan.ReplaceGenerationSelections(generationSelections.Where(selection =>
             !selection.IsSelected &&
             plan.FindNode(selection.ContainerId)?.Kind == VisualNodeKind.Container));
+        plan.ReplaceSignalCreationSelections(signalCreationSelections.Where(selection =>
+            !selection.CreateSignals &&
+            plan.FindNode(selection.ContainerId)?.Kind == VisualNodeKind.Container));
+        plan.SetExistingInterfaceSelection(document.ExistingInterfaceSelection);
         return issues;
     }
 
@@ -619,6 +745,8 @@ public sealed class ContainerToFeeVisualPlanService
             plan.Assignments,
             plan.CreationRequests,
             plan.GenerationSelections,
+            plan.SignalCreationSelections,
+            plan.ExistingInterfaceSelection,
             plan.Issues.Concat(additionalIssues)
                 .DistinctBy(issue => (issue.Severity, issue.Code, issue.Message, issue.NodeId))
                 .ToArray());
@@ -632,13 +760,20 @@ public sealed class ContainerToFeeVisualPlanService
     }
 
     private static PlanState Capture(VisualPlan plan) =>
-        new([.. plan.Assignments], [.. plan.CreationRequests], [.. plan.GenerationSelections]);
+        new(
+            [.. plan.Assignments],
+            [.. plan.CreationRequests],
+            [.. plan.GenerationSelections],
+            [.. plan.SignalCreationSelections],
+            plan.ExistingInterfaceSelection);
 
     private static void Restore(VisualPlan plan, PlanState state)
     {
         plan.ReplaceAssignments(state.Assignments);
         plan.ReplaceCreationRequests(state.CreationRequests);
         plan.ReplaceGenerationSelections(state.GenerationSelections);
+        plan.ReplaceSignalCreationSelections(state.SignalCreationSelections);
+        plan.SetExistingInterfaceSelection(state.ExistingInterfaceSelection);
     }
 
     private void RaisePlanChanged()
@@ -665,5 +800,7 @@ public sealed class ContainerToFeeVisualPlanService
     private sealed record PlanState(
         IReadOnlyList<VisualAssignment> Assignments,
         IReadOnlyList<VisualCreationRequest> CreationRequests,
-        IReadOnlyList<VisualGenerationSelection> GenerationSelections);
+        IReadOnlyList<VisualGenerationSelection> GenerationSelections,
+        IReadOnlyList<VisualSignalCreationSelection> SignalCreationSelections,
+        VisualExistingInterfaceSelection? ExistingInterfaceSelection);
 }

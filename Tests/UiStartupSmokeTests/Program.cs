@@ -11,6 +11,7 @@ using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.ContainerToFeeVisual;
+using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.Settings;
 using VIBN_Tools.Tia.Contracts;
 
@@ -36,6 +37,7 @@ internal static class Program
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             VerifyInstalledFeeVersionRequiresSdk();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
+            VerifyExistingSignalReuseDoesNotCallUpdate();
             var projectPage = new ViCoPage();
             var projectViewModel = (ViCoPageVM)projectPage.DataContext;
             projectViewModel.Projects.Add(new ProjectLocation("GM1234/05-130", @"C:\Projects\GM1234\05-130"));
@@ -78,6 +80,12 @@ internal static class Program
             var administrationViewModel = (ViCoAdministrationPageVM)administrationPage.DataContext;
             administrationViewModel.RoleEntries.Add(new ViCoUserRole(@"grob\user", "Level9", "test"));
 
+            var containerGenerationPage = new ContainerGenerationPage();
+            var containerGenerationViewModel =
+                (ContainerGenerationPageVM)containerGenerationPage.DataContext;
+            if (containerGenerationViewModel.CanLoadData)
+                throw new InvalidOperationException("Load Data must require a loaded Requirements XML.");
+
             var specialDevicePage = new SpecialDevicePage();
             var specialDeviceViewModel = (SpecialDevicePageVM)specialDevicePage.DataContext;
             specialDeviceViewModel.TiaHardwareRows.Add(new TiaHardwareDeviceRowVM(
@@ -101,6 +109,12 @@ internal static class Program
             visualContainerViewModel.SelectedTreeNode = visualContainerViewModel.TreeRoots
                 .SelectMany(root => root.SelfAndDescendants())
                 .First(node => node.Kind == VisualNodeKind.Container);
+            if (visualContainerViewModel.SelectedTreeNode.StateBackground != "#FFFFC7CE" ||
+                visualContainerViewModel.CreateSignalsForSelection)
+            {
+                throw new InvalidOperationException(
+                    "Visual container status or restored signal-creation selection is incorrect.");
+            }
             var visualContainerPage = new ContainerToFeeVisualPage
             {
                 DataContext = visualContainerViewModel
@@ -276,11 +290,39 @@ internal static class Program
             });
             if (!legacyFirstArea.ApplyMapping(expected) || secondArea.ApplyMapping(expected))
                 throw new InvalidOperationException("Legacy mapping keys must migrate only to the first address area.");
+
+            var rackRow = new TiaHardwareDeviceRowVM(new TiaHardwareModuleInfo
+            {
+                DeviceName = "Baugruppenträger",
+                ProfinetName = "PN-PN-Coupler_X2",
+                ModuleName = "PROFIsafe IN/OUT",
+            });
+            if (!string.Equals(rackRow.Prefix, "PN_PN_Coupler_X2", StringComparison.Ordinal))
+                throw new InvalidOperationException("The physical device name was not used as Special Device prefix.");
         }
         finally
         {
             if (File.Exists(path))
                 File.Delete(path);
+        }
+    }
+
+    private static void VerifyExistingSignalReuseDoesNotCallUpdate()
+    {
+        var existingGuid = Guid.NewGuid();
+        var existingInterface = new FeeInterface { Name = "Existing Interface" };
+        var signal = new FeeInterfaceSignal
+        {
+            Guid = existingGuid,
+            Tag = "PLC_IN_PartPresent",
+            ParentInterface = existingInterface,
+            ReuseExistingWithoutUpdate = true,
+        };
+
+        if (!signal.CreateSignalAsync(existingInterface).GetAwaiter().GetResult() ||
+            signal.Guid != existingGuid)
+        {
+            throw new InvalidOperationException("Existing FEE signals were not reused unchanged.");
         }
     }
 
@@ -337,6 +379,18 @@ internal static class Program
                 throw new InvalidOperationException("Visual creation-request undo failed.");
             if (!service.Redo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
                 throw new InvalidOperationException("Visual creation-request redo failed.");
+            if (!service.SetSignalCreation(container.Id, false) ||
+                service.CurrentPlan.ShouldCreateSignals(container.Id))
+            {
+                throw new InvalidOperationException("Visual signal-creation selection could not be disabled.");
+            }
+            var selectedInterface = new VisualFeeInterface(
+                Guid.NewGuid().ToString("D"),
+                "Existing PLC Interface",
+                "Test Provider",
+                1);
+            if (!service.SetExistingInterface(selectedInterface))
+                throw new InvalidOperationException("Visual existing-interface selection could not be stored.");
 
             service.SaveSidecarAsync().GetAwaiter().GetResult();
             var restored = new ContainerToFeeVisualPlanService();
@@ -345,7 +399,9 @@ internal static class Program
                 .GetResult();
             if (!restoredResult.Success ||
                 restored.CurrentPlan?.IsCreationRequested(container.Id) != true ||
-                restored.CurrentPlan.IsGenerationSelected(container.Id))
+                restored.CurrentPlan.IsGenerationSelected(container.Id) ||
+                restored.CurrentPlan.ShouldCreateSignals(container.Id) ||
+                restored.CurrentPlan.ExistingInterfaceSelection?.InterfaceGuid != selectedInterface.GuidString)
                 throw new InvalidOperationException("Visual sidecar was not restored correctly.");
 
             return restored;

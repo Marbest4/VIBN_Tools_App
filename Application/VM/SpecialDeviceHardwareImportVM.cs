@@ -71,10 +71,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     public TiaHardwareDeviceRowVM(TiaHardwareModuleInfo module)
     {
         Module = module ?? throw new ArgumentNullException(nameof(module));
-        _prefix = CreatePrefix(FirstNotEmpty(
-            module.DeviceName,
-            module.ProfinetName,
-            module.ModuleName));
+        _prefix = CreatePrefix(GetPreferredDeviceName(module));
         _inputByte = module.InputStartByte >= 0 ? module.InputStartByte : null;
         _outputByte = module.OutputStartByte >= 0 ? module.OutputStartByte : null;
         _selectedLogic = SpecialDeviceLogicOption.Suggest(module);
@@ -361,6 +358,27 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
             .ToArray())
             .Trim('_');
         return result.Length == 0 ? "Device" : result;
+    }
+
+    private static string GetPreferredDeviceName(TiaHardwareModuleInfo module)
+    {
+        if (!IsHardwareHierarchyName(module.DeviceName))
+            return FirstNotEmpty(module.DeviceName, module.ProfinetName, module.ModuleName);
+
+        // TIA sometimes exposes the station/rack root as "Baugruppenträger".
+        // The PROFINET station name is the stable physical device identity in
+        // that case and must become the Special Device prefix.
+        return FirstNotEmpty(module.ProfinetName, module.DeviceName, module.ModuleName);
+    }
+
+    private static bool IsHardwareHierarchyName(string value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        return normalized.Length == 0 ||
+               normalized.Contains("Baugruppenträger", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains("Baugruppentraeger", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("Rack", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("Rail", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string FirstNotEmpty(params string[] values) =>

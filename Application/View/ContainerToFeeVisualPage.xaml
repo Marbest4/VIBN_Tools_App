@@ -40,6 +40,7 @@
                     <StackPanel>
                         <TextBlock Text="{Binding TypeName, StringFormat=Typ: {0}}" />
                         <TextBlock Text="{Binding Slot, StringFormat=Slot: {0}}" />
+                        <TextBlock Text="{Binding SimObjectStateDescription}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Setter.Value>
             </Setter>
@@ -47,7 +48,7 @@
 
         <HierarchicalDataTemplate DataType="{x:Type vm:ContainerToFeeVisualTreeNodeVM}"
                                   ItemsSource="{Binding Children}">
-            <Grid Margin="2">
+            <Grid Margin="2" Background="{Binding StateBackground}">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -198,6 +199,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="2*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -225,7 +227,13 @@
                               Visibility="{Binding SelectedContainerSupportsCreation, Converter={StaticResource BooleanToVisibilityConverter}}"
                               ToolTip="Ist diese Option aus und kein Objekt zugeordnet, wird das Ziel übersprungen." />
 
-                    <ListBox Grid.Row="2" ItemsSource="{Binding Targets}"
+                    <CheckBox Grid.Row="2" Margin="0,0,0,8"
+                              Content="Signale erzeugen"
+                              IsChecked="{Binding CreateSignalsForSelection, Mode=TwoWay}"
+                              Visibility="{Binding SelectedContainerSupportsGeneration, Converter={StaticResource BooleanToVisibilityConverter}}"
+                              ToolTip="Aus: Signale im rechts gewählten vorhandenen FEE-Interface suchen und nur neu verknüpfen. Bestehende Signale werden nicht überschrieben." />
+
+                    <ListBox Grid.Row="3" ItemsSource="{Binding Targets}"
                              SelectedItem="{Binding SelectedTarget, Mode=TwoWay}"
                              BorderThickness="0" Background="Transparent"
                              ScrollViewer.CanContentScroll="True"
@@ -295,9 +303,9 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <TextBlock Grid.Row="3" Style="{StaticResource VisualPanelHeader}" Margin="0,8,0,5"
+                    <TextBlock Grid.Row="4" Style="{StaticResource VisualPanelHeader}" Margin="0,8,0,5"
                                Text="Verknüpfungen" />
-                    <DataGrid Grid.Row="4" ItemsSource="{Binding VisibleEdges}" AutoGenerateColumns="False"
+                    <DataGrid Grid.Row="5" ItemsSource="{Binding VisibleEdges}" AutoGenerateColumns="False"
                               IsReadOnly="True" CanUserAddRows="False" CanUserDeleteRows="False"
                               HeadersVisibility="Column" SelectionMode="Single"
                               EnableRowVirtualization="True" EnableColumnVirtualization="True">
@@ -319,6 +327,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="2*" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
@@ -331,7 +341,15 @@
                     <CheckBox Grid.Row="2" Margin="0,0,0,6" Content="Nur kompatible Objekte"
                               IsChecked="{Binding ShowOnlyCompatibleFeeObjects}" />
 
-                    <ListBox Grid.Row="3" ItemsSource="{Binding FeeObjectsView}"
+                    <TextBlock Grid.Row="3" Margin="0,2,0,3" FontSize="11" FontWeight="SemiBold"
+                               Text="Interface für vorhandene Signale" />
+                    <ComboBox Grid.Row="4" MinHeight="28" Margin="0,0,0,7"
+                              ItemsSource="{Binding AvailableFeeInterfaces}"
+                              SelectedItem="{Binding SelectedExistingInterface, Mode=TwoWay}"
+                              DisplayMemberPath="DisplayName"
+                              ToolTip="Wird verwendet, wenn 'Signale erzeugen' für einen Container deaktiviert ist." />
+
+                    <ListBox Grid.Row="5" ItemsSource="{Binding FeeObjectsView}"
                              ScrollViewer.CanContentScroll="True"
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling">
@@ -356,9 +374,9 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <TextBlock Grid.Row="4" Style="{StaticResource VisualPanelHeader}" Margin="0,10,0,5"
+                    <TextBlock Grid.Row="6" Style="{StaticResource VisualPanelHeader}" Margin="0,10,0,5"
                                Text="Validierung" />
-                    <ListBox Grid.Row="5" ItemsSource="{Binding Issues}" ScrollViewer.CanContentScroll="True"
+                    <ListBox Grid.Row="7" ItemsSource="{Binding Issues}" ScrollViewer.CanContentScroll="True"
                              VirtualizingPanel.IsVirtualizing="True">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
