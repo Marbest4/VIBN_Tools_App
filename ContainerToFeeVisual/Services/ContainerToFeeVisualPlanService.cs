@@ -14,6 +14,7 @@ public sealed class ContainerToFeeVisualPlanService
     private readonly VisualPlanSidecarStore _sidecarStore;
     private readonly FeeSimObjectDiscovery _discovery;
     private readonly LegacyContainerToFeeExecutionAdapter _executor;
+    private readonly ExistingSimObjectLinkAdapter _linkExecutor;
     private readonly Stack<PlanState> _undo = new();
     private readonly Stack<PlanState> _redo = new();
     private IReadOnlyList<VisualFeeObject> _feeObjects = [];
@@ -33,6 +34,7 @@ public sealed class ContainerToFeeVisualPlanService
         _sidecarStore = new VisualPlanSidecarStore(logger);
         _discovery = new FeeSimObjectDiscovery(logger);
         _executor = new LegacyContainerToFeeExecutionAdapter(logger);
+        _linkExecutor = new ExistingSimObjectLinkAdapter(logger);
     }
 
     public event EventHandler<VisualPlanChangedEventArgs>? PlanChanged;
@@ -42,6 +44,8 @@ public sealed class ContainerToFeeVisualPlanService
     public bool CanUndo => _undo.Count > 0;
 
     public bool CanRedo => _redo.Count > 0;
+
+    public IReadOnlyList<VisualFeeObject> DiscoveredFeeObjects => _feeObjects;
 
     public async Task<VisualPlanLoadResult> LoadXmlAsync(
         string xmlPath,
@@ -294,6 +298,53 @@ public sealed class ContainerToFeeVisualPlanService
         return true;
     }
 
+    /// <summary>Includes or excludes one complete legacy container generation unit.</summary>
+    public bool SetGenerationSelected(string containerId, bool selected)
+    {
+        var plan = CurrentPlan;
+        var container = plan?.FindNode(containerId);
+        if (plan is null || container?.Kind != VisualNodeKind.Container ||
+            !ContainerMetadataCatalog.TryGet(container.TypeName, out _))
+            return false;
+        if (plan.IsGenerationSelected(containerId) == selected)
+            return true;
+
+        var before = Capture(plan);
+        var selections = plan.GenerationSelections
+            .Where(item => item.ContainerId != containerId)
+            .ToList();
+        if (!selected)
+            selections.Add(new VisualGenerationSelection(containerId, false));
+        plan.ReplaceGenerationSelections(selections);
+        RecordMutation(before);
+        RaisePlanChanged();
+        return true;
+    }
+
+    /// <summary>Selects or deselects all supported legacy container units in one undo step.</summary>
+    public int SetAllGenerationSelected(bool selected)
+    {
+        var plan = CurrentPlan;
+        if (plan is null)
+            return 0;
+
+        var containers = plan.Nodes
+            .Where(node => node.Kind == VisualNodeKind.Container &&
+                           ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+            .ToArray();
+        var changed = containers.Count(node => plan.IsGenerationSelected(node.Id) != selected);
+        if (changed == 0)
+            return 0;
+
+        var before = Capture(plan);
+        plan.ReplaceGenerationSelections(selected
+            ? []
+            : containers.Select(node => new VisualGenerationSelection(node.Id, false)));
+        RecordMutation(before);
+        RaisePlanChanged();
+        return changed;
+    }
+
     public VisualValidationResult Validate()
     {
         var plan = CurrentPlan;
@@ -323,6 +374,17 @@ public sealed class ContainerToFeeVisualPlanService
             var targetAssignments = plan.Assignments
                 .Where(assignment => assignment.TargetId == target.Id)
                 .ToArray();
+            if (targetAssignments.Length == 0 &&
+                plan.IsGenerationSelected(target.ContainerId) &&
+                !plan.IsCreationRequested(target.ContainerId))
+            {
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Error,
+                    "SIM_OBJECT_TARGET_UNASSIGNED",
+                    $"Für '{target.DisplayName}' fehlt ein verfügbares FEE-SimObject. " +
+                    "Ein Objekt zuordnen, die Erzeugung aktivieren oder den Container abwählen.",
+                    target.Id));
+            }
             if (!target.AllowMultiSelect && targetAssignments.Length > 1)
             {
                 issues.Add(new VisualIssue(
@@ -352,6 +414,17 @@ public sealed class ContainerToFeeVisualPlanService
                         target.Id));
                 }
             }
+        }
+
+        if (!plan.Nodes.Any(node =>
+                node.Kind == VisualNodeKind.Container &&
+                ContainerMetadataCatalog.TryGet(node.TypeName, out _) &&
+                plan.IsGenerationSelected(node.Id)))
+        {
+            issues.Add(new VisualIssue(
+                VisualIssueSeverity.Warning,
+                "NO_CONTAINERS_SELECTED",
+                "Es ist kein unterstützter Container zur Generierung ausgewählt."));
         }
 
         foreach (var assignment in plan.Assignments.Where(assignment => plan.FindTarget(assignment.TargetId) is null))
@@ -393,6 +466,31 @@ public sealed class ContainerToFeeVisualPlanService
         }
 
         return await _executor.ExecuteAsync(plan, _runtimeObjects, cancellationToken);
+    }
+
+    /// <summary>
+    /// Reuses existing FEE logic objects and writes only the configured
+    /// SimObject-to-logic slot assignments. No container, signal or interface
+    /// is created in this mode.
+    /// </summary>
+    public async Task<VisualExecutionResult> LinkExistingAssignmentsOnlyAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var plan = CurrentPlan;
+        if (plan is null)
+            return new VisualExecutionResult(false, "Es ist kein visueller Plan geladen.", Validate().Issues);
+
+        if (_runtimeObjects.Count == 0)
+        {
+            await DiscoverFeeObjectsAsync(cancellationToken);
+            AutoAssignMatches();
+        }
+
+        var validation = Validate();
+        if (!validation.IsValid)
+            return new VisualExecutionResult(false, "Der Plan enthält Fehler und wurde nicht verknüpft.", validation.Issues);
+
+        return await _linkExecutor.ExecuteAsync(plan, _runtimeObjects, cancellationToken);
     }
 
     public bool Undo()
@@ -437,6 +535,7 @@ public sealed class ContainerToFeeVisualPlanService
         var issues = new List<VisualIssue>();
         var assignments = document.Assignments ?? [];
         var requests = document.CreationRequests ?? [];
+        var generationSelections = document.GenerationSelections ?? [];
 
         foreach (var assignment in assignments)
         {
@@ -481,6 +580,19 @@ public sealed class ContainerToFeeVisualPlanService
                     request.ContainerId));
             }
         }
+        foreach (var selection in generationSelections)
+        {
+            var node = plan.FindNode(selection.ContainerId);
+            if (node?.Kind != VisualNodeKind.Container ||
+                !ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+            {
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Warning,
+                    "SIDECAR_GENERATION_TARGET_MISSING",
+                    "Eine nicht mehr vorhandene Containerauswahl wurde ignoriert.",
+                    selection.ContainerId));
+            }
+        }
 
         if (issues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
             return issues;
@@ -488,6 +600,9 @@ public sealed class ContainerToFeeVisualPlanService
         plan.ReplaceAssignments(assignments);
         plan.ReplaceCreationRequests(requests.Where(request =>
             request.IsRequested && plan.FindNode(request.ContainerId)?.SupportsCreation == true));
+        plan.ReplaceGenerationSelections(generationSelections.Where(selection =>
+            !selection.IsSelected &&
+            plan.FindNode(selection.ContainerId)?.Kind == VisualNodeKind.Container));
         return issues;
     }
 
@@ -503,6 +618,7 @@ public sealed class ContainerToFeeVisualPlanService
             plan.Targets,
             plan.Assignments,
             plan.CreationRequests,
+            plan.GenerationSelections,
             plan.Issues.Concat(additionalIssues)
                 .DistinctBy(issue => (issue.Severity, issue.Code, issue.Message, issue.NodeId))
                 .ToArray());
@@ -516,12 +632,13 @@ public sealed class ContainerToFeeVisualPlanService
     }
 
     private static PlanState Capture(VisualPlan plan) =>
-        new([.. plan.Assignments], [.. plan.CreationRequests]);
+        new([.. plan.Assignments], [.. plan.CreationRequests], [.. plan.GenerationSelections]);
 
     private static void Restore(VisualPlan plan, PlanState state)
     {
         plan.ReplaceAssignments(state.Assignments);
         plan.ReplaceCreationRequests(state.CreationRequests);
+        plan.ReplaceGenerationSelections(state.GenerationSelections);
     }
 
     private void RaisePlanChanged()
@@ -547,5 +664,6 @@ public sealed class ContainerToFeeVisualPlanService
 
     private sealed record PlanState(
         IReadOnlyList<VisualAssignment> Assignments,
-        IReadOnlyList<VisualCreationRequest> CreationRequests);
+        IReadOnlyList<VisualCreationRequest> CreationRequests,
+        IReadOnlyList<VisualGenerationSelection> GenerationSelections);
 }

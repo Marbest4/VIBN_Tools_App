@@ -77,7 +77,9 @@ Der alte Reiter und `ContainerToFeePageVM` bleiben die Verhaltensreferenz. Neue 
 5. tatsächliche Erzeugung weiterhin über `LegacyContainerToFeeExecutionAdapter` und `ContainerToFeeService` ausführen;
 6. Bindings auf schreibgeschützte Eigenschaften explizit `Mode=OneWay` setzen und den UI-Smoke-Test erweitern.
 
-Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
+`RuntimeVisualPlanBinder` ist der einzige Übergang vom visuellen Plan zu den Legacy-Containern. Vollständige Generierung und `ExistingSimObjectLinkAdapter` dürfen keine zweite Zuordnungslogik aufbauen. Die Auswahlgrenze ist ein vollständiger unterstützter Container: Logik, Signale und Hilfsobjekte bilden im bisherigen Executor eine Abhängigkeitseinheit. Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
+
+Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den aktuellen Objektbestand aus **Model Validation → Update Objects**, genau ein vorhandenes gleichnamiges `FeeLogic` je ausgewähltem `ILogicSimObjectOwner` und validiert alle Arbeitseinträge vor dem ersten Slot-Schreibzugriff.
 
 ### Neues Special Device
 
@@ -99,6 +101,14 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 - Fehler einer optionalen Detailabfrage dürfen nie den gesamten Tabellen-Refresh abbrechen.
 - Beim Binden von WPF-Eigenschaften `OneWay` einsetzen, wenn keine Quelle geschrieben werden darf. Das verhindert die früheren schreibgeschützten `PropertyPathWorker`-Fehler.
 
+`FeeInterface.GetAllInterfacesAsync` darf `GetAllVariablesAsync` nur einmal je Gesamtsnapshot aufrufen und gruppiert anschließend nach `InterfaceGuid`. `LoadSignalsAsync` bleibt als gezielte Einzelobjekt-API bestehen, darf aber nicht wieder in die Schleife des vollständigen Model-Validation-Refreshs eingebaut werden.
+
+## IBN-Remote-Variante erweitern
+
+Die IBN-Variante ist ein separates Produktartefakt. Neue IBN-Funktionen dürfen nur aufgenommen werden, wenn sie für Arbeitsplatzsuche oder RDP notwendig und schreibgeschützt sind. Wiederverwendete Adapter werden im Projekt `VIBN_Tools.IbnRemote.Infrastructure` explizit einzeln verlinkt; eine Referenz auf `VIBN_Tools`, die vollständige Infrastructure oder TIA-/FEE-Projekte ist unzulässig. Das Präprozessorsymbol `IBN_REMOTE_MINIMAL` entfernt aus gemeinsam genutzten Windows-Adaptern nicht benötigte Pfadfunktionen.
+
+Nach einer Änderung immer `scripts/Publish-IbnRemote.ps1` ausführen und prüfen, dass der Zielordner ausschließlich `VIBN_Tools_IBN.exe` enthält. Eine versteckte Hauptnavigation ist kein Ersatz für diese Abhängigkeitsgrenze.
+
 ## Tests
 
 | Test | Ziel |
@@ -107,6 +117,7 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 | `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly und Übergabe an den fachlichen Container-Generator |
 | `Tests/UiStartupSmokeTests` | integrierte WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings, visueller XML-Plan, Sidecar, Undo/Redo und Screenshot-Erzeugung |
 | `Tests/Test-TiaHardwareTraversal.ps1` | Gerätegruppen, Proxy-Deduplizierung, Local Session und exakte PN/PN-Bit-/Bytebereiche |
+| `scripts/Publish-IbnRemote.ps1` plus kurzer Starttest | minimale, selbstständige IBN-Einzeldatei ohne zusätzliche Publish-Dateien |
 | manuelle Abnahme | reale UNC-Pfade, echte Kanbanize-Berechtigung, FEE, Outlook, RDP und TIA Openness |
 
 Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausführen. Für reale Systeme zusätzlich [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md) abarbeiten.

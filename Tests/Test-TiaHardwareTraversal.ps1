@@ -69,6 +69,9 @@ public sealed class FakeTiaDevice
         Name = string.Empty;
         TypeName = "Device";
         TypeIdentifier = string.Empty;
+        IpAddress = string.Empty;
+        PnDeviceName = string.Empty;
+        FirmwareVersion = string.Empty;
         DeviceItems = new List<object>();
         Items = new List<object>();
     }
@@ -76,6 +79,9 @@ public sealed class FakeTiaDevice
     public string Name { get; set; }
     public string TypeName { get; set; }
     public string TypeIdentifier { get; set; }
+    public string IpAddress { get; set; }
+    public string PnDeviceName { get; set; }
+    public string FirmwareVersion { get; set; }
     public List<object> DeviceItems { get; private set; }
     public List<object> Items { get; private set; }
 }
@@ -87,6 +93,9 @@ public sealed class FakeTiaItem
         Name = "Module";
         TypeName = "ModuleType";
         TypeIdentifier = string.Empty;
+        IpAddress = string.Empty;
+        PnDeviceName = string.Empty;
+        FirmwareVersion = string.Empty;
         DeviceItems = new List<object>();
         Addresses = new List<object>();
     }
@@ -94,6 +103,9 @@ public sealed class FakeTiaItem
     public string Name { get; set; }
     public string TypeName { get; set; }
     public string TypeIdentifier { get; set; }
+    public string IpAddress { get; set; }
+    public string PnDeviceName { get; set; }
+    public string FirmwareVersion { get; set; }
     public int PositionNumber { get; set; }
     public List<object> DeviceItems { get; private set; }
     public List<object> Addresses { get; private set; }
@@ -153,6 +165,9 @@ function New-PnPnDevice() {
     $head = [FakeTiaItem]::new()
     $head.Name = 'PN-PN-Coupler_1'
     $head.TypeName = 'PN/PN Coupler X2'
+    $head.IpAddress = '192.168.0.3'
+    $head.PnDeviceName = 'pn-pn-coupler-x2'
+    $head.FirmwareVersion = 'V3.0'
     $head.PositionNumber = 0
 
     $interface = [FakeTiaItem]::new()
@@ -263,6 +278,9 @@ if ($pnPnRows.Count -ne 2) {
 
 $firstSafe = $pnPnRows[0]
 if ($firstSafe.DeviceType -ne 'PN/PN Coupler X2' -or
+    $firstSafe.IpAddress -ne '192.168.0.3' -or
+    $firstSafe.ProfinetName -ne 'pn-pn-coupler-x2' -or
+    $firstSafe.FirmwareVersion -ne 'V3.0' -or
     $firstSafe.Slot -ne 1 -or
     $firstSafe.InputStartByte -ne 62 -or $firstSafe.InputLengthBits -ne 96 -or
     $firstSafe.InputLength -ne 12 -or $firstSafe.InputEndByte -ne 73 -or

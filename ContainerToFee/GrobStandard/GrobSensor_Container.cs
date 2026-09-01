@@ -27,6 +27,16 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 {LogicsStandard.Grob_Sensor.Slots.PartPresent_Ch2, typeof(GrobSensor_Container).GetProperty(nameof(Signal_PartPresent_Ch2)) },
                 {LogicsStandard.Grob_Sensor.Slots.NoPartPresent_Ch1, typeof(GrobSensor_Container).GetProperty(nameof(Signal_NoPartPresent_Ch1)) },
                 {LogicsStandard.Grob_Sensor.Slots.NoPartPresent_Ch2, typeof(GrobSensor_Container).GetProperty(nameof(Signal_NoPartPresent_Ch2)) },
+
+                // Older container exports use the unsuffixed slot once or
+                // repeat it for channel 1/2. Keep both formats compatible with
+                // the current Grob_Sensor logic definition.
+                {"PLC_IN_PartPresent", typeof(GrobSensor_Container).GetProperty(nameof(Signal_PartPresent_Ch1)) },
+                {"PLC_IN_PartPresent1", typeof(GrobSensor_Container).GetProperty(nameof(Signal_PartPresent_Ch1)) },
+                {"PLC_IN_PartPresent2", typeof(GrobSensor_Container).GetProperty(nameof(Signal_PartPresent_Ch2)) },
+                {"PLC_IN_NoPartPresent", typeof(GrobSensor_Container).GetProperty(nameof(Signal_NoPartPresent_Ch1)) },
+                {"PLC_IN_NoPartPresent1", typeof(GrobSensor_Container).GetProperty(nameof(Signal_NoPartPresent_Ch1)) },
+                {"PLC_IN_NoPartPresent2", typeof(GrobSensor_Container).GetProperty(nameof(Signal_NoPartPresent_Ch2)) },
             };
         }
 

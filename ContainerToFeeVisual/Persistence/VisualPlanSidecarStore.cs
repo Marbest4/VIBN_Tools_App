@@ -6,7 +6,7 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 /// <summary>Versioned, portable representation of user-edited visual-plan data.</summary>
 internal sealed class VisualPlanSidecarDocument
 {
-    public const int CurrentSchemaVersion = 1;
+    public const int CurrentSchemaVersion = 2;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
@@ -17,6 +17,8 @@ internal sealed class VisualPlanSidecarDocument
     public List<VisualAssignment> Assignments { get; init; } = [];
 
     public List<VisualCreationRequest> CreationRequests { get; init; } = [];
+
+    public List<VisualGenerationSelection> GenerationSelections { get; init; } = [];
 }
 
 internal sealed record VisualSidecarReadResult(
@@ -55,6 +57,7 @@ internal sealed class VisualPlanSidecarStore(IVisualPlanLogger logger)
             SourceFingerprint = plan.SourceFingerprint,
             Assignments = [.. plan.Assignments],
             CreationRequests = [.. plan.CreationRequests],
+            GenerationSelections = [.. plan.GenerationSelections],
         };
 
         var temporaryPath = Path.Combine(
@@ -124,11 +127,11 @@ internal sealed class VisualPlanSidecarStore(IVisualPlanLogger logger)
                 cancellationToken);
             if (document is null)
                 return Failure("Der gespeicherte Plan ist leer oder ungültig.");
-            if (document.SchemaVersion != VisualPlanSidecarDocument.CurrentSchemaVersion)
+            if (document.SchemaVersion is < 1 or > VisualPlanSidecarDocument.CurrentSchemaVersion)
             {
                 return Failure(
                     $"Sidecar-Schema {document.SchemaVersion} wird nicht unterstützt " +
-                    $"(erwartet: {VisualPlanSidecarDocument.CurrentSchemaVersion}).");
+                    $"(unterstützt: 1 bis {VisualPlanSidecarDocument.CurrentSchemaVersion}).");
             }
             if (string.IsNullOrWhiteSpace(document.SourceXmlPath) ||
                 string.IsNullOrWhiteSpace(document.SourceFingerprint))

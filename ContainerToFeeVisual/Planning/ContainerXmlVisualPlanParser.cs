@@ -332,6 +332,7 @@ internal sealed class ContainerXmlVisualPlanParser(IVisualPlanLogger logger)
             new ReadOnlyCollection<VisualSimObjectTarget>(targets),
             assignments: null,
             creationRequests: null,
+            generationSelections: null,
             new ReadOnlyCollection<VisualIssue>(issues));
     }
 
@@ -389,10 +390,12 @@ internal sealed class ContainerXmlVisualPlanParser(IVisualPlanLogger logger)
 
         if (descriptor is not null && !descriptor.Slots.Contains(slot))
         {
+            var expectedSlots = string.Join(", ", descriptor.Slots.OrderBy(value => value, StringComparer.Ordinal));
             issues.Add(new VisualIssue(
                 VisualIssueSeverity.Error,
                 "SIGNAL_SLOT_UNKNOWN",
-                $"Slot '{slot}' ist für Container-Typ '{descriptor.RuntimeType.Name}' nicht definiert.",
+                $"Slot '{slot}' ist für Container-Typ '{descriptor.RuntimeType.Name}' nicht definiert. " +
+                $"Erwartet wird einer dieser Slots: {expectedSlots}.",
                 signalId));
         }
     }

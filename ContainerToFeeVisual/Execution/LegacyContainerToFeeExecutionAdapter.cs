@@ -24,80 +24,16 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var (containers, unknownSignals) =
-                ContainerToFeeService.ReadInContainerXmlData(plan.SourceXmlPath);
+            var binding = RuntimeVisualPlanBinder.Bind(plan, runtimeObjects);
+            if (!binding.Success)
+                return new VisualExecutionResult(false, binding.Issue!.Message, [binding.Issue]);
 
-            var containerNodes = plan.Nodes
-                .Where(node => node.Kind == VisualNodeKind.Container &&
-                               ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+            var selectedContainers = binding.Containers
+                .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
+                .Select(item => item.RuntimeContainer)
                 .ToArray();
-            if (containerNodes.Length != containers.Count)
-            {
-                return Failure(
-                    "Der visuelle Plan und der bestehende Container-Parser liefern unterschiedliche " +
-                    "Containerzahlen. Die Generierung wurde sicherheitshalber nicht gestartet.",
-                    "LEGACY_CONTAINER_COUNT_MISMATCH");
-            }
-
-            foreach (var runtimeObject in runtimeObjects.Values.OfType<IAssignableSimObject>())
-                runtimeObject.AssignedContainer = null!;
-
-            for (var index = 0; index < containers.Count; index++)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var container = containers[index];
-                var node = containerNodes[index];
-
-                if (container is ICreatableContainer creatable)
-                    creatable.IsCreationRequested = plan.IsCreationRequested(node.Id);
-
-                if (container is not ISimObjectFindOrSelect selectable)
-                    continue;
-
-                var runtimeTargets = selectable.GetSimObjectTargets().ToArray();
-                var visualTargets = plan.Targets
-                    .Where(target => target.ContainerId == node.Id)
-                    .ToArray();
-                if (runtimeTargets.Length != visualTargets.Length)
-                {
-                    return Failure(
-                        $"Die Zielstruktur von Container '{node.Name}' hat sich gegenüber dem Plan geändert.",
-                        "LEGACY_TARGET_COUNT_MISMATCH",
-                        node.Id);
-                }
-
-                for (var targetIndex = 0; targetIndex < runtimeTargets.Length; targetIndex++)
-                {
-                    var runtimeTarget = runtimeTargets[targetIndex];
-                    var visualTarget = visualTargets[targetIndex];
-                    var assignedRuntimeObjects = new List<FeeAbstractObject>();
-                    foreach (var assignment in plan.Assignments.Where(item => item.TargetId == visualTarget.Id))
-                    {
-                        if (!runtimeObjects.TryGetValue(assignment.FeeObjectId, out var runtimeObject))
-                        {
-                            return Failure(
-                                $"FEE-Objekt '{assignment.FeeObjectName}' ist nicht mehr vorhanden.",
-                                "ASSIGNED_FEE_OBJECT_MISSING",
-                                visualTarget.Id);
-                        }
-                        if (!runtimeTarget.AllowedType.IsInstanceOfType(runtimeObject))
-                        {
-                            return Failure(
-                                $"FEE-Objekt '{assignment.FeeObjectName}' ist für '{visualTarget.DisplayName}' nicht kompatibel.",
-                                "ASSIGNED_FEE_OBJECT_INCOMPATIBLE",
-                                visualTarget.Id);
-                        }
-                        assignedRuntimeObjects.Add(runtimeObject);
-                    }
-
-                    runtimeTarget.AssignObjects(assignedRuntimeObjects);
-                    foreach (var assignable in assignedRuntimeObjects.OfType<IAssignableSimObject>())
-                        assignable.AssignedContainer = selectable;
-                }
-            }
-
-            ContainerToFeeService.LinkAddonContainers(containers);
-            var sortedContainers = containers
+            ContainerToFeeService.LinkAddonContainers(selectedContainers);
+            var sortedContainers = selectedContainers
                 .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
                 .ToArray();
@@ -130,11 +66,11 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             }
 
             cancellationToken.ThrowIfCancellationRequested();
-            if (unknownSignals.Count > 0)
+            if (binding.UnknownSignals.Count > 0)
             {
                 await unknownInterface.CreateInterfaceAsync();
                 await Parallel.ForEachAsync(
-                    unknownSignals,
+                    binding.UnknownSignals,
                     cancellationToken,
                     async (signal, token) =>
                     {
@@ -145,7 +81,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
 
             logger.Information(
                 $"Visuelle Generierung abgeschlossen: {sortedContainers.Length} Container, " +
-                $"{unknownSignals.Count} unbekannte Signale.");
+                $"{binding.UnknownSignals.Count} unbekannte Signale.");
             return new VisualExecutionResult(
                 true,
                 $"Generierung abgeschlossen: {sortedContainers.Length} Container wurden verarbeitet.",

@@ -119,6 +119,12 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
             List<FeeInterface> interfaceList = new List<FeeInterface>();
 
             var interfaceGuids = await Services.ApiInstance.Interface.GetAllInterfacesAsync();
+            // GetAllVariablesAsync returns the complete interface-variable
+            // snapshot. The former implementation called it again for every
+            // single interface, which made Update Objects scale roughly with
+            // interface count × model size.
+            var allVariables = await Services.ApiInstance.Interface.GetAllVariablesAsync();
+            var variablesByInterface = allVariables.ToLookup(variable => variable.InterfaceGuid);
 
             foreach (var guid in interfaceGuids)
             {
@@ -134,7 +140,20 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
                     Port = properties.FirstOrDefault(x => x.PropertyName == "Port")?.PropertyValue,
                 };
 
-                await tempInterface.LoadSignalsAsync();
+                tempInterface.Signals = variablesByInterface[tempInterface.Guid]
+                    .Select(signal => new FeeInterfaceSignal
+                    {
+                        Guid = signal.VariableGuid,
+                        Tag = signal.Tag,
+                        Address = signal.Address,
+                        Path = signal.Path,
+                        IOType = signal.Type,
+                        Comment = signal.Comment,
+                        Usage = signal.Usage,
+                        References = signal.References,
+                        ParentInterface = tempInterface
+                    })
+                    .ToList();
 
                 interfaceList.Add(tempInterface);
             }

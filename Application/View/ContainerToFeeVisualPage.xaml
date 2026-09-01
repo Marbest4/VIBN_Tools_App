@@ -5,6 +5,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:behaviors="clr-namespace:VIBN_Tools.Application.Behaviors"
              xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
+             xmlns:visual="clr-namespace:VIBN_Tools.ContainerToFeeVisual"
              mc:Ignorable="d"
              d:DesignHeight="900"
              d:DesignWidth="1700">
@@ -48,11 +49,17 @@
                                   ItemsSource="{Binding Children}">
             <Grid Margin="2">
                 <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
-                <Border Grid.Column="1" Margin="8,0,0,0" Padding="4,1" CornerRadius="3"
+                <CheckBox Margin="0,0,6,0"
+                          VerticalAlignment="Center"
+                          IsChecked="{Binding IsGenerationSelected, Mode=TwoWay}"
+                          Visibility="{Binding CanSelectGeneration, Converter={StaticResource BooleanToVisibilityConverter}}"
+                          ToolTip="Diesen vollständigen Container bei Generierung bzw. Link-only berücksichtigen" />
+                <TextBlock Grid.Column="1" Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
+                <Border Grid.Column="2" Margin="8,0,0,0" Padding="4,1" CornerRadius="3"
                         Background="#1A000000">
                     <TextBlock Text="{Binding Kind}" FontSize="10" Foreground="#666666" />
                 </Border>
@@ -102,7 +109,7 @@
                             Command="{Binding SavePlanCommand}" />
                 </StackPanel>
 
-                <StackPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Orientation="Horizontal">
+                <WrapPanel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2">
                     <Button Style="{StaticResource VisualToolbarButton}" Content="Rückgängig"
                             Command="{Binding UndoCommand}" />
                     <Button Style="{StaticResource VisualToolbarButton}" Content="Wiederholen"
@@ -117,6 +124,11 @@
                     <Button Style="{StaticResource VisualToolbarButton}" Content="Abbrechen"
                             Command="{Binding CancelCommand}" />
 
+                    <Button Style="{StaticResource VisualToolbarButton}" Content="Alle selektieren"
+                            Command="{Binding SelectAllCommand}" />
+                    <Button Style="{StaticResource VisualToolbarButton}" Content="Alle deselektieren"
+                            Command="{Binding DeselectAllCommand}" />
+
                     <Separator Margin="8,0" />
 
                     <Button MinWidth="150" MinHeight="32" Padding="12,4"
@@ -124,7 +136,12 @@
                             Command="{Binding StartGenerationCommand}"
                             ToolTip="{Binding FeeUnavailableReason}"
                             ToolTipService.ShowOnDisabled="True" />
-                </StackPanel>
+                    <Button MinWidth="205" MinHeight="32" Margin="6,0,0,0" Padding="12,4"
+                            Content="Nur SimObjects verknüpfen"
+                            Command="{Binding LinkOnlyCommand}"
+                            ToolTip="Erzeugt keine Container neu. Benötigt bestehende gleichnamige LogicObjects aus Model Validation > Update Objects."
+                            ToolTipService.ShowOnDisabled="True" />
+                </WrapPanel>
             </Grid>
         </Border>
 
@@ -224,12 +241,13 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="9" BorderBrush="#C7D7EA" BorderThickness="1" CornerRadius="4"
-                                        Background="#F7FAFE"
+                                        Background="{Binding StateBackground}"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.IsDropTarget="True"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.DropTarget="{Binding}"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.DropCommand="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}">
                                     <Grid>
                                         <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
@@ -245,7 +263,9 @@
                                         </Grid>
                                         <TextBlock Grid.Row="1" Margin="0,2,0,5" Foreground="#666666" FontSize="11"
                                                    Text="{Binding AllowedTypeName, StringFormat=Erlaubter Typ: {0}}" />
-                                        <ItemsControl Grid.Row="2" ItemsSource="{Binding Assignments}">
+                                        <TextBlock Grid.Row="2" Margin="0,0,0,5" FontSize="11" FontWeight="SemiBold"
+                                                   Text="{Binding AssignmentState}" />
+                                        <ItemsControl Grid.Row="3" ItemsSource="{Binding Assignments}">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
                                                     <Border Margin="0,2" Padding="7,4" Background="White"
@@ -324,10 +344,12 @@
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Border Padding="7,5" Margin="1" CornerRadius="3"
+                                        Background="{Binding StateBackground}"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.IsDragSource="True">
                                     <StackPanel>
                                         <TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" />
                                         <TextBlock Text="{Binding FeeType}" Foreground="#777777" FontSize="10" />
+                                        <TextBlock Text="{Binding AssignmentText}" Foreground="#356A35" FontSize="10" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
                             </DataTemplate>
@@ -340,7 +362,20 @@
                              VirtualizingPanel.IsVirtualizing="True">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Border Margin="0,2" Padding="6" CornerRadius="3" Background="#FFF4CE">
+                                <Border Margin="0,2" Padding="6" CornerRadius="3">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Background" Value="#FFE8F1FA" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Severity}" Value="{x:Static visual:VisualIssueSeverity.Warning}">
+                                                    <Setter Property="Background" Value="#FFFFF2CC" />
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Severity}" Value="{x:Static visual:VisualIssueSeverity.Error}">
+                                                    <Setter Property="Background" Value="#FFFFC7CE" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
                                     <StackPanel>
                                         <TextBlock FontWeight="SemiBold" Text="{Binding Severity}" />
                                         <TextBlock Text="{Binding Message}" TextWrapping="Wrap" />
@@ -365,6 +400,7 @@
             <TextBlock VerticalAlignment="Center" Text="{Binding StatusText}" TextTrimming="CharacterEllipsis" />
             <StackPanel Grid.Column="1" Orientation="Horizontal">
                 <TextBlock Margin="12,0,0,0" Text="{Binding ContainerCount, StringFormat=Container: {0}}" />
+                <TextBlock Margin="12,0,0,0" Text="{Binding SelectedContainerCount, StringFormat=Selektiert: {0}}" />
                 <TextBlock Margin="12,0,0,0" Text="{Binding ObjectCount, StringFormat=Objekte: {0}}" />
                 <TextBlock Margin="12,0,0,0" Text="{Binding EdgeCount, StringFormat=Links: {0}}" />
                 <TextBlock Margin="12,0,0,0" Text="{Binding AssignmentCount, StringFormat=Zuordnungen: {0}}" />

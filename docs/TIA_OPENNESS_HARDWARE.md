@@ -13,9 +13,9 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 3. Pro DeviceItem wird `AddressComposition` gelesen.
 4. `Address.IoType`, `StartAddress` und die rohe Bitlänge bilden getrennte E-/A-Bereiche. Die Anzeige verwendet `ceil(bits / 8)` Bytes; Bereiche verschiedener Module werden nie zusammengeführt.
 5. `PositionNumber` wird abhängig von der Hierarchiestufe als Slot oder Subslot interpretiert.
-6. `NetworkInterface.Nodes` liefert `Address` und `PnDeviceName`; `IoControllers`/`IoConnectors` liefern die Rolle.
+6. `NetworkInterface.Nodes` liefert `Address` und `PnDeviceName`; `IoControllers`/`IoConnectors` liefern die Rolle. Je nach TIA-Generation wird der Feature-Typ aus der passenden bereits geladenen `Siemens.Engineering.*`-Assembly aufgelöst. Direkte dynamische Attribute am Geräte-/Interfaceknoten dienen als Fallback.
 7. `GsdDevice`/`GsdDeviceItem` liefern GSD-Name und -Typ, soweit das jeweilige Objekt den Dienst anbietet.
-8. Dynamische Attribute ergänzen Typname, Hersteller, Bestellnummer und Firmware.
+8. Dynamische Attribute ergänzen Typname, Hersteller, Bestellnummer und Firmware (`FirmwareVersion`, `Firmware` oder `Version`). Geräte-/Netzwerkmetadaten werden bis zum adressführenden Blattmodul vererbt.
 9. Adresslose Hierarchieknoten liefern Metadaten an ihre Kinder, erzeugen aber keine eigene Tabellenzeile.
 10. Eine semantische Identität aus Gerät, Modultyp, Slot/Subslot und exaktem E-/A-Satz verhindert doppelte Proxyzeilen, ohne zwei reale PROFIsafe-Module zusammenzufassen.
 
@@ -93,7 +93,7 @@ Für einen PN/PN-Coupler ist mindestens zu prüfen:
 
 Zusätzlich sind ein Siemens-Standardmodul, ein GSDML-Gerät, ein Gerät ohne Prozessabbild und ein großes Projekt zu testen. Die Bridge- und UI-Logs müssen bei nicht unterstützten Attributen weiterlaufen und dürfen das TIA-Projekt nicht speichern oder verändern.
 
-Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback, doppelte Proxyobjekte, eine Multiuser-Local-Session und exakt die beiden oben genannten PN/PN-Adresszeilen. Er ersetzt nicht die Live-Abnahme mit Siemens Openness.
+Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback, doppelte Proxyobjekte, eine Multiuser-Local-Session, Vererbung von IP/PROFINET-Name/Firmware und exakt die beiden oben genannten PN/PN-Adresszeilen. Er ersetzt nicht die Live-Abnahme mit Siemens Openness.
 
 ## Offizielle API-Grundlage
 

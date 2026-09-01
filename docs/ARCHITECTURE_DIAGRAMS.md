@@ -14,6 +14,10 @@ flowchart LR
     INFRA --> WIN[Windows: RDP, Dateisystem, Sitzungen]
     TC -->|Named Pipe / JSON| TB[VIBN_Tools.TiaBridge net48]
     TB --> TIA[Siemens.Engineering / TIA Portal]
+    IBN[IBN Remote WPF] --> CORE
+    IBN --> IBNINFRA[IBN Read/RDP Infrastructure]
+    IBNINFRA --> KB
+    IBNINFRA --> WIN
 ```
 
 ## Projektabhängigkeiten
@@ -26,6 +30,9 @@ flowchart TD
     INFRA --> CORE
     CLIENT --> CONTRACTS[VIBN_Tools.Tia.Contracts netstandard2.0]
     BRIDGE[VIBN_Tools.TiaBridge net48] --> CONTRACTS
+    IBNAPP[VIBN_Tools.IbnRemote net8.0-windows] --> CORE
+    IBNAPP --> IBNINFRA[VIBN_Tools.IbnRemote.Infrastructure net8.0]
+    IBNINFRA --> CORE
 ```
 
 ## Container-Generator-Klassen
@@ -85,12 +92,16 @@ flowchart LR
     VM <--> SIDE[JSON-Sidecar mit SHA-256]
     FEE[FEE SimObjects] --> DISC[Discovery Adapter]
     DISC --> VM
-    PLAN --> EXEC[Legacy Execution Adapter]
+    PLAN --> BIND[gemeinsamer Runtime Visual Plan Binder]
+    BIND --> EXEC[Legacy Generation Adapter]
+    BIND --> LINK[Existing SimObject Link Adapter]
     EXEC --> LEGACY[bestehende Containerklassen und ContainerToFeeService]
+    LINK --> FEELOGIC[vorhandene FeeLogic aus Model Validation]
     LEGACY --> FEE
+    FEELOGIC --> FEE
 ```
 
-Der Adapter überträgt nur typgeprüfte SimObject-Zuordnungen und Erzeugungswünsche. Signal-/Slot-Kanten sind sichtbar, bleiben aber Eigentum des bestehenden Executors.
+Der gemeinsame Binder überträgt nur typgeprüfte SimObject-Zuordnungen, Erzeugungswünsche und die Auswahl vollständiger Container. Signal-/Slot-Kanten sind sichtbar, bleiben aber Eigentum des bestehenden Executors. Link-only erzeugt keine neuen Modellobjekte.
 
 ## ViCo/Kanbanize-Datenfluss
 

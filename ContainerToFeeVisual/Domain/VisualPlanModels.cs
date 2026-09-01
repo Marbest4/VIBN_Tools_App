@@ -188,6 +188,13 @@ public sealed record VisualAssignment(
 public sealed record VisualCreationRequest(string ContainerId, bool IsRequested);
 
 /// <summary>
+/// Explicit per-container generation state. Entries are persisted only for
+/// deselected containers so plans created before this feature continue to
+/// generate every supported container.
+/// </summary>
+public sealed record VisualGenerationSelection(string ContainerId, bool IsSelected);
+
+/// <summary>
 /// Complete immutable-facing plan. Mutations are restricted to the plan
 /// service so every change remains validated and undoable.
 /// </summary>
@@ -195,6 +202,7 @@ public sealed class VisualPlan
 {
     private readonly List<VisualAssignment> _assignments;
     private readonly List<VisualCreationRequest> _creationRequests;
+    private readonly List<VisualGenerationSelection> _generationSelections;
     private readonly List<VisualEdge> _edges;
 
     internal VisualPlan(
@@ -207,6 +215,7 @@ public sealed class VisualPlan
         IReadOnlyList<VisualSimObjectTarget> targets,
         IReadOnlyList<VisualAssignment>? assignments,
         IReadOnlyList<VisualCreationRequest>? creationRequests,
+        IReadOnlyList<VisualGenerationSelection>? generationSelections,
         IReadOnlyList<VisualIssue> issues)
     {
         SourceXmlPath = sourceXmlPath;
@@ -218,6 +227,7 @@ public sealed class VisualPlan
         Targets = targets;
         _assignments = assignments is null ? [] : [.. assignments];
         _creationRequests = creationRequests is null ? [] : [.. creationRequests];
+        _generationSelections = generationSelections is null ? [] : [.. generationSelections];
         Issues = issues;
     }
 
@@ -239,6 +249,8 @@ public sealed class VisualPlan
 
     public IReadOnlyList<VisualCreationRequest> CreationRequests => _creationRequests;
 
+    public IReadOnlyList<VisualGenerationSelection> GenerationSelections => _generationSelections;
+
     public IReadOnlyList<VisualIssue> Issues { get; }
 
     public VisualNode? FindNode(string id) =>
@@ -252,6 +264,11 @@ public sealed class VisualPlan
             request.IsRequested &&
             string.Equals(request.ContainerId, containerId, StringComparison.Ordinal));
 
+    public bool IsGenerationSelected(string containerId) =>
+        !_generationSelections.Any(selection =>
+            !selection.IsSelected &&
+            string.Equals(selection.ContainerId, containerId, StringComparison.Ordinal));
+
     internal void ReplaceAssignments(IEnumerable<VisualAssignment> assignments)
     {
         _assignments.Clear();
@@ -263,6 +280,12 @@ public sealed class VisualPlan
     {
         _creationRequests.Clear();
         _creationRequests.AddRange(requests.Where(request => request.IsRequested));
+    }
+
+    internal void ReplaceGenerationSelections(IEnumerable<VisualGenerationSelection> selections)
+    {
+        _generationSelections.Clear();
+        _generationSelections.AddRange(selections.Where(selection => !selection.IsSelected));
     }
 
     internal void RebuildAssignmentEdges()

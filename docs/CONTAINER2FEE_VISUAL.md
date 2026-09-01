@@ -14,9 +14,10 @@ Die visuelle Seite kann eine Container-XML bereits ohne FEE-Verbindung lesen und
 2. Links Container, Logiken, Signale, technische Hilfsobjekte und mögliche SimObject-Ziele prüfen.
 3. Nach erfolgreicher FEE-Verbindung **FEE aktualisieren** drücken. Noch freie Ziele werden wie im bisherigen Ablauf anhand von identischem Komponentennamen und kompatiblem Typ automatisch zugeordnet.
 4. Ein FEE-SimObject von rechts auf ein kompatibles Ziel in der Mitte ziehen. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt. Dasselbe FEE-Objekt kann nie gleichzeitig mehreren Containern gehören.
-5. Optional **Fehlende SimObjects bei der Generierung erzeugen** aktivieren. Ohne Zuordnung und ohne diese Option wird das betreffende SimObject übersprungen.
-6. Änderungen mit **Rückgängig/Wiederholen** korrigieren und über **Plan speichern** sichern.
-7. Validierung prüfen und erst danach **Start Generation** drücken.
+5. In der linken Struktur pro vollständigem Container festlegen, ob er verarbeitet wird. **Alle selektieren** und **Alle deselektieren** ändern diese Auswahl gemeinsam. Kindobjekte erben die Containerentscheidung, weil Logik, Signale und technische Hilfsobjekte keine unabhängig ausführbaren Legacy-Einheiten sind.
+6. Optional **Fehlende SimObjects bei der Generierung erzeugen** aktivieren. Ein ausgewählter Container mit SimObjectTarget benötigt entweder eine grüne Zuordnung oder diese Erzeugungsoption; andernfalls bleibt das Ziel rot und die Validierung erklärt den Fehler.
+7. Änderungen mit **Rückgängig/Wiederholen** korrigieren und über **Plan speichern** sichern.
+8. Für eine vollständige Neuerzeugung **Start Generation** drücken. Wenn Container/Logiken bereits existieren, kann stattdessen **Nur SimObjects verknüpfen** verwendet werden.
 
 Technische Objekte sind im Baum standardmäßig eingeklappt. Die Suchfelder filtern Plan beziehungsweise FEE-Objekte. **Nur kompatible Objekte** bezieht sich auf das aktuell ausgewählte Ziel.
 
@@ -28,7 +29,7 @@ Benutzeränderungen werden nicht in die Container-XML geschrieben. Standardmäß
 Container.xml.container2fee.visual.json
 ```
 
-Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen und Erzeugungswünsche. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
+Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, Erzeugungswünsche und abgewählte Container. Schema 2 liest weiterhin Sidecars aus Schema 1; dort nicht vorhandene Containerselektionen gelten kompatibel als ausgewählt. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
 
 ## Drag-and-drop-Regeln
 
@@ -38,6 +39,15 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen und
 - Signal-/Slot- und Parent-/Child-Verknüpfungen werden sichtbar gemacht, aber nicht frei umverdrahtet. Diese Grenze verhindert einen Plan, den der bestehende Generator nicht identisch ausführen könnte.
 - Das Entfernen einer Zuordnung löscht kein Objekt in FEE.
 
+## Statusfarben und Link-only
+
+- Ein SimObjectTarget ist **grün**, wenn ein aktuell vorhandenes, typkompatibles FEE-SimObject zugeordnet ist.
+- Es ist **gelb**, wenn das fehlende SimObject bei der vollständigen Generierung erzeugt werden soll.
+- Es ist **rot**, wenn weder Zuordnung noch Erzeugungswunsch vorliegt. Die Validierung nennt Container, Ziel und mögliche Korrekturen.
+- Ein Eintrag unter **Verfügbare FEE-SimObjects** wird grün, sobald er zugeordnet ist, und nennt das Ziel.
+
+**Nur SimObjects verknüpfen** erzeugt keine BasicFrames, Interfaces, Signale, Logiken oder Container. Der Befehl verwendet die in **Model Validation → Update Objects** eingelesenen `FeeLogic`-Objekte. Für jeden ausgewählten Container muss genau ein vorhandenes LogicObject mit identischem Komponentennamen existieren. Fehlende oder doppelte Logiknamen sowie nicht mehr verfügbare SimObjects brechen vor dem ersten Schreibzugriff mit einer präzisen Fehlermeldung ab. Der Vorgang ist auf `ILogicSimObjectOwner` begrenzt; reine SimObject-Container besitzen keine bestehende Logik, an die in diesem Modus verknüpft werden könnte.
+
 ## Codeaufteilung
 
 | Bereich | Verantwortung |
@@ -46,11 +56,13 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen und
 | `ContainerToFeeVisual/Planning` | sichere XML-Auswertung und Metadaten der bestehenden Containerklassen |
 | `ContainerToFeeVisual/Persistence` | versionierter JSON-Sidecar mit Fingerabdruckprüfung |
 | `ContainerToFeeVisual/Discovery` | FEE-Objekterkennung ohne SDK-Objekte an die View weiterzugeben |
-| `ContainerToFeeVisual/Execution` | Übertragung des Plans auf frische Legacy-Container und Aufruf des bisherigen Executors |
+| `ContainerToFeeVisual/Execution` | gemeinsame Runtime-Bindung, vollständige Legacy-Generierung und getrennte Link-only-Ausführung |
 | `ContainerToFeeVisual/Services` | Orchestrierung, Validierung und Undo/Redo |
 | `Application/VM/ContainerToFeeVisualPageVM.cs` | UI-Zustand, Commands, Filter und Status |
 | `Application/View/ContainerToFeeVisualPage.xaml` | dreigeteilte WPF-Ansicht und Drag-and-drop-Ziele |
 
 ## Bewusste technische Grenzen
 
-Der bestehende FEE-Executor unterstützt keinen transaktionalen Rollback. Wird eine laufende SDK-Schreiboperation abgebrochen, kann bereits erzeugter Inhalt bestehen bleiben und muss in FEE geprüft werden. Der neue Reiter validiert daher vollständig vor dem Start und nutzt den vorhandenen Executor unverändert. Eine freie grafische Neuverdrahtung beliebiger Signale wäre eine Funktionsänderung und ist nicht Bestandteil dieser Version.
+Der bestehende FEE-Executor unterstützt keinen transaktionalen Rollback. Wird eine laufende SDK-Schreiboperation abgebrochen, kann bereits erzeugter Inhalt bestehen bleiben und muss in FEE geprüft werden. Der neue Reiter validiert daher vollständig vor dem Start und nutzt den vorhandenen Executor unverändert. Eine freie grafische Neuverdrahtung oder unabhängige Auswahl einzelner Signale/Hilfsobjekte wäre eine Funktionsänderung und ist nicht Bestandteil dieser Version.
+
+Die Legacy-Bezeichnungen `PLC_IN_PartPresent` und `PLC_IN_NoPartPresent` werden für `GrobSensor` kompatibel auf Kanal 1 abgebildet; bei zwei gleichnamigen Einträgen erfolgt die Zuordnung auf Kanal 1/2. Die Validierung nennt bei einem wirklich unbekannten Slot jetzt zusätzlich alle zulässigen Slotnamen.

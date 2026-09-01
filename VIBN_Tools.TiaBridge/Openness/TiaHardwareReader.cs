@@ -152,7 +152,7 @@ internal sealed class TiaHardwareReader
                 ParseOrderNumber(typeIdentifier),
                 effectiveDevice.OrderNumber);
             var firmware = FirstNotEmpty(
-                ReadString(item, "FirmwareVersion"),
+                ReadString(item, "FirmwareVersion", "Firmware", "Version"),
                 ParseFirmware(typeIdentifier),
                 effectiveDevice.FirmwareVersion);
             var gsd = ReadGsdMetadata(item, "Siemens.Engineering.HW.Features.GsdDeviceItem");
@@ -236,7 +236,9 @@ internal sealed class TiaHardwareReader
             ReadString(device, "TypeName", "Classification"),
             ReadString(device, "Author", "Manufacturer"),
             FirstNotEmpty(ReadString(device, "OrderNumber"), ParseOrderNumber(typeIdentifier)),
-            FirstNotEmpty(ReadString(device, "FirmwareVersion"), ParseFirmware(typeIdentifier)),
+            FirstNotEmpty(
+                ReadString(device, "FirmwareVersion", "Firmware", "Version"),
+                ParseFirmware(typeIdentifier)),
             ReadGsdMetadata(device, "Siemens.Engineering.HW.Features.GsdDevice"));
     }
 
@@ -272,9 +274,13 @@ internal sealed class TiaHardwareReader
 
     private NetworkMetadata ReadNetworkMetadata(object item)
     {
+        var direct = new NetworkMetadata(
+            ReadString(item, "PnDeviceName", "PnDeviceNameConverted", "ProfinetName"),
+            ReadString(item, "IpAddress", "IPAddress", "Ipv4Address"),
+            string.Empty);
         var service = GetService(item, "Siemens.Engineering.HW.Features.NetworkInterface");
         if (service is null)
-            return NetworkMetadata.Empty;
+            return direct;
 
         var roles = new List<string>();
         if (ReadEnumerableMember(service, "IoControllers").Count > 0)
@@ -284,12 +290,21 @@ internal sealed class TiaHardwareReader
 
         foreach (var node in ReadEnumerableMember(service, "Nodes"))
         {
-            var ipAddress = ReadString(node, "Address");
-            var profinetName = ReadString(node, "PnDeviceName", "PnDeviceNameConverted");
+            var ipAddress = ReadString(node, "Address", "IpAddress", "IPAddress", "Ipv4Address");
+            var profinetName = ReadString(
+                node,
+                "PnDeviceName",
+                "PnDeviceNameConverted",
+                "ProfinetName");
             if (ipAddress.Length > 0 || profinetName.Length > 0)
-                return new NetworkMetadata(profinetName, ipAddress, string.Join(" + ", roles));
+            {
+                return new NetworkMetadata(
+                    FirstNotEmpty(profinetName, direct.ProfinetName),
+                    FirstNotEmpty(ipAddress, direct.IpAddress),
+                    string.Join(" + ", roles));
+            }
         }
-        return new NetworkMetadata(string.Empty, string.Empty, string.Join(" + ", roles));
+        return new NetworkMetadata(direct.ProfinetName, direct.IpAddress, string.Join(" + ", roles));
     }
 
     private GsdMetadata ReadGsdMetadata(object target, string serviceTypeName)
@@ -309,7 +324,7 @@ internal sealed class TiaHardwareReader
 
     private object? GetService(object target, string serviceTypeName)
     {
-        var serviceType = _engineeringAssembly.GetType(serviceTypeName, throwOnError: false);
+        var serviceType = ResolveEngineeringType(serviceTypeName);
         if (serviceType is null)
             return null;
 
@@ -327,6 +342,24 @@ internal sealed class TiaHardwareReader
             }
         }
         return null;
+    }
+
+    private Type? ResolveEngineeringType(string fullName)
+    {
+        var direct = _engineeringAssembly.GetType(fullName, throwOnError: false);
+        if (direct is not null)
+            return direct;
+
+        // Depending on the installed TIA generation, feature interfaces can
+        // reside in a referenced Siemens.Engineering.* assembly rather than in
+        // Siemens.Engineering.dll itself. Restrict the lookup to that family so
+        // an unrelated type with the same namespace cannot be selected.
+        return AppDomain.CurrentDomain.GetAssemblies()
+            .Where(assembly => assembly.GetName().Name?.StartsWith(
+                "Siemens.Engineering",
+                StringComparison.OrdinalIgnoreCase) == true)
+            .Select(assembly => assembly.GetType(fullName, throwOnError: false))
+            .FirstOrDefault(type => type is not null);
     }
 
     private static IEnumerable<MethodInfo> EnumerateMethods(Type runtimeType, string name)
@@ -480,7 +513,10 @@ internal sealed class TiaHardwareReader
 
     private static string ParseFirmware(string typeIdentifier)
     {
-        var match = Regex.Match(typeIdentifier ?? string.Empty, @"/(?<value>V[^/]+)$", RegexOptions.IgnoreCase);
+        var match = Regex.Match(
+            typeIdentifier ?? string.Empty,
+            @"(?:^|/|\s)(?<value>V\d+(?:\.\d+){1,3})(?:$|/|\s)",
+            RegexOptions.IgnoreCase);
         return match.Success ? match.Groups["value"].Value.Trim() : string.Empty;
     }
 

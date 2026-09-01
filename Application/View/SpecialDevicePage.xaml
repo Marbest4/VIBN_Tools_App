@@ -97,8 +97,13 @@
                         <GroupStyle>
                             <GroupStyle.HeaderTemplate>
                                 <DataTemplate>
-                                    <Border Margin="0,5,0,2" Padding="9,5" Background="#FFE8EEF5" CornerRadius="3">
-                                        <TextBlock FontWeight="SemiBold" Text="{Binding Name, StringFormat={}Gerät: {0}}" />
+                                    <Border Margin="0,5,0,2" Padding="10,6" Background="#FFD9EAF7" BorderBrush="#FF7AA7C7" BorderThickness="1" CornerRadius="3">
+                                        <StackPanel>
+                                            <TextBlock Foreground="#FF174A6B" FontSize="15" FontWeight="SemiBold"
+                                                       Text="{Binding Items[0].DeviceName, StringFormat={}Gerät: {0}}" />
+                                            <TextBlock Margin="0,2,0,0" Foreground="#FF356A8A"
+                                                       Text="{Binding Items[0].DeviceType, StringFormat={}Gerätetyp: {0}}" />
+                                        </StackPanel>
                                     </Border>
                                 </DataTemplate>
                             </GroupStyle.HeaderTemplate>

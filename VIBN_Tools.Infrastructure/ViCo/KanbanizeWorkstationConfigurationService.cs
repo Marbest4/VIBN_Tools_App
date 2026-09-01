@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
@@ -45,11 +44,6 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
         // stale and older KONFIGURATION cards can use aliases such as
         // SOFTWARE or PROJEKTIP. Resolving them here makes saving idempotent.
         var existingSubtasks = await LoadStandardSubtasksAsync(configurationCardId, cancellationToken);
-        foreach (var item in existingSubtasks)
-        {
-            Debug.WriteLine(
-                $"Vorhanden: {item.Key} -> {item.Value}");
-        }
         foreach (var field in fields)
         {
             var description = $"{field.Key}: {field.Value.Trim()}";
@@ -116,7 +110,6 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
         await SaveFieldsAsync(cardId, fields, cancellationToken);
         return cardId;
     }
-    //s
     private async Task<string> SendJsonAsync(
         HttpMethod method,
         string relativeUrl,
@@ -157,21 +150,6 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
             return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
         using var document = JsonDocument.Parse(body);
-
-        var subtasks = BusinessmapSubtaskJsonParser.Parse(
-    document.RootElement,
-    isEndpointPayload: true);
-
-     
-            foreach (var subtask in subtasks)
-            {
-                var key = ReadConfigurationKey(subtask.Description);
-                var value = ReadConfigurationValue(subtask.Description);
-
-                Debug.WriteLine($"KEY={key}");
-                Debug.WriteLine($"VALUE={value}");
-            }
-        
 
         return BusinessmapSubtaskJsonParser.Parse(document.RootElement, isEndpointPayload: true)
             .Select(subtask => new
@@ -234,25 +212,6 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
             : description[..separator];
 
         return NormalizeConfigurationKey(key);
-    }
-
-    private static string ReadConfigurationValue(string description)
-    {
-        if (string.IsNullOrWhiteSpace(description))
-            return string.Empty;
-
-        // HTML-Tags entfernen
-        description = System.Text.RegularExpressions.Regex.Replace(
-            description,
-            "<.*?>",
-            string.Empty);
-
-        var separator = description.IndexOf(':');
-
-        if (separator < 0)
-            return string.Empty;
-
-        return description[(separator + 1)..].Trim();
     }
 
     private static string NormalizeConfigurationKey(string key)

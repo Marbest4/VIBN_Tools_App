@@ -13,7 +13,7 @@
 	     must run a build whose minimum framework version is 8.0.0. -->
 	<RollForward>LatestPatch</RollForward>
 	<BaseOutputPath>$(MSBuildProjectDirectory)\artifacts\build\</BaseOutputPath>
-	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**</DefaultItemExcludes>
+	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**;VIBN_Tools.IbnRemote\**;VIBN_Tools.IbnRemote.Infrastructure\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- F5 must work on a development PC without a separately matching global

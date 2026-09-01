@@ -34,6 +34,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     private readonly ConcurrentDictionary<string, (ViCoRemoteSessionInfo Info, DateTimeOffset CheckedAt)> _remoteSessionCache =
         new(StringComparer.OrdinalIgnoreCase);
     private bool _initialized;
+    private bool _isSavingConfiguration;
 
     public ViCoSearchPageVM(
         IViCoWorkstationCatalog catalog,
@@ -544,6 +545,9 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private async Task SaveConfigurationAsync()
     {
+        if (_isSavingConfiguration)
+            return;
+
         if (!CanEditConfiguration || SelectedWorkstation is null)
         {
             StatusText = "Für diesen Arbeitsplatz ist keine bearbeitbare KONFIGURATION-Karte vorhanden.";
@@ -560,6 +564,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             return;
         }
 
+        _isSavingConfiguration = true;
         try
         {
             var currentConfiguration = SelectedWorkstation.Model.WorkstationConfiguration;
@@ -593,6 +598,10 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             StatusText = "KONFIGURATION-Werte konnten nicht gespeichert werden.";
             _log.Error("Kanbanize", StatusText, exception);
+        }
+        finally
+        {
+            _isSavingConfiguration = false;
         }
     }
 

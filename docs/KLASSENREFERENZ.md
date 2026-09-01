@@ -9,9 +9,10 @@
 | `Application/ViCoFeatureBootstrapper.cs` | Composition Root für ViCo, Kanbanize, RDP, Rollen und TIA-Bridge |
 | `Application/ApplicationLogService.cs` | zentraler Anwendungslog für Status, Warnungen und Fehler |
 | `Application/View/DiagnosticsPanel.xaml` | sichtbares Diagnosefenster im Hauptfenster |
-| `Settings/FeeVersionInfoProvider.cs` | ermittelt verwendete SDK- und höchste lokal installierte FEE-Version für Project Settings |
+| `Settings/FeeVersionInfoProvider.cs` | ermittelt verwendete SDK- und höchste vollständige lokale FEE-Version; Kandidaten ohne `Bin\FS.SDK.dll` werden verworfen |
 | `Settings/ConnectionService.cs` | bestätigt den SDK-Verbindungszustand und stellt das zentrale FEE-Funktions-Gate bereit |
 | `GlobalClasses/Services.cs` | initialisiert FEE-Dienste; hält bei unvollständiger Runtime die restliche Anwendung lauffähig und das FEE-Gate geschlossen |
+| `Application/Behaviors/EnterKeyCommandBehavior.cs` | übergibt den aktuellen TextBox-Wert bei Enter an einen ViewModel-Command, ohne Boardlogik in Code-behind zu verlagern |
 
 ## ViCo-Modelle und Fachregeln (`VIBN_Tools.Core/ViCo`)
 
@@ -82,7 +83,9 @@
 | `VisualPlanSidecarStore.cs` | versionierte JSON-Persistenz ohne Änderung der Quell-XML |
 | `FeeSimObjectDiscovery.cs` | SDK-Objekte in stabile, UI-neutrale Identitäten übersetzen |
 | `ContainerToFeeVisualPlanService.cs` | Zuordnung, Eindeutigkeit, Auto-Matching, Undo/Redo, Validierung und Orchestrierung |
-| `LegacyContainerToFeeExecutionAdapter.cs` | Plan auf frische Legacy-Container anwenden und bestehenden Generator aufrufen |
+| `RuntimeVisualPlanBinder.cs` | eine gemeinsame, typgeprüfte Abbildung des Plans auf frische Legacy-Container für beide Ausführungsarten |
+| `LegacyContainerToFeeExecutionAdapter.cs` | nur ausgewählte vollständige Container an den bestehenden Generator übergeben |
+| `ExistingSimObjectLinkAdapter.cs` | ausschließlich vorhandene SimObjects mit vorhandenen gleichnamigen LogicObjects verbinden; keine Erzeugung |
 | `ContainerToFeeVisualPageVM.cs` / `.xaml` | Commands, Filter, Drag-and-drop und dreigeteilte Darstellung |
 
 ## Special Devices und bestehende VIBN-Bereiche
@@ -95,9 +98,18 @@
 | Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |
 | Container2Fee (bestehend) | `ContainerToFeePageVM.cs`, `ContainerToFee/` |
 | Container2FEE Visual (zusätzlich) | `ContainerToFeeVisual/`, `ContainerToFeeVisualPageVM.cs`, `ContainerToFeeVisualPage.xaml` |
-| Model Validation | `ModelValidationPageVM.cs` |
+| Model Validation | `ModelValidationPageVM.cs`, `GlobalClasses/FeeObjects/FeeObjectService.cs` und `FeeInterface.cs`; letzteres liest Interfacevariablen einmal je Gesamtabfrage statt einmal je Interface |
 | Model Control | `ModelControlPageVM.cs` |
 | Interface Operation | `InterfaceOperationPageVM.cs` |
 | ZuLi-/Container-Regressionstest | `Tests/ContainerGenerationSmokeTests` mit `Interface5.xlsx` und `Interface7.xlsx` |
 
 Bestehende große VIBN-ViewModels werden nicht durch neue ViCo-Logik vergrößert. Neue Integrationslogik gehört in die oben genannten modulierten Klassen und Dienste.
+
+## Separate IBN-Remote-Anwendung
+
+| Projekt/Datei | Aufgabe |
+| --- | --- |
+| `VIBN_Tools.IbnRemote` | eigenständige WPF-Anwendung mit schreibgeschützter Arbeitsplatzliste, Filter, Status und zwei RDP-Aktionen |
+| `VIBN_Tools.IbnRemote.Infrastructure` | minimaler Compile-Ausschnitt der bewährten Read-/RDP-Adapter; enthält bewusst keine Board-Write-, FEE-, TIA-, Kopier- oder Administrationsklasse |
+| `scripts/Publish-IbnRemote.ps1` | self-contained `win-x64`-Single-file-Publish und Prüfung auf unerwartete Begleitdateien |
+| `docs/IBN_REMOTE.md` | Build, Verteilung, Benutzerkonfiguration, Logging und Sicherheitsgrenze |

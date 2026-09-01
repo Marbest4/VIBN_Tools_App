@@ -71,7 +71,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     public TiaHardwareDeviceRowVM(TiaHardwareModuleInfo module)
     {
         Module = module ?? throw new ArgumentNullException(nameof(module));
-        _prefix = CreatePrefix(module.ModuleName);
+        _prefix = CreatePrefix(FirstNotEmpty(
+            module.DeviceName,
+            module.ProfinetName,
+            module.ModuleName));
         _inputByte = module.InputStartByte >= 0 ? module.InputStartByte : null;
         _outputByte = module.OutputStartByte >= 0 ? module.OutputStartByte : null;
         _selectedLogic = SpecialDeviceLogicOption.Suggest(module);
@@ -359,6 +362,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
             .Trim('_');
         return result.Length == 0 ? "Device" : result;
     }
+
+    private static string FirstNotEmpty(params string[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
 
     private static string FormatAddressRange(int? start, int length)
     {

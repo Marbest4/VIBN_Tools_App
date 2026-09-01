@@ -28,6 +28,28 @@ public sealed class FeeVersionInfoProvider : IFeeVersionInfoProvider
     private const string UnknownVersion = "Nicht erkannt";
     private static readonly Regex NumericVersionPattern =
         new(@"(?<!\d)(\d+(?:\.\d+){1,3})(?!\d)", RegexOptions.Compiled);
+    private readonly IReadOnlyList<string> _installationRoots;
+    private readonly bool _includeRegistry;
+
+    public FeeVersionInfoProvider()
+        : this(GetDefaultInstallationRoots(), includeRegistry: true)
+    {
+    }
+
+    /// <summary>
+    /// Testable discovery entry point. Every candidate still has to contain
+    /// <c>Bin\FS.SDK.dll</c>; a version-like folder name alone is never enough.
+    /// </summary>
+    public FeeVersionInfoProvider(IEnumerable<string> installationRoots, bool includeRegistry = false)
+    {
+        ArgumentNullException.ThrowIfNull(installationRoots);
+        _installationRoots = installationRoots
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Select(Path.GetFullPath)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        _includeRegistry = includeRegistry;
+    }
 
     public FeeVersionInfo Read()
     {
@@ -79,33 +101,48 @@ public sealed class FeeVersionInfoProvider : IFeeVersionInfoProvider
         return UnknownVersion;
     }
 
-    private static string DetectInstalledFeeVersion()
+    private string DetectInstalledFeeVersion()
     {
         var versions = new List<Version>();
-        AddDirectoryVersions(versions);
-        AddRegistryVersions(versions);
+        AddDirectoryVersions(versions, _installationRoots);
+        if (_includeRegistry)
+            AddRegistryVersions(versions);
         return versions.Count == 0 ? UnknownVersion : Format(versions.Max()!);
     }
 
-    private static void AddDirectoryVersions(ICollection<Version> versions)
+    private static IReadOnlyList<string> GetDefaultInstallationRoots()
     {
-        var roots = new[]
+        return new[]
         {
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles),
             Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86),
-        };
+        }
+        .Where(path => !string.IsNullOrWhiteSpace(path))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Select(path => Path.Combine(path, "fe.screen-sim V5"))
+        .ToArray();
+    }
 
-        foreach (var programFiles in roots.Where(path => !string.IsNullOrWhiteSpace(path)).Distinct(StringComparer.OrdinalIgnoreCase))
+    private static void AddDirectoryVersions(
+        ICollection<Version> versions,
+        IEnumerable<string> installationRoots)
+    {
+        foreach (var installRoot in installationRoots)
         {
             try
             {
-                var installRoot = Path.Combine(programFiles, "fe.screen-sim V5");
                 if (!Directory.Exists(installRoot))
                     continue;
 
-                foreach (var directory in Directory.EnumerateDirectories(installRoot))
+                var candidates = Directory.EnumerateDirectories(installRoot).Prepend(installRoot);
+                foreach (var directory in candidates)
                 {
-                    if (TryParseVersion(Path.GetFileName(directory), out var version))
+                    var sdkMarker = GetSdkMarker(directory);
+                    if (sdkMarker is null)
+                        continue;
+
+                    if (TryParseVersion(Path.GetFileName(directory), out var version) ||
+                        TryReadFileVersion(sdkMarker, out version))
                         versions.Add(version);
                 }
             }
@@ -137,7 +174,13 @@ public sealed class FeeVersionInfoProvider : IFeeVersionInfoProvider
                             !displayName.Contains("screen-sim", StringComparison.OrdinalIgnoreCase))
                             continue;
 
-                        if (TryParseVersion(product?.GetValue("DisplayVersion") as string, out var version))
+                        var installLocation = product?.GetValue("InstallLocation") as string;
+                        var sdkMarker = GetSdkMarker(installLocation);
+                        if (sdkMarker is null)
+                            continue;
+
+                        if (TryParseVersion(product?.GetValue("DisplayVersion") as string, out var version) ||
+                            TryReadFileVersion(sdkMarker, out version))
                             versions.Add(version);
                     }
                 }
@@ -146,6 +189,38 @@ public sealed class FeeVersionInfoProvider : IFeeVersionInfoProvider
                     // Registry access is optional and can be restricted by policy.
                 }
             }
+        }
+    }
+
+    private static string? GetSdkMarker(string? installationDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(installationDirectory))
+            return null;
+
+        try
+        {
+            var marker = Path.Combine(Path.GetFullPath(installationDirectory), "Bin", "FS.SDK.dll");
+            return File.Exists(marker) ? marker : null;
+        }
+        catch (Exception exception) when (
+            exception is ArgumentException or NotSupportedException or PathTooLongException)
+        {
+            return null;
+        }
+    }
+
+    private static bool TryReadFileVersion(string sdkPath, out Version version)
+    {
+        version = new Version();
+        try
+        {
+            var info = FileVersionInfo.GetVersionInfo(sdkPath);
+            return TryParseVersion(info.ProductVersion, out version) ||
+                   TryParseVersion(info.FileVersion, out version);
+        }
+        catch
+        {
+            return false;
         }
     }
 

@@ -2,7 +2,7 @@
 
 ## Voraussetzungen
 
-- Windows-Desktop mit .NET 8 Runtime;
+- Windows-Desktop; beim Visual-Studio-/framework-dependent-Start mit .NET-8-Desktop-Runtime, beim self-contained Setup beziehungsweise der IBN-EXE ohne separat installierte .NET-Runtime;
 - Grob.UX und das kompatible FEE-/fe.screen-sim-SDK;
 - Zugriff auf die vorgesehenen UNC-Pfade für ViCo-Caches, Projekte, Rollen und Versionen;
 - Kanbanize-/Businessmap-Zugriff für Live-Aktualisierung und Kartenfunktionen;
@@ -49,7 +49,7 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 | Kartenpositionen/Karten | Kanbanize v2 | ausdrücklich durch Kartenreiter |
 | TIA-Versionen | lokale Siemens-PublicAPI-Pfade | beim Öffnen der TIA-Ansicht |
 | verwendete FEE-SDK-Version | `FS.SDK.dll` neben der laufenden Anwendung | beim Öffnen von Project Settings |
-| lokal installierte FEE-Version | lokale Installationsordner und Uninstall-Registry | beim Öffnen von Project Settings |
+| lokal installierte FEE-Version | ausschließlich lokale Installationsordner/Registry-Einträge, deren Installationspfad `Bin\FS.SDK.dll` enthält | beim Öffnen von Project Settings |
 
 ## Häufige Fehler
 
@@ -64,7 +64,7 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 
 Das ist korrekt, wenn FEE die Verbindung nicht bestätigt. Die Anwendung setzt `Connected to` erst nach `WaitForConnectedAsync`. Status-/Logmeldung prüfen, Servernamen und FEE-Service kontrollieren und danach erneut verbinden.
 
-Project Settings zeigt zusätzlich **Verwendete SDK-Version** und **Installierte FEE-Version**. Die erste Angabe stammt vorrangig aus der tatsächlich geladenen `FS.SDK.dll`, die zweite aus lokalen FEE-Installationsinformationen. Eine rote Abweichung ist ein Diagnosehinweis: Sie verhindert den Start nicht, sollte aber vor FEE-Schreiboperationen mit der freigegebenen Kompatibilitätsmatrix abgeglichen werden.
+Project Settings zeigt zusätzlich **Verwendete SDK-Version** und **Installierte FEE-Version**. Die erste Angabe stammt vorrangig aus der tatsächlich geladenen `FS.SDK.dll`. Für die zweite Angabe gilt eine Installation nur dann als vollständig, wenn in genau ihrem Installationspfad `Bin\FS.SDK.dll` vorhanden ist. Höhere, aber unvollständige Versionsordner und Registry-Einträge ohne dieses Merkmal werden ignoriert. Eine rote Abweichung ist ein Diagnosehinweis: Sie verhindert den Start nicht, sollte aber vor FEE-Schreiboperationen mit der freigegebenen Kompatibilitätsmatrix abgeglichen werden.
 
 ### Remote-FEE-Version ist nicht als Spalte vorhanden
 
@@ -87,6 +87,8 @@ Die Benutzervariable `VIBN_RDP_PASSWORD` fehlt oder ist leer. Sie mit dem oben d
 ### Konfigurationswerte lassen sich nicht speichern
 
 Vorhandene Standard-Unteraufgaben werden per PATCH gespeichert; fehlende Standard-Unteraufgaben werden per POST an `/cards/{card}/subtasks` ergänzt. Fehlt die gesamte Karte, kann sie nur über **Standardkarte anlegen** bewusst erzeugt werden.
+
+In **ViCo → Übersicht & Verbindung → Arbeitsplatz-Konfiguration** speichert Enter den aktuellen Editorwert zusammen mit allen weiteren geänderten Standardfeldern. Erst nach erfolgreicher Board-Antwort werden Tabellenzeile, Benutzerzuordnung und gemeinsamer Arbeitsplatzbestand aktualisiert. Während eines laufenden Schreibzugriffs wird ein zweiter Enter-Befehl ignoriert; bei einem Fehler bleiben die Änderungen im Editor erhalten und der Fehler steht im Anwendungslog.
 
 ### Kanbanize meldet 400 bei `fields`
 
@@ -124,6 +126,7 @@ Nicht mit einem erneuten Schreibvorgang fortfahren. Status/Stacktrace sichern, d
 - Such- und Filtereingaben werden entprellt; ein neuer Filter bricht die vorherige Prüfung ab.
 - Kanbanize-Caches werden atomar geschrieben; die UI liest stabile Snapshots.
 - Dateiübertragungen und FEE-Geräteerzeugungen sind begrenzt/serialisiert.
+- Model Validation liest den vollständigen Interfacevariablen-Snapshot einmal pro **Update Objects** und gruppiert ihn lokal nach Interface-GUID; die frühere vollständige SDK-Abfrage pro Interface entfällt.
 - Keine rekursiven Netzwerkscans oder TIA-/Outlook-Aufrufe im UI-Thread ergänzen.
 
 ## Warnungsstrategie
@@ -136,3 +139,5 @@ Der historische WPF-Bestand wurde vor Nullable-Referenztypen entwickelt. Im Haup
 2. Core- und UI-Smoke-Tests ausführen.
 3. [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md) auf einem echten GROB-Desktop abarbeiten.
 4. Keine Cachedateien, Rollen-Dateien mit Realbenutzern, API-Schlüssel oder RDP-Credentials einchecken.
+
+Für Inbetriebnehmer ohne FEE-/TIA-/Generierungsfunktionen wird getrennt `VIBN_Tools_IBN.exe` erzeugt. Der genaue schreibgeschützte Funktionsumfang, das Publish-Kommando und die Ziel-PC-Konfiguration stehen in [IBN Remote](IBN_REMOTE.md). Diese Einzeldatei ist nicht mit dem vollständigen Inno-Setup zu verwechseln.

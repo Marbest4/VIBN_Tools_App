@@ -20,6 +20,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.UiStartup.SmokeT
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.ContainerGeneration.SmokeTests", "Tests\ContainerGenerationSmokeTests\VIBN_Tools.ContainerGeneration.SmokeTests.csproj", "{2E7221C2-EB0A-49FC-8BA8-23824F68AE8E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.IbnRemote", "VIBN_Tools.IbnRemote\VIBN_Tools.IbnRemote.csproj", "{C1F7309A-9A8D-4E1E-A6DD-821CB9B78261}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.IbnRemote.Infrastructure", "VIBN_Tools.IbnRemote.Infrastructure\VIBN_Tools.IbnRemote.Infrastructure.csproj", "{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -62,6 +66,14 @@ Global
 		{2E7221C2-EB0A-49FC-8BA8-23824F68AE8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2E7221C2-EB0A-49FC-8BA8-23824F68AE8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2E7221C2-EB0A-49FC-8BA8-23824F68AE8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C1F7309A-9A8D-4E1E-A6DD-821CB9B78261}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C1F7309A-9A8D-4E1E-A6DD-821CB9B78261}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C1F7309A-9A8D-4E1E-A6DD-821CB9B78261}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C1F7309A-9A8D-4E1E-A6DD-821CB9B78261}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -34,6 +34,8 @@ internal static class Program
             var feeVersionInfo = new FeeVersionInfoProvider().Read();
             if (string.Equals(feeVersionInfo.UsedSdkVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
+            VerifyInstalledFeeVersionRequiresSdk();
+            VerifyConfigurationFieldAcceptsCreatedSubtask();
             var projectPage = new ViCoPage();
             var projectViewModel = (ViCoPageVM)projectPage.DataContext;
             projectViewModel.Projects.Add(new ProjectLocation("GM1234/05-130", @"C:\Projects\GM1234\05-130"));
@@ -300,7 +302,7 @@ internal static class Program
                     <Type>Sensor</Type>
                     <Entries>
                       <Entry>
-                        <Slot>PLC_IN_PartPresent_Ch1</Slot>
+                        <Slot>PLC_IN_PartPresent</Slot>
                         <Signal>Sensor_1_Present</Signal>
                         <Address>%I10.0</Address>
                         <DataType>Bool</DataType>
@@ -321,6 +323,14 @@ internal static class Program
                 throw new InvalidOperationException("Visual plan does not contain the expected target, signal and edges.");
 
             var container = loaded.Plan.Nodes.Single(node => node.Kind == VisualNodeKind.Container);
+            if (!loaded.Plan.IsGenerationSelected(container.Id) ||
+                !service.SetGenerationSelected(container.Id, false) ||
+                service.CurrentPlan!.IsGenerationSelected(container.Id))
+                throw new InvalidOperationException("Visual container selection could not be disabled.");
+            if (!service.Undo() || !service.CurrentPlan!.IsGenerationSelected(container.Id))
+                throw new InvalidOperationException("Visual container-selection undo failed.");
+            if (!service.Redo() || service.CurrentPlan!.IsGenerationSelected(container.Id))
+                throw new InvalidOperationException("Visual container-selection redo failed.");
             if (!container.SupportsCreation || !service.SetCreationRequested(container.Id, true))
                 throw new InvalidOperationException("Visual creation request could not be enabled.");
             if (!service.Undo() || service.CurrentPlan!.IsCreationRequested(container.Id))
@@ -334,7 +344,8 @@ internal static class Program
                 .GetAwaiter()
                 .GetResult();
             if (!restoredResult.Success ||
-                restored.CurrentPlan?.IsCreationRequested(container.Id) != true)
+                restored.CurrentPlan?.IsCreationRequested(container.Id) != true ||
+                restored.CurrentPlan.IsGenerationSelected(container.Id))
                 throw new InvalidOperationException("Visual sidecar was not restored correctly.");
 
             return restored;
@@ -343,6 +354,52 @@ internal static class Program
         {
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyInstalledFeeVersionRequiresSdk()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-fee-version-{Guid.NewGuid():N}");
+        var complete = Path.Combine(directory, "5.0.9.12345");
+        var incompleteNewer = Path.Combine(directory, "5.0.99.99999");
+        Directory.CreateDirectory(Path.Combine(complete, "Bin"));
+        Directory.CreateDirectory(incompleteNewer);
+        try
+        {
+            File.Copy(
+                Path.Combine(AppContext.BaseDirectory, "FS.SDK.dll"),
+                Path.Combine(complete, "Bin", "FS.SDK.dll"));
+            var discovered = new FeeVersionInfoProvider([directory]).Read();
+            if (!string.Equals(discovered.InstalledFeeVersion, "V5.0.9.12345", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException(
+                    $"Incomplete FEE folders must be ignored; got {discovered.InstalledFeeVersion}.");
+            }
+
+            var incompleteOnly = new FeeVersionInfoProvider([incompleteNewer]).Read();
+            if (!string.Equals(incompleteOnly.InstalledFeeVersion, "Nicht erkannt", StringComparison.Ordinal))
+                throw new InvalidOperationException("A FEE folder without Bin/FS.SDK.dll was accepted.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyConfigurationFieldAcceptsCreatedSubtask()
+    {
+        var field = new ViCoConfigurationFieldVM(
+            new ViCoConfigurationField("SW", "TIA V20", SubtaskId: 0));
+        if (field.CanSave)
+            throw new InvalidOperationException("A missing configuration subtask was treated as existing.");
+
+        field.Value = "TIA V20 / FEE";
+        field.AcceptSavedValue();
+        if (!field.CanSave || field.IsChanged)
+        {
+            throw new InvalidOperationException(
+                "A successfully created configuration subtask would be posted again on Enter.");
         }
     }
 
