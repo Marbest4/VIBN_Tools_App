@@ -22,19 +22,18 @@ Ohne Unternehmensnetz startet die Oberfläche weiterhin. Live-Daten, Kartenaktio
 | TIA-Bridge | `Application/ViCoFeatureBootstrapper.cs` | Bridge-Executable, Pipe pro Prozess, lokale Versionserkennung |
 | Logging | `ApplicationLogService` / vorhandene Log-Konfiguration | sichtbares Diagnosepanel und Logdatei |
 
-API-Schlüssel und Kennwörter gehören nicht in Quellcode, Screenshots, Tickets oder das Diagnoseprotokoll.
+API-Schlüssel und Kennwörter gehören nicht in Quellcode, Screenshots, Tickets oder das Diagnoseprotokoll. In **Project Settings → Kanbanize- und Remote-Konfiguration** können beide Werte verdeckt gespeichert, ihr Vorhandensein geprüft und sie einzeln gelöscht werden. Leere Eingabefelder überschreiben bestehende Werte nicht. Die Änderung gilt sofort; PowerShell, CMD-Datei und Anwendungsneustart sind im normalen Ablauf nicht mehr erforderlich.
 
-Einmalige Einrichtung für den aktuell angemeldeten Windows-Benutzer (Platzhalter ersetzen, danach das Tool neu starten):
+Für automatisierte Rollouts bleiben die äquivalenten Befehle verfügbar:
 
 ```powershell
 [Environment]::SetEnvironmentVariable('VIBN_VICO_KANBANIZE_API_KEY', '<BUSINESSMAP-API-KEY>', 'User')
 [Environment]::SetEnvironmentVariable('VIBN_RDP_PASSWORD', '<REMOTE-PASSWORT>', 'User')
 ```
 
-Alternativ kann `Configure-VIBN-Tools.cmd` im Projektstamm gestartet werden.
-Der Assistent fragt beide Werte verdeckt ab und speichert sie für den aktuellen
-Windows-Benutzer. Er enthält selbst weder API-Key noch Kennwort. Danach VIBN
-Tools und gegebenenfalls Visual Studio vollständig neu starten.
+`Configure-VIBN-Tools.cmd` bleibt im Quellrepository ausschließlich als Kompatibilitäts-/Rollout-Assistent erhalten, wird aber nicht mehr in Portable-/Setup-Pakete kopiert. Die UI und der Assistent schreiben dieselben beiden Windows-Benutzervariablen.
+
+Diese Variablen sind benutzerbezogen und müssen je Ziel-PC/Windows-Konto eingerichtet werden. Sie werden nicht in die EXE oder Logs geschrieben, liegen im Windows-Benutzerprofil aber nicht wie in einem dedizierten Secret Vault geschützt vor. Für eine spätere zentral administrierte Verteilung ist Windows Credential Manager oder ein Unternehmens-Secretsystem die robustere Zielarchitektur.
 
 Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den API-Key im Header `apikey`. Ein abgelaufener, rotierter oder für das Board nicht berechtigter Key führt zu 401/403; eine 400-Feldvalidierung ist dagegen ein Abfragefehler. Der Refresh wiederholt nur sichere GET-Anfragen bei Netzwerk-, 408-, 429- und 5xx-Fehlern.
 
@@ -42,8 +41,8 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 
 | Information | Quelle | Aktualisierung |
 | --- | --- | --- |
-| PCs, Benutzer, Projekte, Software und KONFIGURATION | Arbeitsplätze-Board / strukturierter Cache | Start, Daten aktualisieren und periodisch |
-| Robotik-Informationen | Robotik-Board / Cache | Start, Daten aktualisieren und periodisch |
+| PCs, Benutzer, Projekte, Software und KONFIGURATION | Arbeitsplätze-Board / strukturierter Cache | Start, Daten aktualisieren und konfigurierbares AutoUpdate |
+| Robotik-Informationen | Robotik-Board / Cache | Start, Daten aktualisieren und konfigurierbares AutoUpdate |
 | Project-Settings-Dropdown | gemeinsames `WorkstationDirectory` plus Ping | beim Start, Filter und manueller Aktualisierung |
 | Rollen | `roles.json` | Anwendungstart und Verwaltungs-Refresh |
 | Kartenpositionen/Karten | Kanbanize v2 | ausdrücklich durch Kartenreiter |
@@ -82,7 +81,7 @@ Die `USER:`-Unteraufgabe der `KONFIGURATION`-Karte hat Vorrang. Der normale Remo
 
 ### Automatische Remote-Anmeldung ist noch nicht eingerichtet
 
-Die Benutzervariable `VIBN_RDP_PASSWORD` fehlt oder ist leer. Sie mit dem oben dokumentierten PowerShell-Befehl setzen und das Tool neu starten. Der separate Dialog-Button funktioniert ohne diese Variable.
+Die Benutzervariable `VIBN_RDP_PASSWORD` fehlt oder ist leer. Unter **Project Settings → Kanbanize- und Remote-Konfiguration** das Passwort eingeben und speichern. Der Status wechselt auf **Konfiguriert** und der Wert gilt sofort. Der separate Dialog-Button funktioniert weiterhin ohne diese Variable.
 
 ### Konfigurationswerte lassen sich nicht speichern
 

@@ -20,6 +20,8 @@
 | Workplace card schedule | VIBN source + single VIBN template deadline | source −14 days, template +56 days |
 | Authorization | central `roles.json` | `lutzma` is Level9; at least two Level9 users on save |
 | TIA hardware | all project devices via Openness; selected PLC is sorted first | read-only device/module tree, GSD/network metadata, slot/subslot and byte address data before FEE creation |
+| ViCo refresh interval | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes, default 5; atomic local write |
+| Kanbanize/RDP configuration | current Windows user's environment | UI writes/deletes values; live adapters resolve the API key per request |
 
 ## Reliability and performance
 
@@ -29,7 +31,8 @@
 - Kanbanize synchronization is idempotent through source `custom_id` and uses narrow payloads.
 - TIA stays outside the WPF process and bridge failures are caught at view-model boundaries.
 - WPF grids use virtualization and deferred tab templates are covered by a UI startup test.
+- The main window uses practical minimum dimensions; data grids keep their own virtualization/scrolling and detail panels scroll independently.
 
 ## Remote Desktop credential boundary
 
-The `.rdp` profile contains only host, Kanbanize-selected user, monitor selection and prompt mode. The automatic action reads `VIBN_RDP_PASSWORD` from the signed-in user's environment, creates `TERMSRV/<host>` through `cmdkey`, launches `mstsc`, and removes that entry after 20 seconds. The password is never part of source, cache, role data, RDP file or Kanbanize payloads. The prompted action does not create a credential entry.
+The `.rdp` profile contains only host, Kanbanize-selected user, monitor selection and prompt mode. The automatic action reads `VIBN_RDP_PASSWORD` from the signed-in user's environment, creates `TERMSRV/<host>` through `cmdkey`, launches `mstsc`, and removes that entry after 20 seconds. Project Settings and the IBN UI manage the same per-user environment value without starting a shell and never log or display it. This removes manual setup, but an environment variable is not a dedicated secrets vault. The password is never part of source, cache, role data, RDP file or Kanbanize payloads. The prompted action does not create a credential entry.

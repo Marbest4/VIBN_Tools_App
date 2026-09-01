@@ -21,6 +21,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     private readonly IExternalPathLauncher _launcher;
     private readonly IViCoOnlineRefreshService _onlineRefresh;
     private readonly IViCoWorkstationConfigurationService _configurationService;
+    private readonly IViCoAutoRefreshSettingsStore _autoRefreshSettingsStore;
     private readonly ViCoWorkspaceContext _workspaceContext;
     private readonly Action<IEnumerable<ViCoWorkstation>> _synchronizeWorkstations;
     private readonly IApplicationLog _log;
@@ -35,6 +36,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private bool _initialized;
     private bool _isSavingConfiguration;
+    private DateTimeOffset? _nextAutoRefreshAt;
+    private bool? _lastObservedOnlineConfiguration;
 
     public ViCoSearchPageVM(
         IViCoWorkstationCatalog catalog,
@@ -46,6 +49,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         IExternalPathLauncher launcher,
         IViCoOnlineRefreshService onlineRefresh,
         IViCoWorkstationConfigurationService configurationService,
+        IViCoAutoRefreshSettingsStore autoRefreshSettingsStore,
         ViCoWorkspaceContext workspaceContext,
         Action<IEnumerable<ViCoWorkstation>> synchronizeWorkstations,
         IApplicationLog? log = null)
@@ -59,6 +63,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         _launcher = launcher;
         _onlineRefresh = onlineRefresh;
         _configurationService = configurationService;
+        _autoRefreshSettingsStore = autoRefreshSettingsStore;
         _workspaceContext = workspaceContext;
         _synchronizeWorkstations = synchronizeWorkstations;
         _log = log ?? NullApplicationLog.Instance;
@@ -68,6 +73,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         ConnectRemoteWithPromptCommand = GetCommandBinding(ConnectRemoteWithPrompt);
         SaveConfigurationCommand = GetCommandBindingAsync(SaveConfigurationAsync);
         CreateConfigurationCommand = GetCommandBindingAsync(CreateConfigurationAsync);
+        SaveAutoRefreshIntervalCommand = GetCommandBindingAsync(SaveAutoRefreshIntervalAsync);
         OpenPcProjectsCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.WorkstationProjects));
         OpenSimulationCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.Simulation));
         OpenCommissioningCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.Commissioning));
@@ -82,6 +88,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     public ICommand ConnectRemoteWithPromptCommand { get; }
     public ICommand SaveConfigurationCommand { get; }
     public ICommand CreateConfigurationCommand { get; }
+    public ICommand SaveAutoRefreshIntervalCommand { get; }
     public ICommand OpenPcProjectsCommand { get; }
     public ICommand OpenSimulationCommand { get; }
     public ICommand OpenCommissioningCommand { get; }
@@ -94,6 +101,28 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     public bool UseMonitor2 { get; set; }
     public bool UseMonitor3 { get; set; }
     public bool UseMonitor4 { get; set; }
+
+    private int _autoRefreshIntervalMinutes = ViCoAutoRefreshSettings.Default.IntervalMinutes;
+    public int AutoRefreshIntervalMinutes
+    {
+        get => _autoRefreshIntervalMinutes;
+        set
+        {
+            _autoRefreshIntervalMinutes = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private string _autoRefreshCountdown = "AutoUpdate wird initialisiert …";
+    public string AutoRefreshCountdown
+    {
+        get => _autoRefreshCountdown;
+        private set
+        {
+            _autoRefreshCountdown = value;
+            OnPropertyChanged();
+        }
+    }
 
     private string _searchText = string.Empty;
     public string SearchText
@@ -227,9 +256,10 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         if (_initialized)
             return;
         _initialized = true;
+        await LoadAutoRefreshSettingsAsync();
         await RefreshCachedDataAsync();
-        if (_onlineRefresh.IsConfigured)
-            _ = RunPeriodicRefreshAsync(_lifetimeCancellation.Token);
+        ScheduleNextAutoRefresh();
+        _ = RunPeriodicRefreshAsync(_lifetimeCancellation.Token);
     }
 
     public void Dispose()
@@ -277,6 +307,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         await RefreshCachedDataAsync(onlineUpdateSucceeded
             ? null
             : "Online-Aktualisierung fehlgeschlagen; vorhandener Cache wurde geladen.");
+        ScheduleNextAutoRefresh();
     }
 
     /// <summary>Reads the existing cache and rebuilds search/path state without a network write.</summary>
@@ -316,23 +347,47 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private async Task RunPeriodicRefreshAsync(CancellationToken cancellationToken)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromMinutes(5));
         try
         {
-            while (await timer.WaitForNextTickAsync(cancellationToken))
+            while (true)
             {
-                if (IsBusy)
-                    continue;
-                try
+                cancellationToken.ThrowIfCancellationRequested();
+                var isOnlineConfigured = _onlineRefresh.IsConfigured;
+                if (_lastObservedOnlineConfiguration != isOnlineConfigured)
                 {
-                    await _onlineRefresh.RefreshAsync(cancellationToken);
-                    await RefreshCachedDataAsync();
+                    _lastObservedOnlineConfiguration = isOnlineConfigured;
+                    OnPropertyChanged(nameof(CanEditConfiguration));
+                    OnPropertyChanged(nameof(CanCreateConfiguration));
                 }
-                catch (Exception exception) when (exception is not OperationCanceledException)
+
+                if (!isOnlineConfigured)
                 {
-                    StatusText = $"Kanbanize-Aktualisierung fehlgeschlagen: {exception.Message}";
-                    _log.Error("Kanbanize", "Die periodische Aktualisierung ist fehlgeschlagen.", exception);
+                    _nextAutoRefreshAt = null;
+                    AutoRefreshCountdown = "AutoUpdate pausiert – Kanbanize API-Key fehlt.";
                 }
+                else
+                {
+                    _nextAutoRefreshAt ??= DateTimeOffset.Now.AddMinutes(AutoRefreshIntervalMinutes);
+                    var remaining = _nextAutoRefreshAt.Value - DateTimeOffset.Now;
+                    if (remaining <= TimeSpan.Zero)
+                    {
+                        if (IsBusy)
+                        {
+                            AutoRefreshCountdown = "AutoUpdate wartet auf laufenden Vorgang …";
+                        }
+                        else
+                        {
+                            AutoRefreshCountdown = "Kanbanize-AutoUpdate läuft …";
+                            await RefreshFromBestAvailableSourceAsync();
+                        }
+                    }
+                    else
+                    {
+                        AutoRefreshCountdown = $"Nächstes Kanbanize-AutoUpdate: {FormatRemaining(remaining)}";
+                    }
+                }
+
+                await Task.Delay(TimeSpan.FromSeconds(1), cancellationToken);
             }
         }
         catch (OperationCanceledException)
@@ -603,6 +658,58 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             _isSavingConfiguration = false;
         }
+    }
+
+    private async Task LoadAutoRefreshSettingsAsync()
+    {
+        try
+        {
+            var settings = await _autoRefreshSettingsStore.LoadAsync(_lifetimeCancellation.Token);
+            AutoRefreshIntervalMinutes = ViCoAutoRefreshPolicy.Normalize(settings.IntervalMinutes);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            AutoRefreshIntervalMinutes = ViCoAutoRefreshSettings.Default.IntervalMinutes;
+            _log.Warning(
+                "ViCo AutoUpdate",
+                "Das gespeicherte Aktualisierungsintervall konnte nicht gelesen werden; fünf Minuten werden verwendet.",
+                exception.Message);
+        }
+    }
+
+    private async Task SaveAutoRefreshIntervalAsync()
+    {
+        var normalized = ViCoAutoRefreshPolicy.Normalize(AutoRefreshIntervalMinutes);
+        AutoRefreshIntervalMinutes = normalized;
+        try
+        {
+            await _autoRefreshSettingsStore.SaveAsync(
+                new ViCoAutoRefreshSettings(normalized),
+                _lifetimeCancellation.Token);
+            ScheduleNextAutoRefresh();
+            StatusText = $"Kanbanize-AutoUpdate wird alle {normalized} Minute(n) ausgeführt.";
+            _log.Information("ViCo AutoUpdate", StatusText);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            StatusText = "Das Kanbanize-AutoUpdate-Intervall konnte nicht gespeichert werden.";
+            _log.Error("ViCo AutoUpdate", StatusText, exception);
+        }
+    }
+
+    private void ScheduleNextAutoRefresh()
+    {
+        _nextAutoRefreshAt = _onlineRefresh.IsConfigured
+            ? DateTimeOffset.Now.AddMinutes(ViCoAutoRefreshPolicy.Normalize(AutoRefreshIntervalMinutes))
+            : null;
+    }
+
+    private static string FormatRemaining(TimeSpan remaining)
+    {
+        var totalHours = Math.Max(0, (int)remaining.TotalHours);
+        return totalHours > 0
+            ? $"{totalHours:00}:{remaining.Minutes:00}:{remaining.Seconds:00}"
+            : $"{Math.Max(0, remaining.Minutes):00}:{Math.Max(0, remaining.Seconds):00}";
     }
 
     private async Task CreateConfigurationAsync()

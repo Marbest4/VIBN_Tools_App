@@ -15,20 +15,28 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
     private const string DefaultApiBase = "https://grobgroup.kanbanize.com/api/v2";
     private const int WorkplaceBoardId = 1541;
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly Func<string?> _apiKeyProvider;
     private readonly string _apiBase;
 
     public KanbanizeWorkstationConfigurationService(
         HttpClient httpClient,
         string? apiKey,
         string? apiBase = null)
+        : this(httpClient, () => apiKey, apiBase)
+    {
+    }
+
+    public KanbanizeWorkstationConfigurationService(
+        HttpClient httpClient,
+        Func<string?> apiKeyProvider,
+        string? apiBase = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _apiKey = apiKey?.Trim() ?? string.Empty;
+        _apiKeyProvider = apiKeyProvider ?? throw new ArgumentNullException(nameof(apiKeyProvider));
         _apiBase = (apiBase ?? DefaultApiBase).TrimEnd('/');
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task SaveFieldsAsync(
         int configurationCardId,
@@ -119,7 +127,7 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
     {
         using var request = new HttpRequestMessage(method, _apiBase + relativeUrl);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("apikey", _apiKey);
+        request.Headers.TryAddWithoutValidation("apikey", ResolveApiKey());
         request.Content = new StringContent(
             JsonSerializer.Serialize(payload),
             Encoding.UTF8,
@@ -191,7 +199,7 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
     {
         var request = new HttpRequestMessage(method, _apiBase + relativeUrl);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("apikey", _apiKey);
+        request.Headers.TryAddWithoutValidation("apikey", ResolveApiKey());
         return request;
     }
 
@@ -310,4 +318,6 @@ public sealed class KanbanizeWorkstationConfigurationService : IViCoWorkstationC
             throw new InvalidOperationException(
                 "Kanbanize API access is not configured. VIBN_VICO_KANBANIZE_API_KEY setzen.");
     }
+
+    private string ResolveApiKey() => _apiKeyProvider()?.Trim() ?? string.Empty;
 }

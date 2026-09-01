@@ -23,6 +23,8 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - ViCo verwendet einen gemeinsamen, dynamischen PC-/Benutzerbestand aus Kanbanize; es gibt keine fest kompilierte PC-Benutzer-Zuordnung.
 - Die ViCo-Übersicht zeigt alle Karten der jeweiligen Arbeitsplatz-Lane. Die Zustandskennung `[B]`, `[P]`, `[W]` oder `[D]` bleibt sichtbar; die `KONFIGURATION`-Karte wird separat angezeigt und bearbeitet.
 - Der normale Button **Remote Desktop** legt den lokalen Credential-Manager-Eintrag aus `VIBN_RDP_PASSWORD` nur für den Start an und entfernt ihn nach 20 Sekunden. **RDP mit Anmeldedaten** öffnet den Windows-Anmeldedialog ohne diesen temporären Eintrag.
+- API-Key und RDP-Passwort werden verdeckt in Project Settings beziehungsweise der IBN-Oberfläche pro Windows-Benutzer konfiguriert; PowerShell ist im normalen Ablauf nicht nötig.
+- Die ViCo-Übersicht zeigt den Countdown bis zum nächsten Kanbanize-AutoUpdate; das 1–1440-Minuten-Intervall wird lokal pro Benutzer gespeichert.
 - Kanbanize synchronisiert keine Duplikate und ändert bei vorhandenen generierten Karten ausschließlich den berechneten Starttermin und die Deadline.
 - Die TIA-Openness-Kommunikation läuft in einem separaten Bridge-Prozess; ein TIA-Fehler beendet nicht die WPF-Anwendung.
 - Rollen ersetzen Lizenzanfragen. Level7 schaltet CAD Wizard, Container Generation und Container2Fee frei; Level8 zusätzlich AI-Test und Kanbanize; die ViCo-Verwaltung ist ab Level8 sichtbar und ab Level9 schreibbar.
@@ -31,7 +33,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 
 Die vollständige Solution ist `VIBN_Tools_App.sln`. Für einen Build werden Windows, .NET 8, Grob.UX und das FEE-SDK benötigt. Für reale TIA-Funktionen muss außerdem eine unterstützte Siemens-TIA-Portal-/Openness-Installation vorhanden sein.
 
-Auf einem neuen Entwicklungsrechner zuerst `Prepare-Development.cmd` ausführen und Visual Studio danach neu starten. Die eingecheckte `.vsconfig` bietet fehlende Visual-Studio-Komponenten an; das Vorbereitungsskript erkennt eine vollständige FEE-SDK-Version und restauriert die Solution. Anschließend in der Visual-Studio-Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Zeigt eine ältere Visual-Studio-Version das `.slnLaunch`-Profil nicht an, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Der Debug-Build ist selbstenthaltend für `win-x64`.
+Auf einem neuen Entwicklungsrechner zuerst `Prepare-Development.cmd` ausführen und Visual Studio danach neu starten. Die eingecheckte `.vsconfig` bietet fehlende Visual-Studio-Komponenten an; das Vorbereitungsskript überspringt unvollständige FEE-Installationen, bietet bei mehreren vollständigen SDKs eine Auswahl (neueste als Standard) und restauriert die Solution. Anschließend in der Visual-Studio-Startauswahl das geteilte Profil **VIBN Tools** wählen und F5 drücken. Zeigt eine ältere Visual-Studio-Version das `.slnLaunch`-Profil nicht an, im Projektmappen-Explorer `VIBN_Tools` per Rechtsklick als Startprojekt festlegen. Der Debug-Build ist selbstenthaltend für `win-x64`.
 
 ```powershell
 .\Build.ps1

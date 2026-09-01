@@ -9,7 +9,13 @@
         xmlns:local="clr-namespace:VIBN_Tools.Application.View"
         xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
         xmlns:p="clr-namespace:VIBN_Tools.Application.View"
-        mc:Ignorable="d" Height="1200" Width="2050" WindowStyle="None" AllowsTransparency="True">
+        mc:Ignorable="d"
+        Title="VIBN Tools"
+        Height="900" Width="1600"
+        MinHeight="650" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        WindowStyle="None" AllowsTransparency="True">
 
     <!--<Window.DataContext>
         <vm:MainWindowVM/>

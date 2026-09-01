@@ -47,6 +47,8 @@ Scheitert die Verbindung oder läuft der Timeout ab, bleibt `Connected to: ---` 
 
 Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Version. Bei mehreren lokalen Versionsordnern wird nur eine Installation berücksichtigt, in deren eigenem Pfad `Bin\FS.SDK.dll` existiert. Dadurch werden neuere, aber unvollständige Installationsreste nicht mehr als aktive FEE-Version angezeigt. Eine Abweichung zwischen verwendetem SDK und vollständiger lokaler Installation bleibt rot markiert.
 
+Im Bereich **Kanbanize- und Remote-Konfiguration** werden API-Key und RDP-Passwort verdeckt für den aktuellen Windows-Benutzer hinterlegt. **Eingaben speichern** ändert nur ausgefüllte Felder; die beiden **Löschen**-Buttons entfernen die Werte einzeln. Die Statusfelder zeigen, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart.
+
 ## ViCo
 
 ### Übersicht & Verbindung
@@ -72,6 +74,8 @@ Die Tabelle zeigt:
 
 Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. Der ausklappbare Bereich **Alle Kanbanize-Informationen** enthält weiterhin sämtliche Lane-Karten.
 
+Unter dem Suchfeld zeigt ein Countdown den nächsten automatischen Kanbanize-Abruf. Das Intervall kann zwischen 1 und 1440 Minuten eingetragen und mit **Übernehmen** pro Windows-Benutzer gespeichert werden. Ohne konfigurierten API-Key steht der Zähler auf **pausiert**; sobald der Key in Project Settings gespeichert wurde, beginnt der Countdown ohne Neustart. **Daten aktualisieren** bleibt für eine sofortige manuelle Aktualisierung erhalten und startet den Zähler anschließend neu.
+
 Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt.
 
 ### Remote Desktop und Pfade
@@ -84,7 +88,7 @@ Nach Auswahl eines Online-PCs stehen bis zu vier lokale Monitore sowie diese Akt
 
 Bei einem Offline-PC sind diese Buttons nicht sichtbar. Dadurch kann keine fehlerhafte Remote- oder UNC-Aktion ausgelöst werden.
 
-Einmalig die Benutzervariable `VIBN_RDP_PASSWORD` gemäß [Konfiguration und Betrieb](KONFIGURATION_UND_BETRIEB.md) setzen und das Tool neu starten. Das Kennwort steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
+Das RDP-Passwort wird einmalig unter **Project Settings → Kanbanize- und Remote-Konfiguration** gespeichert. Es steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
 
 ### Arbeitsplatz-Konfiguration bearbeiten
 
@@ -213,7 +217,7 @@ Diese Reiter arbeiten auf dem aktuell verbundenen FEE-Modell. Model Validation a
 
 ## Separate IBN-Remote-Ausgabe
 
-Für Inbetriebnehmer steht `VIBN_Tools_IBN.exe` bereit. Diese separate Anwendung enthält ausschließlich den schreibgeschützten Arbeitsplatzüberblick, Filter, Online-/Sitzungsstatus und beide RDP-Buttons. FEE, TIA, Kanbanize-Schreibzugriffe und alle Generierungswerkzeuge sind nicht Teil dieses Pakets. Erstellung und Einrichtung: [IBN Remote](IBN_REMOTE.md).
+Für Inbetriebnehmer steht `VIBN_Tools_IBN.exe` bereit. Die kompakte Standardansicht enthält nur PC, Online und aktive Projekte; Statusdetails, Monitore und beide RDP-Buttons liegen in einer erweiterten Ansicht. API-Key und RDP-Passwort können in derselben kleinen Oberfläche geprüft, verdeckt gespeichert und gelöscht werden. FEE, TIA, Kanbanize-Schreibzugriffe und alle Generierungswerkzeuge sind nicht Teil dieses Pakets. Erstellung und Einrichtung: [IBN Remote](IBN_REMOTE.md).
 
 ## Diagnose und Fehlerbehebung
 

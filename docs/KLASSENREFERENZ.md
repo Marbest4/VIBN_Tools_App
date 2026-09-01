@@ -23,6 +23,8 @@
 | `ProjectCatalog.cs` | Projekt-/Favoritenmodelle und Suchverträge |
 | `Diagnostics.cs` | neutraler Logvertrag `IApplicationLog` |
 | `Administration.cs` | Outlook-/Updateverträge für die ViCo-Verwaltung |
+| `AutoRefreshSettings.cs` | Intervallmodell, 1–1440-Minuten-Regel und persistenter Store-Vertrag |
+| `UserCredentialConfiguration.cs` | statusorientierter Vertrag zum Speichern/Löschen von API-Key und RDP-Passwort ohne Secret-Ausgabe |
 
 ## ViCo-Infrastruktur (`VIBN_Tools.Infrastructure/ViCo`)
 
@@ -37,12 +39,14 @@
 | `JsonViCoUserRoleStore.cs` | atomare `roles.json`-Ablage |
 | `LegacyRoleMigrationReader.cs` | einmaliger Nur-Lese-Import älterer Zuordnungen |
 | `BoundedFileCopyService.cs` | begrenzte parallele Dateiübertragung |
+| `JsonViCoAutoRefreshSettingsStore.cs` | atomare lokale Persistenz des AutoUpdate-Intervalls |
+| `UserEnvironmentCredentialConfigurationService.cs` | ersetzt PowerShell durch per-user Speichern/Löschen und aktualisiert den laufenden Prozess |
 
 ## ViCo-ViewModels (`Application/VM`)
 
 | Klasse | Aufgabe |
 | --- | --- |
-| `ViCoSearchPageVM` | Suche, Refresh, Pfadauflösung, Online-/Session-Abfragen, RDP sowie KONFIGURATION speichern/anlegen |
+| `ViCoSearchPageVM` | Suche, manueller/periodischer Refresh samt Countdown, Pfadauflösung, Online-/Session-Abfragen, RDP sowie KONFIGURATION speichern/anlegen |
 | `ViCoWorkstationRowVM` | Präsentation einer Tabellenzeile: Farben, Erreichbarkeit, RDP-Sitzung und Konfigurationsspalten |
 | `ViCoConfigurationFieldVM` | Änderungsnachverfolgung einer vorhandenen Konfigurations-Unteraufgabe |
 | `ViCoPageVM` | Projekte und Favoriten |
@@ -109,7 +113,7 @@ Bestehende große VIBN-ViewModels werden nicht durch neue ViCo-Logik vergrößer
 
 | Projekt/Datei | Aufgabe |
 | --- | --- |
-| `VIBN_Tools.IbnRemote` | eigenständige WPF-Anwendung mit schreibgeschützter Arbeitsplatzliste, Filter, Status und zwei RDP-Aktionen |
+| `VIBN_Tools.IbnRemote` | kompakte eigenständige WPF-Anwendung: PC/Online/Projekte als Standard, ausklappbare Details/RDP und lokale Zugangsdatenverwaltung |
 | `VIBN_Tools.IbnRemote.Infrastructure` | minimaler Compile-Ausschnitt der bewährten Read-/RDP-Adapter; enthält bewusst keine Board-Write-, FEE-, TIA-, Kopier- oder Administrationsklasse |
 | `scripts/Publish-IbnRemote.ps1` | self-contained `win-x64`-Single-file-Publish und Prüfung auf unerwartete Begleitdateien |
 | `docs/IBN_REMOTE.md` | Build, Verteilung, Benutzerkonfiguration, Logging und Sicherheitsgrenze |

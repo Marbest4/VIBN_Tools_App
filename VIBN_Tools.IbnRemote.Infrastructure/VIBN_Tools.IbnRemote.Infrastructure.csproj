@@ -21,6 +21,7 @@
     <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\KanbanizeRefreshService.cs" Link="ViCo\KanbanizeRefreshService.cs" />
     <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\LegacyWorkstationCatalog.cs" Link="ViCo\LegacyWorkstationCatalog.cs" />
     <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\RemoteDesktopProfileBuilder.cs" Link="ViCo\RemoteDesktopProfileBuilder.cs" />
+    <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\UserEnvironmentCredentialConfigurationService.cs" Link="ViCo\UserEnvironmentCredentialConfigurationService.cs" />
     <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\ViCoPathsOptions.cs" Link="ViCo\ViCoPathsOptions.cs" />
     <Compile Include="..\VIBN_Tools.Infrastructure\ViCo\WorkstationBoardCache.cs" Link="ViCo\WorkstationBoardCache.cs" />
   </ItemGroup>

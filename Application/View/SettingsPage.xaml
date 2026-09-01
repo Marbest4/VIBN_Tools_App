@@ -8,6 +8,7 @@
              xmlns:local="clr-namespace:VIBN_Tools.Application.View"
              xmlns:g="clr-namespace:VIBN_Tools.GlobalClasses"
              xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
+             xmlns:shared="clr-namespace:VIBN_Tools.SharedWpf"
              mc:Ignorable="d" d:DesignHeight="900" d:DesignWidth="1200">
 
     <d:UserControl.DataContext>
@@ -28,7 +29,10 @@
     </UserControl.Resources>
 
     <Grid>
-        <StackPanel Orientation="Vertical">
+        <ScrollViewer HorizontalScrollBarVisibility="Auto"
+                      VerticalScrollBarVisibility="Auto"
+                      PanningMode="Both">
+        <StackPanel MinWidth="760" Orientation="Vertical">
             <!--Project Settings-->
             <GroupBox Margin="10">
                 <GroupBox.Header>
@@ -150,7 +154,7 @@
                         </Border.Style>
                         <StackPanel>
                             <TextBlock Text="{Binding UsedFeeSdkVersion, StringFormat=Verwendete SDK-Version: {0}}" />
-                            <TextBlock Margin="0,3,0,0" Text="{Binding InstalledFeeVersion, StringFormat=Installierte FEE-Version: {0}}" />
+                            <TextBlock Margin="0,3,0,0" Text="{Binding InstalledFeeVersion, StringFormat=Neueste vollständige FEE-Version: {0}}" />
                             <TextBlock Margin="0,5,0,0"
                                        Foreground="#FFB00020"
                                        FontWeight="Bold"
@@ -163,6 +167,51 @@
             </GroupBox>
 
 
+            <GroupBox Margin="10">
+                <GroupBox.Header>
+                    <TextBlock Style="{StaticResource H3Style}" Text="Kanbanize- und Remote-Konfiguration" />
+                </GroupBox.Header>
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="190" />
+                        <ColumnDefinition Width="*" MinWidth="260" />
+                        <ColumnDefinition Width="130" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Kanbanize API-Key" />
+                    <PasswordBox Grid.Row="0" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                                 shared:PasswordBoxBindingBehavior.Password="{Binding KanbanizeApiKeyInput, Mode=TwoWay}"
+                                 ToolTip="Neuen API-Key eingeben; ein leeres Feld verändert einen vorhandenen Wert nicht." />
+                    <TextBlock Grid.Row="0" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
+                               FontWeight="SemiBold" Text="{Binding KanbanizeApiKeyStatus}" />
+                    <Button Grid.Row="0" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
+                            Command="{Binding DeleteKanbanizeApiKey}" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Remote-Passwort" />
+                    <PasswordBox Grid.Row="1" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                                 shared:PasswordBoxBindingBehavior.Password="{Binding RemoteDesktopPasswordInput, Mode=TwoWay}"
+                                 ToolTip="Passwort für die automatische RDP-Anmeldung; es wird nicht im Protokoll angezeigt." />
+                    <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
+                               FontWeight="SemiBold" Text="{Binding RemoteDesktopPasswordStatus}" />
+                    <Button Grid.Row="1" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
+                            Command="{Binding DeleteRemoteDesktopPassword}" />
+
+                    <Button Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" MinWidth="160" Margin="0,8,10,3"
+                            Content="Eingaben speichern" Command="{Binding SaveIntegrationCredentials}" />
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,7,0,0"
+                               Foreground="#FF555555" Text="{Binding CredentialStatus}" TextWrapping="Wrap" />
+                </Grid>
+            </GroupBox>
+
+
         </StackPanel>
+        </ScrollViewer>
     </Grid>
 </UserControl>

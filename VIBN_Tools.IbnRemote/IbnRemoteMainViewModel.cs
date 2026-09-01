@@ -22,6 +22,7 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
     private readonly INetworkAvailabilityService _network = new NetworkAvailabilityService();
     private readonly IRemoteSessionService _remoteSessions = new WindowsRemoteSessionService();
     private readonly IRemoteDesktopService _remoteDesktop;
+    private readonly IUserCredentialConfigurationService _credentialConfiguration;
     private readonly IbnRemoteFileLog _log = IbnRemoteFileLog.Instance;
     private readonly CancellationTokenSource _lifetime = new();
     private IReadOnlyList<ViCoWorkstation> _allWorkstations = [];
@@ -32,9 +33,17 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
     private string _searchText = string.Empty;
     private string _statusText = "Arbeitsplatzdaten werden beim Start geladen.";
     private string _sourceStatus = "Quelle wird geprüft …";
+    private IbnRemoteWorkstationRow? _selectedWorkstation;
+    private string _kanbanizeApiKeyInput = string.Empty;
+    private string _remoteDesktopPasswordInput = string.Empty;
+    private bool _hasKanbanizeApiKey;
+    private bool _hasRemoteDesktopPassword;
+    private string _credentialStatus = "Konfiguration wird geprüft …";
 
-    public IbnRemoteMainViewModel()
+    public IbnRemoteMainViewModel(IUserCredentialConfigurationService? credentialConfiguration = null)
     {
+        _credentialConfiguration = credentialConfiguration ??
+            new UserEnvironmentCredentialConfigurationService();
         _remoteDesktop = new WindowsRemoteDesktopService(
             _options.WorkingDirectory,
             new WindowsTemporaryRemoteCredentialStore());
@@ -45,6 +54,10 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
         ConnectWithPromptCommand = new RelayCommand<IbnRemoteWorkstationRow>(
             row => Connect(row, promptForCredentials: true),
             row => row?.CanConnect == true && !IsBusy);
+        SaveCredentialsCommand = new AsyncRelayCommand(SaveCredentialsAsync);
+        DeleteKanbanizeApiKeyCommand = new RelayCommand<object>(_ => DeleteKanbanizeApiKey());
+        DeleteRemoteDesktopPasswordCommand = new RelayCommand<object>(_ => DeleteRemoteDesktopPassword());
+        RefreshCredentialStatus();
     }
 
     public ObservableCollection<IbnRemoteWorkstationRow> Results { get; } = [];
@@ -54,6 +67,69 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
     public ICommand ConnectAutomaticCommand { get; }
 
     public ICommand ConnectWithPromptCommand { get; }
+
+    public ICommand SaveCredentialsCommand { get; }
+
+    public ICommand DeleteKanbanizeApiKeyCommand { get; }
+
+    public ICommand DeleteRemoteDesktopPasswordCommand { get; }
+
+    public IbnRemoteWorkstationRow? SelectedWorkstation
+    {
+        get => _selectedWorkstation;
+        set => SetProperty(ref _selectedWorkstation, value);
+    }
+
+    public string KanbanizeApiKeyInput
+    {
+        get => _kanbanizeApiKeyInput;
+        set => SetProperty(ref _kanbanizeApiKeyInput, value ?? string.Empty);
+    }
+
+    public string RemoteDesktopPasswordInput
+    {
+        get => _remoteDesktopPasswordInput;
+        set => SetProperty(ref _remoteDesktopPasswordInput, value ?? string.Empty);
+    }
+
+    public bool HasKanbanizeApiKey
+    {
+        get => _hasKanbanizeApiKey;
+        private set
+        {
+            if (SetProperty(ref _hasKanbanizeApiKey, value))
+            {
+                OnPropertyChanged(nameof(KanbanizeApiKeyStatus));
+                OnPropertyChanged(nameof(CredentialSummary));
+            }
+        }
+    }
+
+    public bool HasRemoteDesktopPassword
+    {
+        get => _hasRemoteDesktopPassword;
+        private set
+        {
+            if (SetProperty(ref _hasRemoteDesktopPassword, value))
+            {
+                OnPropertyChanged(nameof(RemoteDesktopPasswordStatus));
+                OnPropertyChanged(nameof(CredentialSummary));
+            }
+        }
+    }
+
+    public string KanbanizeApiKeyStatus => HasKanbanizeApiKey ? "Konfiguriert" : "Nicht konfiguriert";
+
+    public string RemoteDesktopPasswordStatus => HasRemoteDesktopPassword ? "Konfiguriert" : "Nicht konfiguriert";
+
+    public string CredentialSummary =>
+        $"API: {(HasKanbanizeApiKey ? "OK" : "fehlt")} · RDP: {(HasRemoteDesktopPassword ? "OK" : "fehlt")}";
+
+    public string CredentialStatus
+    {
+        get => _credentialStatus;
+        private set => SetProperty(ref _credentialStatus, value);
+    }
 
     public bool UseMonitor1 { get; set; } = true;
 
@@ -159,7 +235,7 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
     private async Task<ViCoWorkstationSnapshot> LoadBestAvailableSnapshotAsync(
         CancellationToken cancellationToken)
     {
-        var apiKey = ResolveKanbanizeApiKey();
+        var apiKey = _credentialConfiguration.GetKanbanizeApiKey();
         var localCache = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "GROB",
@@ -216,6 +292,7 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
 
     private void ApplyFilter()
     {
+        var selectedPc = SelectedWorkstation?.PcName;
         var filtered = _search.Search(_allWorkstations, SearchText, ViCoSearchMode.All);
         Results.Clear();
         foreach (var workstation in filtered)
@@ -223,6 +300,9 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
             if (_rowsByPc.TryGetValue(workstation.PcName, out var row))
                 Results.Add(row);
         }
+        SelectedWorkstation = Results.FirstOrDefault(row =>
+            string.Equals(row.PcName, selectedPc, StringComparison.OrdinalIgnoreCase)) ??
+            Results.FirstOrDefault();
     }
 
     private async Task RefreshAvailabilityAsync(CancellationToken cancellationToken)
@@ -282,11 +362,82 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
         }
     }
 
-    private static string ResolveKanbanizeApiKey() =>
-        (Environment.GetEnvironmentVariable(
-             "VIBN_VICO_KANBANIZE_API_KEY",
-             EnvironmentVariableTarget.User) ??
-         Environment.GetEnvironmentVariable("VIBN_VICO_KANBANIZE_API_KEY") ?? string.Empty).Trim();
+    private async Task SaveCredentialsAsync()
+    {
+        try
+        {
+            var apiKeyChanged = false;
+            var changed = false;
+            if (!string.IsNullOrWhiteSpace(KanbanizeApiKeyInput))
+            {
+                _credentialConfiguration.SaveKanbanizeApiKey(KanbanizeApiKeyInput);
+                apiKeyChanged = true;
+                changed = true;
+            }
+            if (!string.IsNullOrEmpty(RemoteDesktopPasswordInput))
+            {
+                _credentialConfiguration.SaveRemoteDesktopPassword(RemoteDesktopPasswordInput);
+                changed = true;
+            }
+
+            KanbanizeApiKeyInput = string.Empty;
+            RemoteDesktopPasswordInput = string.Empty;
+            RefreshCredentialStatus();
+            CredentialStatus = changed
+                ? "Eingegebene Werte wurden für diesen Windows-Benutzer gespeichert."
+                : "Keine neuen Werte eingegeben; vorhandene Konfiguration bleibt erhalten.";
+            _log.Information("Konfiguration", CredentialStatus);
+            if (apiKeyChanged)
+                await RefreshAsync();
+        }
+        catch (Exception exception)
+        {
+            RefreshCredentialStatus();
+            CredentialStatus = "Konfiguration konnte nicht gespeichert werden.";
+            _log.Error("Konfiguration", CredentialStatus, exception);
+        }
+    }
+
+    private void DeleteKanbanizeApiKey()
+    {
+        UpdateCredentialConfiguration(
+            _credentialConfiguration.DeleteKanbanizeApiKey,
+            "Kanbanize API-Key wurde entfernt.");
+    }
+
+    private void DeleteRemoteDesktopPassword()
+    {
+        UpdateCredentialConfiguration(
+            _credentialConfiguration.DeleteRemoteDesktopPassword,
+            "Remote-Desktop-Passwort wurde entfernt.");
+    }
+
+    private void UpdateCredentialConfiguration(Action update, string successMessage)
+    {
+        try
+        {
+            update();
+            RefreshCredentialStatus();
+            CredentialStatus = successMessage;
+            _log.Information("Konfiguration", successMessage);
+        }
+        catch (Exception exception)
+        {
+            RefreshCredentialStatus();
+            CredentialStatus = "Konfiguration konnte nicht entfernt werden.";
+            _log.Error("Konfiguration", CredentialStatus, exception);
+        }
+    }
+
+    private void RefreshCredentialStatus()
+    {
+        var status = _credentialConfiguration.ReadStatus();
+        HasKanbanizeApiKey = status.HasKanbanizeApiKey;
+        HasRemoteDesktopPassword = status.HasRemoteDesktopPassword;
+        CredentialStatus = HasKanbanizeApiKey && HasRemoteDesktopPassword
+            ? "Kanbanize und automatische RDP-Anmeldung sind konfiguriert."
+            : "Fehlende Werte können hier für den aktuellen Windows-Benutzer hinterlegt werden.";
+    }
 }
 
 public sealed class IbnRemoteWorkstationRow : NotifyObject

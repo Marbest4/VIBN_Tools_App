@@ -67,8 +67,6 @@ try {
     Assert-LastExitCode 'Portable Veröffentlichung'
 
     Copy-Item -LiteralPath 'distribution\START_HERE.md' -Destination $publishRoot
-    Copy-Item -LiteralPath 'scripts\Configure-VIBN-Tools.ps1' -Destination $publishRoot
-    Copy-Item -LiteralPath 'Configure-VIBN-Tools.cmd' -Destination $publishRoot
     Copy-Item -LiteralPath 'docs' -Destination (Join-Path $publishRoot 'docs') -Recurse
     if (-not $SkipArchive) {
         Compress-Archive -Path (Join-Path $publishRoot '*') -DestinationPath $zipPath -CompressionLevel Optimal

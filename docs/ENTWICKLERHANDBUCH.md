@@ -37,6 +37,8 @@ Zuerst ein Interface in `Workstations.cs` ergänzen. Danach eine konkrete Implem
 
 Ein RDP-Profil darf ausschließlich Ziel-PC, Benutzer, Monitorwahl und Abfragemodus enthalten. Der einzige Kennwortprovider ist `VIBN_RDP_PASSWORD`; `WindowsTemporaryRemoteCredentialStore` reicht den Wert über `ProcessStartInfo.ArgumentList` an `cmdkey`, protokolliert ihn nie und entfernt den Zieleintrag verzögert. Keine zweite Passwortquelle und kein Literal ergänzen.
 
+`UserEnvironmentCredentialConfigurationService` ist der einzige UI-Schreibpfad für `VIBN_VICO_KANBANIZE_API_KEY` und `VIBN_RDP_PASSWORD`. Neue Kanbanize-Adapter müssen einen Provider (`Func<string?>`) verwenden und den Key pro Anfrage auflösen, damit Änderungen aus Project Settings ohne Neustart gelten. Secret-Werte dürfen nicht als bindbare Statusproperty, Logparameter oder Cachewert zurückgegeben werden; PasswordBox-Eingaben sind nach dem Speichern zu leeren.
+
 `quser /server:<PC>` besitzt keinen sicheren Rechte-Bypass. Fehler 5 wird als Berechtigungsdiagnose an die Oberfläche gereicht. Alternative Implementierungen dürfen keine Credentials auslesen oder Berechtigungen umgehen.
 
 ### Neue Kanbanize-Funktion
@@ -106,6 +108,8 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 ## IBN-Remote-Variante erweitern
 
 Die IBN-Variante ist ein separates Produktartefakt. Neue IBN-Funktionen dürfen nur aufgenommen werden, wenn sie für Arbeitsplatzsuche oder RDP notwendig und schreibgeschützt sind. Wiederverwendete Adapter werden im Projekt `VIBN_Tools.IbnRemote.Infrastructure` explizit einzeln verlinkt; eine Referenz auf `VIBN_Tools`, die vollständige Infrastructure oder TIA-/FEE-Projekte ist unzulässig. Das Präprozessorsymbol `IBN_REMOTE_MINIMAL` entfernt aus gemeinsam genutzten Windows-Adaptern nicht benötigte Pfadfunktionen.
+
+Die IBN-Standardtabelle bleibt bewusst auf PC, Online und aktive Projekte begrenzt. Neue Diagnosefelder gehören in den ausklappbaren Detailbereich, damit die minimale Fenstergröße nicht erneut von einer breiten DataGrid-Spalte abhängig wird.
 
 Nach einer Änderung immer `scripts/Publish-IbnRemote.ps1` ausführen und prüfen, dass der Zielordner ausschließlich `VIBN_Tools_IBN.exe` enthält. Eine versteckte Hauptnavigation ist kein Ersatz für diese Abhängigkeitsgrenze.
 

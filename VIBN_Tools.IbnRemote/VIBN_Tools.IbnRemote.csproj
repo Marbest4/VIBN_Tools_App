@@ -23,4 +23,8 @@
     <ProjectReference Include="..\VIBN_Tools.Core\VIBN_Tools.Core.csproj" />
     <ProjectReference Include="..\VIBN_Tools.IbnRemote.Infrastructure\VIBN_Tools.IbnRemote.Infrastructure.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SharedWpf\PasswordBoxBindingBehavior.cs" Link="SharedWpf\PasswordBoxBindingBehavior.cs" />
+  </ItemGroup>
 </Project>

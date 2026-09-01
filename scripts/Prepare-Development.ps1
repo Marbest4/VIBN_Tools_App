@@ -2,13 +2,19 @@
 param(
     [string]$FeeScreenSimRoot,
     [string]$AdditionalPackageSource,
-    [switch]$DoNotPersistFeeSdk
+    [switch]$DoNotPersistFeeSdk,
+    [switch]$SelectFeeSdk
 )
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Build-Common.ps1')
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$feeRoot = Resolve-FeeScreenSimRoot -ExplicitRoot $FeeScreenSimRoot
+$feeRoot = if ($SelectFeeSdk -and [string]::IsNullOrWhiteSpace($FeeScreenSimRoot)) {
+    Select-FeeScreenSimRoot
+}
+else {
+    Resolve-FeeScreenSimRoot -ExplicitRoot $FeeScreenSimRoot
+}
 
 if (-not $DoNotPersistFeeSdk) {
     [Environment]::SetEnvironmentVariable('FEE_SCREEN_SIM_ROOT', $feeRoot, 'User')
