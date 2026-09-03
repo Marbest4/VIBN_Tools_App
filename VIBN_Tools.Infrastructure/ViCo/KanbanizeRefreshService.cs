@@ -14,17 +14,25 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
         WriteIndented = true
     };
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly Func<string?> _apiKeyProvider;
     private readonly string _cacheRoot;
 
     public KanbanizeRefreshService(HttpClient httpClient, string? apiKey, string cacheRoot)
+        : this(httpClient, () => apiKey, cacheRoot)
     {
-        _httpClient = httpClient;
-        _apiKey = apiKey ?? string.Empty;
+    }
+
+    public KanbanizeRefreshService(
+        HttpClient httpClient,
+        Func<string?> apiKeyProvider,
+        string cacheRoot)
+    {
+        _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+        _apiKeyProvider = apiKeyProvider ?? throw new ArgumentNullException(nameof(apiKeyProvider));
         _cacheRoot = cacheRoot;
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task RefreshAsync(CancellationToken cancellationToken = default)
     {
@@ -197,7 +205,7 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
         {
             using var request = new HttpRequestMessage(HttpMethod.Get, ApiBase + relativeUrl);
             request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            request.Headers.TryAddWithoutValidation("apikey", _apiKey);
+            request.Headers.TryAddWithoutValidation("apikey", ResolveApiKey());
 
             HttpResponseMessage response;
             try
@@ -236,6 +244,8 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
 
         throw new HttpRequestException("Kanbanize konnte nach mehreren Versuchen nicht erreicht werden.");
     }
+
+    private string ResolveApiKey() => _apiKeyProvider()?.Trim() ?? string.Empty;
 
     private static bool IsTransient(HttpStatusCode statusCode) =>
         statusCode is HttpStatusCode.RequestTimeout or HttpStatusCode.TooManyRequests or

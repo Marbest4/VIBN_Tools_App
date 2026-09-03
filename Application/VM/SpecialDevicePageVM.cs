@@ -5,6 +5,7 @@ using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.SpecialDevices;
 using VIBN_Tools.Tia.Client;
 using VIBN_Tools.Tia.Contracts;
+using VIBN_Tools.Settings;
 using static VIBN_Tools.SpecialDevices.DeviceCatalog;
 
 namespace VIBN_Tools.Application.VM;
@@ -17,8 +18,12 @@ namespace VIBN_Tools.Application.VM;
 public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 {
     private readonly ITiaBridgeClient _tiaClient;
+    private readonly ITiaHardwareMappingStore _hardwareMappingStore;
     private readonly IApplicationLog _log;
+    private CancellationTokenSource? _tiaOperationCancellation;
     private bool _isBusyTia;
+    private bool _isDisconnectingTia;
+    private bool _isTiaAttached;
     private bool _isBusyCreateDevices;
     private DeviceManufacturer? _selectedManufacturer;
     private object? _selectedDevice;
@@ -37,9 +42,11 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     public SpecialDevicePageVM(
         ITiaBridgeClient tiaClient,
         IReadOnlyList<string> installedTiaVersions,
+        ITiaHardwareMappingStore hardwareMappingStore,
         IApplicationLog? log = null)
     {
         _tiaClient = tiaClient ?? throw new ArgumentNullException(nameof(tiaClient));
+        _hardwareMappingStore = hardwareMappingStore ?? throw new ArgumentNullException(nameof(hardwareMappingStore));
         _log = log ?? NullApplicationLog.Instance;
 
         foreach (var version in installedTiaVersions)
@@ -48,12 +55,16 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
         AddSpecialDeviceCommand = GetCommandBinding(AddSpecialDevice);
         ConnectTiaCommand = GetCommandBindingAsync(ConnectTiaAsync);
+        DisconnectTiaCommand = GetCommandBindingAsync(DisconnectTiaAsync);
         SelectTiaPlcCommand = GetCommandBindingAsync(SelectTiaPlcAsync);
         ReadTiaHardwareCommand = GetCommandBindingAsync(ReadTiaHardwareAsync);
+        SaveTiaHardwareMappingCommand = GetCommandBindingAsync(SaveTiaHardwareMappingAsync);
         AddSelectedHardwareDevicesCommand = GetCommandBinding(AddSelectedHardwareDevices);
         DeleteSelectedDevicesCommand = GetCommandBinding(DeleteSelectedDevice);
         DeleteAllDevicesCommand = GetCommandBinding(DeleteAllDevices);
         CreateSpecialDevicesCommand = GetCommandBindingAsync(CreateSpecialDevicesAsync);
+        if (Connection is not null)
+            Connection.PropertyChanged += OnFeeConnectionPropertyChanged;
     }
 
     public ObservableCollection<object> DeviceTypes { get; } = new();
@@ -76,9 +87,13 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
     public ICommand ConnectTiaCommand { get; }
 
+    public ICommand DisconnectTiaCommand { get; }
+
     public ICommand SelectTiaPlcCommand { get; }
 
     public ICommand ReadTiaHardwareCommand { get; }
+
+    public ICommand SaveTiaHardwareMappingCommand { get; }
 
     public ICommand AddSelectedHardwareDevicesCommand { get; }
 
@@ -87,6 +102,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     public ICommand DeleteAllDevicesCommand { get; }
 
     public ICommand CreateSpecialDevicesCommand { get; }
+
+    public FeeConnectionService? Connection => Services.Connection;
 
     public DeviceManufacturer? SelectedManufacturer
     {
@@ -205,6 +222,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaVersion = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CanConnectTia));
         }
     }
 
@@ -217,6 +235,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaPlc = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(CanSelectTiaPlc));
+            OnPropertyChanged(nameof(CanReadTiaHardware));
         }
     }
 
@@ -227,8 +247,19 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         {
             _isBusyTia = value;
             OnPropertyChanged();
+            NotifyTiaCommandState();
         }
     }
+
+    public bool CanConnectTia =>
+        !IsBusyTia && !_isDisconnectingTia && !_isTiaAttached &&
+        !string.IsNullOrWhiteSpace(SelectedTiaVersion);
+
+    public bool CanDisconnectTia => IsBusyTia || _isTiaAttached || _tiaClient.IsConnected;
+
+    public bool CanSelectTiaPlc => !IsBusyTia && _isTiaAttached && SelectedTiaPlc is not null;
+
+    public bool CanReadTiaHardware => CanSelectTiaPlc;
 
     public bool IsBusyCreateDevices
     {
@@ -238,10 +269,13 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             _isBusyCreateDevices = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanModifyDeviceQueue));
+            OnPropertyChanged(nameof(CanCreateInFee));
         }
     }
 
     public bool CanModifyDeviceQueue => !IsBusyCreateDevices;
+
+    public bool CanCreateInFee => CanModifyDeviceQueue && Connection?.CanUseFeeFeatures == true;
 
     public int SelectedDeviceIndex
     {
@@ -263,7 +297,24 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         }
     }
 
-    public ValueTask DisposeAsync() => _tiaClient.DisposeAsync();
+    public async ValueTask DisposeAsync()
+    {
+        if (Connection is not null)
+            Connection.PropertyChanged -= OnFeeConnectionPropertyChanged;
+        _tiaOperationCancellation?.Cancel();
+        _tiaOperationCancellation?.Dispose();
+        _tiaOperationCancellation = null;
+        await _tiaClient.DisposeAsync();
+    }
+
+    private void OnFeeConnectionPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs eventArgs)
+    {
+        if (eventArgs.PropertyName is nameof(FeeConnectionService.IsConnected) or
+            nameof(FeeConnectionService.CanUseFeeFeatures))
+        {
+            OnPropertyChanged(nameof(CanCreateInFee));
+        }
+    }
 
     private void AddSpecialDevice()
     {
@@ -313,18 +364,48 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         if (IsBusyTia || string.IsNullOrWhiteSpace(SelectedTiaVersion))
             return;
 
-        await RunTiaBusyAsync("Verbindung zu TIA Portal wird hergestellt …", async () =>
+        await RunTiaBusyAsync("Verbindung zu TIA Portal wird hergestellt …", async cancellationToken =>
         {
-            await _tiaClient.ConnectAsync();
-            if (!await _tiaClient.PingAsync())
+            await _tiaClient.ConnectAsync(cancellationToken);
+            if (!await _tiaClient.PingAsync(cancellationToken))
                 throw new InvalidOperationException("TIA Bridge antwortet nicht.");
-            await _tiaClient.SelectVersionAsync(SelectedTiaVersion);
-            await _tiaClient.AttachAsync();
-            Replace(TiaPlcs, await _tiaClient.ListPlcsAsync());
+            await _tiaClient.SelectVersionAsync(SelectedTiaVersion, cancellationToken);
+            await _tiaClient.AttachAsync(cancellationToken);
+            Replace(TiaPlcs, await _tiaClient.ListPlcsAsync(cancellationToken));
             SelectedTiaPlc = TiaPlcs.FirstOrDefault();
             TiaHardwareRows.Clear();
+            _isTiaAttached = true;
+            NotifyTiaCommandState();
             StatusText = $"Mit TIA Portal {SelectedTiaVersion} verbunden; {TiaPlcs.Count} PLC(s) gefunden.";
         });
+    }
+
+    private async Task DisconnectTiaAsync()
+    {
+        if (_isDisconnectingTia)
+            return;
+
+        _isDisconnectingTia = true;
+        _tiaOperationCancellation?.Cancel();
+        NotifyTiaCommandState();
+        try
+        {
+            await _tiaClient.DisconnectAsync();
+            ResetTiaUi();
+            StatusText = "TIA-Verbindungsaufbau abgebrochen und Session getrennt.";
+            _log.Information("TIA Hardware", StatusText);
+        }
+        catch (Exception exception)
+        {
+            ResetTiaUi();
+            StatusText = $"TIA-Session wurde lokal zurückgesetzt; Bridge-Abschluss fehlgeschlagen: {exception.Message}";
+            _log.Error("TIA Hardware", StatusText, exception);
+        }
+        finally
+        {
+            _isDisconnectingTia = false;
+            NotifyTiaCommandState();
+        }
     }
 
     private async Task SelectTiaPlcAsync()
@@ -332,9 +413,9 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         if (SelectedTiaPlc is null)
             return;
 
-        await RunTiaBusyAsync("PLC wird ausgewählt …", async () =>
+        await RunTiaBusyAsync("PLC wird ausgewählt …", async cancellationToken =>
         {
-            await _tiaClient.SelectPlcAsync(SelectedTiaPlc.Index);
+            await _tiaClient.SelectPlcAsync(SelectedTiaPlc.Index, cancellationToken);
             TiaHardwareRows.Clear();
             StatusText = $"PLC '{SelectedTiaPlc.Name}' ist ausgewählt.";
         });
@@ -348,16 +429,61 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             return;
         }
 
-        await RunTiaBusyAsync("TIA-Hardwarekonfiguration wird gelesen …", async () =>
+        await RunTiaBusyAsync("TIA-Hardwarekonfiguration wird gelesen …", async cancellationToken =>
         {
-            await _tiaClient.SelectPlcAsync(SelectedTiaPlc.Index);
-            var modules = await _tiaClient.ListHardwareAsync();
-            Replace(TiaHardwareRows, modules.Select(module => new TiaHardwareDeviceRowVM(module)));
-            var addressed = modules.Count(module =>
-                module.InputStartByte >= 0 || module.OutputStartByte >= 0);
-            StatusText = $"{TiaHardwareRows.Count} Hardwareelement(e) geladen; {addressed} mit E-/A-Adresse. " +
-                         "Logik und Byteadressen prüfen, dann in die Warteschlange übernehmen.";
+            await _tiaClient.SelectPlcAsync(SelectedTiaPlc.Index, cancellationToken);
+            var modules = await _tiaClient.ListHardwareAsync(cancellationToken);
+            var savedMappings = await _hardwareMappingStore.LoadAsync(cancellationToken);
+            var candidates = modules
+                .Select(module => new TiaHardwareDeviceRowVM(module))
+                .Where(row => row.InputByte.HasValue || row.OutputByte.HasValue || row.SelectedLogic is not null)
+                .ToArray();
+            var restored = 0;
+            foreach (var candidate in candidates)
+            {
+                if ((savedMappings.TryGetValue(candidate.MappingKey, out var mapping) ||
+                     (candidate.Module.AddressSetIndex == 0 &&
+                      savedMappings.TryGetValue(candidate.LegacyMappingKey, out mapping))) &&
+                    candidate.ApplyMapping(mapping))
+                {
+                    restored++;
+                }
+            }
+            Replace(TiaHardwareRows, candidates);
+            var addressed = candidates.Count(row => row.InputByte.HasValue || row.OutputByte.HasValue);
+            var deviceCount = candidates
+                .Select(row => row.DeviceGroupName)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Count();
+            StatusText = $"{modules.Count} Hardwareelement(e) traversiert; " +
+                         $"{candidates.Length} relevante Modulzeile(n) in {deviceCount} Gerät(en), " +
+                         $"davon {addressed} mit E-/A-Adresse und {restored} gespeicherte Zuordnung(en). " +
+                         "Logik und Byteadressen prüfen, Zuordnung speichern und dann übernehmen.";
         });
+    }
+
+    private async Task SaveTiaHardwareMappingAsync()
+    {
+        if (TiaHardwareRows.Count == 0)
+        {
+            StatusText = "Es sind keine TIA-Hardwarezuordnungen zum Speichern vorhanden.";
+            return;
+        }
+
+        try
+        {
+            await _hardwareMappingStore.SaveAsync(
+                TiaHardwareRows.Select(row => row.ToMapping()).ToArray());
+            foreach (var row in TiaHardwareRows)
+                row.MarkConfigurationSaved();
+            StatusText = $"{TiaHardwareRows.Count} TIA-Hardwarezuordnung(en) wurden lokal gespeichert.";
+            _log.Information("TIA Hardware", StatusText);
+        }
+        catch (Exception exception)
+        {
+            StatusText = $"TIA-Hardwarezuordnungen konnten nicht gespeichert werden: {exception.Message}";
+            _log.Error("TIA Hardware", StatusText, exception);
+        }
     }
 
     private void AddSelectedHardwareDevices()
@@ -413,6 +539,13 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
     private async Task CreateSpecialDevicesAsync()
     {
+        if (!Connection.CanUseFeeFeatures)
+        {
+            StatusText = FeeConnectionService.MissingConnectionMessage;
+            _log.Warning("Special Devices", StatusText);
+            return;
+        }
+
         if (IsBusyCreateDevices || SpecialDevices.Count == 0)
             return;
 
@@ -458,16 +591,28 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         }
     }
 
-    private async Task RunTiaBusyAsync(string initialStatus, Func<Task> action)
+    private async Task RunTiaBusyAsync(
+        string initialStatus,
+        Func<CancellationToken, Task> action)
     {
         if (IsBusyTia)
             return;
 
+        var cancellation = new CancellationTokenSource();
+        _tiaOperationCancellation = cancellation;
         IsBusyTia = true;
         StatusText = initialStatus;
         try
         {
-            await action();
+            await action(cancellation.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            if (!_isDisconnectingTia)
+            {
+                StatusText = "TIA-Hardwarevorgang wurde abgebrochen.";
+                _log.Information("TIA Hardware", StatusText);
+            }
         }
         catch (Exception exception)
         {
@@ -476,8 +621,27 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         }
         finally
         {
+            if (ReferenceEquals(_tiaOperationCancellation, cancellation))
+                _tiaOperationCancellation = null;
+            cancellation.Dispose();
             IsBusyTia = false;
         }
+    }
+
+    private void ResetTiaUi()
+    {
+        _isTiaAttached = false;
+        SelectedTiaPlc = null;
+        TiaPlcs.Clear();
+        TiaHardwareRows.Clear();
+    }
+
+    private void NotifyTiaCommandState()
+    {
+        OnPropertyChanged(nameof(CanConnectTia));
+        OnPropertyChanged(nameof(CanDisconnectTia));
+        OnPropertyChanged(nameof(CanSelectTiaPlc));
+        OnPropertyChanged(nameof(CanReadTiaHardware));
     }
 
     private void LoadDeviceTypesForManufacturer()

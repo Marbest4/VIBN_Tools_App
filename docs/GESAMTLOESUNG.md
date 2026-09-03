@@ -11,10 +11,12 @@ Die Solution verbindet die bestehende VIBN-Tools-Oberfläche mit ViCo, Kanbanize
 | Project Settings | FEE-PC wählen, Verbindung bestätigen, Projektbasis anlegen | `SettingsPageVM`, `FeeConnectionService`, `WorkstationDirectory` |
 | ViCo Übersicht | Arbeitsplätze, Belegung, Projekte, Konfiguration, RDP und Pfade | `ViCoSearchPageVM`, `ViCoWorkstationRowVM`, `LegacyWorkstationCatalog` |
 | ViCo Projekte/Transfer | Projekte öffnen, Favoriten speichern, Dateien übertragen | `ViCoPageVM`, `ViCoCopyPageVM`, `BoundedFileCopyService` |
-| ViCo TIA | PLC-/Bibliotheks-/Achsen-/Hardwarefunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
+| ViCo TIA | PLC-, Bibliotheks- und Achsenfunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
 | ViCo Verwaltung | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
 | Kanbanize | sichere VIBN-Übernahme und eigene Karten | `VibnWorkplaceSynchronizationService`, `KanbanizeCardApiService` |
-| Special Devices | manuelle und TIA-basierte Geräteerzeugung | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| Special Devices | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| Container2FEE Visual | zusätzlicher XML-Plan, Sidecar und typgeprüftes Drag-and-drop bei unverändertem Executor | `ContainerToFeeVisual/*`, `ContainerToFeeVisualPageVM` |
+| IBN Remote | getrennte schreibgeschützte Arbeitsplatz-/RDP-Einzeldatei ohne Volltool und Hersteller-SDKs | `VIBN_Tools.IbnRemote`, `VIBN_Tools.IbnRemote.Infrastructure` |
 | bestehende VIBN-Reiter | CAD, Zuli, Container, Modell und Schnittstellen | bestehende ViewModels und FEE-Services |
 
 ## Projektstruktur
@@ -36,8 +38,12 @@ VIBN_Tools.Infrastructure/
 VIBN_Tools.Tia.Contracts/       serialisierbare TIA-DTOs und Kommandonamen
 VIBN_Tools.Tia.Client/          Typed Named-Pipe-Client und Bibliotheksservice
 VIBN_Tools.TiaBridge/           isolierter .NET-Framework-/TIA-Openness-Prozess
+VIBN_Tools.IbnRemote/           separate, schlanke WPF-Anwendung für Inbetriebnehmer
+VIBN_Tools.IbnRemote.Infrastructure/
+                                ausschließlich Read-/RDP-Infrastruktur für IBN
 
 SpecialDevices/                 Gerätefactory, Katalog und konkrete Gerätekategorien
+ContainerToFeeVisual/           visueller Plan, Persistenz, Discovery und Legacy-Adapter
 Tests/CoreSmokeTests/           fachliche und transportnahe Smoke-Tests
 Tests/UiStartupSmokeTests/      WPF-XAML-/Binding-Starttest und Anleitungsbilder
 docs/                           Anwender-, Betriebs- und Entwicklerdokumentation
@@ -48,9 +54,13 @@ docs/                           Anwender-, Betriebs- und Entwicklerdokumentation
 ```text
 WPF View → ViewModel → Core-Vertrag → Infrastructure-Adapter
                                      ↘ TIA Client → Named Pipe → TIA Bridge → Openness
+
+IBN View → IBN ViewModel → Core-Vertrag → minimaler Read-/RDP-Adapter
 ```
 
 `Core` kennt weder WPF noch UNC-Pfade, Windows-Prozesse oder HTTP. Dadurch können Rollen, Terminberechnung, Suchlogik und Duplikatschutz ohne produktive Systeme getestet werden.
+
+Die IBN-Anwendung referenziert nicht das vollständige Hauptprojekt. Damit sind FEE, TIA, Generatoren, Verwaltung und Kanbanize-Schreibzugriffe nicht nur ausgeblendet, sondern nicht Bestandteil ihrer Binärabhängigkeiten.
 
 ## Wichtige fachliche Regeln
 

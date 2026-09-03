@@ -17,6 +17,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | Zuli Converter | Zuli-Datei einlesen und Interface-Datei erzeugen | alle |
 | Container Generation | Container aus Interface- und Requirements-Dateien prüfen und generieren | Level7 |
 | Container2Fee | Container XML mit FEE-Simulationsobjekten verbinden | Level7 |
+| Container2FEE Visual | zusätzliche Planansicht mit Drag-and-drop; nutzt denselben Generator | Level7 |
 | Special Devices | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
 | Model Validation | Modell-/FEE-Daten prüfen | alle |
 | Model Control | Roboter, Achsen, Objekte und Simulation steuern | alle |
@@ -44,6 +45,10 @@ Das editierbare Dropdown **Online-PC eingeben oder auswählen** ist Auswahl und 
 
 Scheitert die Verbindung oder läuft der Timeout ab, bleibt `Connected to: ---` sichtbar. Die Fehlerursache steht im Diagnoseprotokoll. **Create Project Base** setzt die bestehende Projektbasisfunktion erst nach einer passenden FEE-Verbindung ein.
 
+Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Version. Bei mehreren lokalen Versionsordnern wird nur eine Installation berücksichtigt, in deren eigenem Pfad `Bin\FS.SDK.dll` existiert. Dadurch werden neuere, aber unvollständige Installationsreste nicht mehr als aktive FEE-Version angezeigt. Eine Abweichung zwischen verwendetem SDK und vollständiger lokaler Installation bleibt rot markiert.
+
+Im Bereich **Kanbanize- und Remote-Konfiguration** werden API-Key und RDP-Passwort verdeckt für den aktuellen Windows-Benutzer hinterlegt. **Eingaben speichern** ändert nur ausgefüllte Felder; die beiden **Löschen**-Buttons entfernen die Werte einzeln. Die Statusfelder zeigen, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart.
+
 ## ViCo
 
 ### Übersicht & Verbindung
@@ -69,6 +74,8 @@ Die Tabelle zeigt:
 
 Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. Der ausklappbare Bereich **Alle Kanbanize-Informationen** enthält weiterhin sämtliche Lane-Karten.
 
+Unter dem Suchfeld zeigt ein Countdown den nächsten automatischen Kanbanize-Abruf. Das Intervall kann zwischen 1 und 1440 Minuten eingetragen und mit **Übernehmen** pro Windows-Benutzer gespeichert werden. Ohne konfigurierten API-Key steht der Zähler auf **pausiert**; sobald der Key in Project Settings gespeichert wurde, beginnt der Countdown ohne Neustart. **Daten aktualisieren** bleibt für eine sofortige manuelle Aktualisierung erhalten und startet den Zähler anschließend neu.
+
 Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt.
 
 ### Remote Desktop und Pfade
@@ -81,7 +88,7 @@ Nach Auswahl eines Online-PCs stehen bis zu vier lokale Monitore sowie diese Akt
 
 Bei einem Offline-PC sind diese Buttons nicht sichtbar. Dadurch kann keine fehlerhafte Remote- oder UNC-Aktion ausgelöst werden.
 
-Einmalig die Benutzervariable `VIBN_RDP_PASSWORD` gemäß [Konfiguration und Betrieb](KONFIGURATION_UND_BETRIEB.md) setzen und das Tool neu starten. Das Kennwort steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
+Das RDP-Passwort wird einmalig unter **Project Settings → Kanbanize- und Remote-Konfiguration** gespeichert. Es steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
 
 ### Arbeitsplatz-Konfiguration bearbeiten
 
@@ -93,7 +100,7 @@ Die rechte Seite enthält die vorhandenen Unteraufgaben einer Kanbanize-Karte mi
 - `PROJEKT-IP:`
 - `SONSTIGES:`
 
-Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken. Bestehende Unteraufgaben werden aktualisiert, fehlende Standard-Unteraufgaben werden ergänzt. Fehlt die Karte vollständig, zeigt die letzte Tabellenspalte dies rot an; **Standardkarte anlegen** erzeugt nach ausdrücklicher Bestätigung genau eine `KONFIGURATION`-Karte mit den fünf Standard-Unteraufgaben. Normale Projektkarten bleiben unverändert.
+Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken oder im Wertefeld **Enter** betätigen. Enter übernimmt zuerst den aktuellen Text, speichert alle geänderten Standardwerte direkt über die Kanbanize-API und aktualisiert anschließend Tabellenzeile, Benutzerzuordnung und Cache-Projektion. Bestehende Unteraufgaben werden aktualisiert, fehlende Standard-Unteraufgaben werden ergänzt. Fehlt die Karte vollständig, zeigt die letzte Tabellenspalte dies rot an; **Standardkarte anlegen** erzeugt nach ausdrücklicher Bestätigung genau eine `KONFIGURATION`-Karte mit den fünf Standard-Unteraufgaben. Normale Projektkarten bleiben unverändert.
 
 ### Projekte & Favoriten und Transfer
 
@@ -103,10 +110,12 @@ Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken. Bestehende Un
 
 1. lokale TIA-Version wählen;
 2. **Verbinden** drücken und die gefundene PLC auswählen;
-3. optional Programmbereiche, Datentypen, Achsen oder die Hardware-Konfiguration laden;
+3. optional Programmbereiche, Datentypen oder Achsen laden;
 4. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
+
+Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **Special Devices**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
 ### Verwaltung
 
@@ -122,7 +131,7 @@ Der Reiter hat zwei bewusst getrennte Arbeitsweisen.
 
 1. **Boards aktualisieren** und Quell-/Zielboard, Ziel-Lane und Zielspalte auswählen.
 2. **Prüfen** drücken. Die Vorschau zeigt Neueinträge, Zeitplanänderungen, unveränderte Karten und Konflikte.
-3. In der Spalte **Sync** nur die tatsächlich gewünschten Änderungen markieren.
+3. Neue Karten sind in **Sync** bereits markiert; Änderungen vorhandener Karten bleiben zunächst unmarkiert. Auswahl einzeln oder über **Alle selektieren** / **Alle deselektieren** prüfen.
 4. Erst nach fachlicher Prüfung **Synchronisieren** drücken. Nicht markierte Karten bleiben unverändert.
 
 Für jede zulässige VIBN-Karte mit `Grundinbetriebnahme` gilt:
@@ -131,6 +140,8 @@ Für jede zulässige VIBN-Karte mit `Grundinbetriebnahme` gilt:
 - Ende/Deadline der Zielkarte = Deadline derselben VIBN-Quellkarte plus 56 Tage.
 
 Die Synchronisierung verwendet die Quellkarten-ID als stabile Ziel-ID und erkennt ältere generierte Karten zusätzlich am eindeutigen Titel. Mehrere passende Zielkarten gelten als Konflikt. Eine separate Vorlagenkarte wird nicht benötigt. Bestehende Zielkarten werden weder verschoben noch umbenannt noch gelöscht; nur Starttermin und Deadline einer eindeutigen generierten Karte dürfen angepasst werden.
+
+Bei der Prüfung zählt nur das lokale Datum. Zwei Zeitwerte am selben Kalendertag gelten als identisch; die Uhrzeit löst kein Update aus.
 
 ### Eigene Karte
 
@@ -151,10 +162,13 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 1. Auf der gemeinsamen Seite zum Bereich **Hardware aus geöffnetem TIA-Projekt lesen** wechseln.
 2. TIA-Version wählen, **Mit TIA verbinden** und PLC auswählen.
 3. **Hardware auslesen** drücken.
-4. In der Tabelle Gerätename einschließlich TIA-Gerätekopf, Modul, Modultyp, Typkennung, optionale Firmware, E-/A-Start, daraus berechnete Adressbereiche, Byte-Längen, Präfix und Logik prüfen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
-5. Erforderlichenfalls Logik und Byteadressen korrigieren.
-6. Gewünschte Zeilen markieren und **Ausgewählte Geräte in Warteschlange übernehmen** drücken.
-7. In der rechts oben sichtbaren **Warteschlange** kontrollieren und erst danach **In FEE erzeugen** ausführen.
+4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp in einem blauen Gruppenkopf sowie GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
+5. Erforderlichenfalls Logik, Präfix und Byteadressen korrigieren. Das vorgeschlagene Präfix stammt vom Gerätenamen (Fallback: PROFINET-/Modulname), nicht mehr vom einzelnen Modulnamen.
+6. **Zuordnung speichern** legt die geprüften Werte lokal ab und stellt sie beim nächsten Auslesen wieder her.
+7. Gewünschte Zeilen markieren und **Ausgewählte Geräte in Warteschlange übernehmen** drücken.
+8. In der rechts oben sichtbaren **Warteschlange** kontrollieren und erst danach **In FEE erzeugen** ausführen.
+
+**TIA trennen / abbrechen** bricht auch einen laufenden Attach ab, schließt nur die zu dieser Seite gehörende Bridge-Session und leert PLC-/Hardwareliste. Das geöffnete TIA Portal wird nicht beendet.
 
 Die FEE-Erzeugung ist absichtlich serialisiert. Fehlgeschlagene Geräte bleiben in der Warteschlange, damit sie geprüft und erneut ausgeführt werden können.
 
@@ -163,6 +177,8 @@ Die FEE-Erzeugung ist absichtlich serialisiert. Fehlgeschlagene Geräte bleiben 
 ### CAD Wizard
 
 Für die gewählte FEE-/Projektvorlage werden Joints, Sensoren und Templates erzeugt; anschließend lassen sich leere Nodes entfernen oder Markierungen in Namen schreiben. Vor einer generierenden Aktion immer die richtige Projektverbindung und Vorlage prüfen.
+
+Ohne bestätigte FEE-Verbindung sind alle FEE-schreibenden Aktionen, Container2Fee-Start, Special-Device-Erzeugung, Model Control, Model Validation sowie Interface-Merge/-Connect deaktiviert. Der Tooltip lautet **Keine Verbindung zu FEE vorhanden.** Project Settings zeigt außerdem verwendete SDK- und lokal installierte FEE-Version; eine Abweichung ist rot markiert.
 
 ### Zuli Converter
 
@@ -179,13 +195,29 @@ Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File
 
 `Strg+Z` macht die letzte bearbeitbare Aktion rückgängig, `Strg+Y` bzw. `Strg+Umschalt+Z` wiederholt sie.
 
+Die Referenzdateien `Interface5.xlsx` und `Interface7.xlsx` sind als automatischer Importtest Bestandteil der Solution. Ein Fehler zu `SixLabors.Fonts.FontMetrics.TryGetGlyphMetrics` deutet auf einen gemischten alten Ausgabe-/Installationsordner hin; Anwendung vollständig neu bauen beziehungsweise das neue Setup vollständig installieren.
+
 ### Container2Fee
 
 Container XML öffnen, Simulationsobjekte suchen und die vorgeschlagenen FEE-Objekte nacheinander auswählen, erzeugen, überspringen oder abbrechen. Bereits zugeordnete Objekte sind sichtbar markiert. Der abschließende Button startet die Erzeugung erst, wenn die Auswahl vollständig ist.
 
+### Container2FEE Visual
+
+![Container2FEE-Plan ohne aktive FEE-Verbindung](screenshots/container2fee-visual.png)
+
+Dieser zusätzliche Reiter verändert den bisherigen Ablauf nicht. Nach **XML öffnen** zeigt er Container, Logiken, Signale, technische Hilfsobjekte, SimObject-Ziele und ihre Verknüpfungen. Die Vorschau funktioniert ohne FEE. Nach einer bestätigten Verbindung lädt **FEE aktualisieren** die vorhandenen SimObjects und ordnet eindeutige Treffer mit gleichem Komponentenname und passendem Typ automatisch zu.
+
+SimObjects können von rechts auf kompatible Ziele gezogen werden. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt; ein Objekt kann nur einem Container gehören. Grün bedeutet erkannt/zugeordnet, gelb bedeutet „bei Generation erzeugen“, rot bedeutet „Zuordnung fehlt“. Über die Checkboxen in der linken Struktur werden vollständige Container ausgewählt; **Alle selektieren** und **Alle deselektieren** helfen bei großen Plänen. Einzelne Signale oder Hilfsobjekte können nicht unabhängig deaktiviert werden, weil der unveränderte Legacy-Executor sie als abhängige Einheit erzeugt. **Rückgängig/Wiederholen** gilt auch für die Containerselektion.
+
+**Plan speichern** legt neben der unveränderten XML eine Datei `*.container2fee.visual.json` ab. Sie wird nur wieder angewendet, wenn der Fingerabdruck der XML unverändert ist. **Start Generation** ruft nach erfolgreicher Validierung den bestehenden Container2FEE-Executor auf. **Nur SimObjects verknüpfen** erzeugt dagegen nichts neu und verbindet zugeordnete SimObjects nur mit bereits vorhandenen, gleichnamigen LogicObjects. Dafür zuvor **Model Validation → Update Objects** ausführen. Details und Grenzen stehen in [CONTAINER2FEE_VISUAL.md](CONTAINER2FEE_VISUAL.md).
+
 ### Model Validation, Model Control und Interface Operation
 
-Diese Reiter arbeiten auf dem aktuell verbundenen FEE-Modell. Model Validation aktualisiert und prüft Daten; Model Control steuert die jeweils ausgewählten Robotik-/Achsen-/Objektfunktionen; Interface Operation lädt und verbindet Schnittstellen und Signale. Vor schreibenden Aktionen immer das Zielmodell und die Auswahl in der Statusanzeige kontrollieren.
+Diese Reiter arbeiten auf dem aktuell verbundenen FEE-Modell. Model Validation aktualisiert und prüft Daten; Statuszeile und Log nennen Objektzahl und Dauer. Die Interfacevariablen werden bei **Update Objects** nur einmal als Gesamtsnapshot aus dem SDK gelesen und anschließend pro Interface gruppiert. Model Control steuert die jeweils ausgewählten Robotik-/Achsen-/Objektfunktionen; Interface Operation lädt und verbindet Schnittstellen und Signale. Vor schreibenden Aktionen immer das Zielmodell und die Auswahl in der Statusanzeige kontrollieren.
+
+## Separate IBN-Remote-Ausgabe
+
+Für Inbetriebnehmer steht `VIBN_Tools_IBN.exe` bereit. Die kompakte Standardansicht enthält nur PC, Online und aktive Projekte; Statusdetails, Monitore und beide RDP-Buttons liegen in einer erweiterten Ansicht. API-Key und RDP-Passwort können in derselben kleinen Oberfläche geprüft, verdeckt gespeichert und gelöscht werden. FEE, TIA, Kanbanize-Schreibzugriffe und alle Generierungswerkzeuge sind nicht Teil dieses Pakets. Erstellung und Einrichtung: [IBN Remote](IBN_REMOTE.md).
 
 ## Diagnose und Fehlerbehebung
 

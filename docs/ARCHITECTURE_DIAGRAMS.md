@@ -14,6 +14,10 @@ flowchart LR
     INFRA --> WIN[Windows: RDP, Dateisystem, Sitzungen]
     TC -->|Named Pipe / JSON| TB[VIBN_Tools.TiaBridge net48]
     TB --> TIA[Siemens.Engineering / TIA Portal]
+    IBN[IBN Remote WPF] --> CORE
+    IBN --> IBNINFRA[IBN Read/RDP Infrastructure]
+    IBNINFRA --> KB
+    IBNINFRA --> WIN
 ```
 
 ## Projektabhängigkeiten
@@ -26,34 +30,36 @@ flowchart TD
     INFRA --> CORE
     CLIENT --> CONTRACTS[VIBN_Tools.Tia.Contracts netstandard2.0]
     BRIDGE[VIBN_Tools.TiaBridge net48] --> CONTRACTS
+    IBNAPP[VIBN_Tools.IbnRemote net8.0-windows] --> CORE
+    IBNAPP --> IBNINFRA[VIBN_Tools.IbnRemote.Infrastructure net8.0]
+    IBNINFRA --> CORE
 ```
 
 ## Container-Generator-Klassen
 
 ```mermaid
 classDiagram
-    MvvmBase <|-- ContainerGenerationStateVM
-    ContainerGenerationStateVM <|-- ContainerGenerationWorkflowVM
-    ContainerGenerationWorkflowVM <|-- ContainerGenerationPageVM
-    class ContainerGenerationStateVM {
+    MvvmBase <|-- ContainerGenerationPageVM
+    ContainerGenerationPageVM --> ContainerGenerator
+    ContainerGenerationPageVM --> XmlHandler
+    ContainerGenerationPageVM --> GenerationWorkspaceSnapshot
+    class ContainerGenerationPageVM {
       +ContainerList
       +UnassignedEntries
       +FilteredEntries
       +Settings
       +ActivityLog
-    }
-    class ContainerGenerationWorkflowVM {
-      #Open_InterfaceFile()
-      #Generate_Containers()
-      #Validate_Workspace()
-      #Undo_LastAction()
-    }
-    class ContainerGenerationPageVM {
       +ICommand bindings
       +Drag/drop handlers
       +Grid filters
+      +Open_InterfaceFile()
+      +Generate_Containers()
+      +Validate_Workspace()
+      +Undo_LastAction()
     }
 ```
+
+Die große ViewModel-Klasse ist eine bewusst dokumentierte Übergangsausnahme: Eine frühere Aufteilung wurde wegen einer ZULI-Regression zurückgenommen. `Interface5.xlsx` und `Interface7.xlsx` sichern inzwischen Import und Generatorübergabe; vor einer erneuten Zerlegung wird zusätzlich ein Golden Master aus Requirements und erwarteter vollständiger Ausgabe benötigt.
 
 ## TIA-Hardwaredatenfluss
 
@@ -67,13 +73,35 @@ sequenceDiagram
     U->>W: Hardware auslesen
     W->>C: ListHardwareAsync
     C->>B: Named-Pipe Request
-    B->>T: Project.Devices / DeviceItems lesen
+    B->>T: Root-, Gruppen- und Ungrouped-Geräte lesen
+    B->>T: DeviceItems rekursiv traversieren
     B->>T: Addresses, NetworkInterface, GSD Services lesen
     T-->>B: Read-only Openness-Objekte
     B-->>C: TiaHardwareModuleInfo[]
     C-->>W: typisierte DTOs
     W-->>U: Tabelle und optionale Special-Device-Zuordnung
 ```
+
+## Container2FEE-Visual-Datenfluss
+
+```mermaid
+flowchart LR
+    XML[Container XML, nur lesen] --> PARSER[Visual Plan Parser]
+    PARSER --> PLAN[VisualPlan: Knoten und Kanten]
+    PLAN <--> VM[Visual Page VM / Drag-and-drop]
+    VM <--> SIDE[JSON-Sidecar mit SHA-256]
+    FEE[FEE SimObjects] --> DISC[Discovery Adapter]
+    DISC --> VM
+    PLAN --> BIND[gemeinsamer Runtime Visual Plan Binder]
+    BIND --> EXEC[Legacy Generation Adapter]
+    BIND --> LINK[Existing SimObject Link Adapter]
+    EXEC --> LEGACY[bestehende Containerklassen und ContainerToFeeService]
+    LINK --> FEELOGIC[vorhandene FeeLogic aus Model Validation]
+    LEGACY --> FEE
+    FEELOGIC --> FEE
+```
+
+Der gemeinsame Binder überträgt nur typgeprüfte SimObject-Zuordnungen, Erzeugungswünsche und die Auswahl vollständiger Container. Signal-/Slot-Kanten sind sichtbar, bleiben aber Eigentum des bestehenden Executors. Link-only erzeugt keine neuen Modellobjekte.
 
 ## ViCo/Kanbanize-Datenfluss
 
@@ -88,4 +116,3 @@ flowchart LR
     SEARCH --> CFG[KONFIGURATION bearbeiten]
     CFG --> KB
 ```
-

@@ -37,6 +37,8 @@ Zuerst ein Interface in `Workstations.cs` ergänzen. Danach eine konkrete Implem
 
 Ein RDP-Profil darf ausschließlich Ziel-PC, Benutzer, Monitorwahl und Abfragemodus enthalten. Der einzige Kennwortprovider ist `VIBN_RDP_PASSWORD`; `WindowsTemporaryRemoteCredentialStore` reicht den Wert über `ProcessStartInfo.ArgumentList` an `cmdkey`, protokolliert ihn nie und entfernt den Zieleintrag verzögert. Keine zweite Passwortquelle und kein Literal ergänzen.
 
+`UserEnvironmentCredentialConfigurationService` ist der einzige UI-Schreibpfad für `VIBN_VICO_KANBANIZE_API_KEY` und `VIBN_RDP_PASSWORD`. Neue Kanbanize-Adapter müssen einen Provider (`Func<string?>`) verwenden und den Key pro Anfrage auflösen, damit Änderungen aus Project Settings ohne Neustart gelten. Secret-Werte dürfen nicht als bindbare Statusproperty, Logparameter oder Cachewert zurückgegeben werden; PasswordBox-Eingaben sind nach dem Speichern zu leeren.
+
 `quser /server:<PC>` besitzt keinen sicheren Rechte-Bypass. Fehler 5 wird als Berechtigungsdiagnose an die Oberfläche gereicht. Alternative Implementierungen dürfen keine Credentials auslesen oder Berechtigungen umgehen.
 
 ### Neue Kanbanize-Funktion
@@ -62,6 +64,25 @@ Die Reihenfolge ist verbindlich:
 
 Die Hauptanwendung darf keine Siemens-Openness-Assembly direkt laden. TIA-Fehler sind im ViewModel zu fangen und über `IApplicationLog` zu dokumentieren.
 
+`TiaHardwareReader` ist kein unerreichbarer Code: Er wird über Named Pipe im separaten Prozess `VIBN_Tools.TiaBridge.exe` ausgeführt. Ein Breakpoint dort wird bei normalem F5 im WPF-Prozess nicht automatisch getroffen. Zum Debuggen nach dem Start der Hardwareabfrage in Visual Studio **Debuggen → An Prozess anfügen** wählen und `VIBN_Tools.TiaBridge.exe` auswählen. Die Bridge-Quellen sind als `UpToDateCheckInput` registriert, damit F5 nach einer Änderung keine alte kopierte Bridge startet.
+
+`Address.Length` ist im Bridge-Modell eine Bitlänge. Nur `TiaHardwareReader` konvertiert mit Aufrundung in die zusätzlichen Bytefelder. UI oder Special-Device-Code dürfen die rohe Länge nicht ein zweites Mal umrechnen. Adresslose Hierarchieknoten liefern nur geerbte Metadaten; eine Tabellenzeile entsteht ausschließlich für einen konkreten E-/A-Adresssatz.
+
+### Container2FEE Visual erweitern
+
+Der alte Reiter und `ContainerToFeePageVM` bleiben die Verhaltensreferenz. Neue Planfunktionen gehören unter `ContainerToFeeVisual/`:
+
+1. reine Struktur in `Domain` ergänzen;
+2. XML-Metadaten in `Planning` erweitern, ohne FEE-Aufrufe auszuführen;
+3. persistente, versionierte Nutzerdaten ausschließlich in `Persistence` ändern;
+4. SDK-Objekte in `Discovery` kapseln;
+5. tatsächliche Erzeugung weiterhin über `LegacyContainerToFeeExecutionAdapter` und `ContainerToFeeService` ausführen;
+6. Bindings auf schreibgeschützte Eigenschaften explizit `Mode=OneWay` setzen und den UI-Smoke-Test erweitern.
+
+`RuntimeVisualPlanBinder` ist der einzige Übergang vom visuellen Plan zu den Legacy-Containern. Vollständige Generierung und `ExistingSimObjectLinkAdapter` dürfen keine zweite Zuordnungslogik aufbauen. Die Auswahlgrenze ist ein vollständiger unterstützter Container: Logik, Signale und Hilfsobjekte bilden im bisherigen Executor eine Abhängigkeitseinheit. Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
+
+Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den aktuellen Objektbestand aus **Model Validation → Update Objects**, genau ein vorhandenes gleichnamiges `FeeLogic` je ausgewähltem `ILogicSimObjectOwner` und validiert alle Arbeitseinträge vor dem ersten Slot-Schreibzugriff.
+
 ### Neues Special Device
 
 1. konkrete Geräteklasse unter `SpecialDevices/Devices` ergänzen;
@@ -82,12 +103,25 @@ Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWind
 - Fehler einer optionalen Detailabfrage dürfen nie den gesamten Tabellen-Refresh abbrechen.
 - Beim Binden von WPF-Eigenschaften `OneWay` einsetzen, wenn keine Quelle geschrieben werden darf. Das verhindert die früheren schreibgeschützten `PropertyPathWorker`-Fehler.
 
+`FeeInterface.GetAllInterfacesAsync` darf `GetAllVariablesAsync` nur einmal je Gesamtsnapshot aufrufen und gruppiert anschließend nach `InterfaceGuid`. `LoadSignalsAsync` bleibt als gezielte Einzelobjekt-API bestehen, darf aber nicht wieder in die Schleife des vollständigen Model-Validation-Refreshs eingebaut werden.
+
+## IBN-Remote-Variante erweitern
+
+Die IBN-Variante ist ein separates Produktartefakt. Neue IBN-Funktionen dürfen nur aufgenommen werden, wenn sie für Arbeitsplatzsuche oder RDP notwendig und schreibgeschützt sind. Wiederverwendete Adapter werden im Projekt `VIBN_Tools.IbnRemote.Infrastructure` explizit einzeln verlinkt; eine Referenz auf `VIBN_Tools`, die vollständige Infrastructure oder TIA-/FEE-Projekte ist unzulässig. Das Präprozessorsymbol `IBN_REMOTE_MINIMAL` entfernt aus gemeinsam genutzten Windows-Adaptern nicht benötigte Pfadfunktionen.
+
+Die IBN-Standardtabelle bleibt bewusst auf PC, Online und aktive Projekte begrenzt. Neue Diagnosefelder gehören in den ausklappbaren Detailbereich, damit die minimale Fenstergröße nicht erneut von einer breiten DataGrid-Spalte abhängig wird.
+
+Nach einer Änderung immer `scripts/Publish-IbnRemote.ps1` ausführen und prüfen, dass der Zielordner ausschließlich `VIBN_Tools_IBN.exe` enthält. Eine versteckte Hauptnavigation ist kein Ersatz für diese Abhängigkeitsgrenze.
+
 ## Tests
 
 | Test | Ziel |
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
-| `Tests/UiStartupSmokeTests` | Instanziierung integrierter WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings und Screenshot-Erzeugung |
+| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly und Übergabe an den fachlichen Container-Generator |
+| `Tests/UiStartupSmokeTests` | integrierte WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings, visueller XML-Plan, Sidecar, Undo/Redo und Screenshot-Erzeugung |
+| `Tests/Test-TiaHardwareTraversal.ps1` | Gerätegruppen, Proxy-Deduplizierung, Local Session und exakte PN/PN-Bit-/Bytebereiche |
+| `scripts/Publish-IbnRemote.ps1` plus kurzer Starttest | minimale, selbstständige IBN-Einzeldatei ohne zusätzliche Publish-Dateien |
 | manuelle Abnahme | reale UNC-Pfade, echte Kanbanize-Berechtigung, FEE, Outlook, RDP und TIA Openness |
 
 Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausführen. Für reale Systeme zusätzlich [ACCEPTANCE_CHECKLIST.md](ACCEPTANCE_CHECKLIST.md) abarbeiten.
@@ -97,3 +131,5 @@ Vor dem Commit mindestens Core-Smoke, WPF-UI-Smoke und einen Release-Build ausf�
 XML-Kommentare erklären öffentliche Modelle, Grenzen und Invarianten. Kommentare innerhalb einer Methode erklären ausschließlich nicht offensichtliche Entscheidungen, beispielsweise Timeout-, Cache- oder Datenintegritätsgründe. Sie dürfen keinen Code in eigenen Worten wiederholen.
 
 Neue Klassen sollen eine eng abgegrenzte Aufgabe haben. Wenn eine ViewModel-Datei mehrere eigenständige Präsentationsmodelle enthält, diese in getrennte Dateien auslagern – beispielsweise `ViCoWorkstationRowVM` gegenüber `ViCoSearchPageVM`.
+
+`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Die Referenzdateien sichern jetzt den Import und die Übergabe an `ContainerGenerator`; sie enthalten jedoch keine freigegebene Requirements-Datei samt erwarteter vollständiger Ausgabe. Die UI-Klasse daher erst weiter aufteilen, wenn zusätzlich dieser fachliche Golden Master vorliegt.

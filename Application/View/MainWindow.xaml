@@ -9,7 +9,13 @@
         xmlns:local="clr-namespace:VIBN_Tools.Application.View"
         xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
         xmlns:p="clr-namespace:VIBN_Tools.Application.View"
-        mc:Ignorable="d" Height="1200" Width="2050" WindowStyle="None" AllowsTransparency="True">
+        mc:Ignorable="d"
+        Title="VIBN Tools"
+        Height="900" Width="1600"
+        MinHeight="650" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        UseLayoutRounding="True"
+        WindowStyle="None" AllowsTransparency="True">
 
     <!--<Window.DataContext>
         <vm:MainWindowVM/>
@@ -96,13 +102,23 @@
                              Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <p:ContainerToFeePage/>
                     </TabItem>
+
+                    <TabItem Header="Container2FEE Visual"
+                             ux:Icon.Kind="WorkpieceStation"
+                             Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:ContainerToFeeVisualPage/>
+                    </TabItem>
                     
                     <TabItem Header="Special Devices" ux:Icon.Kind="DeviceVideoCamera">
                         <p:SpecialDevicePage/>
                     </TabItem>
                     
 
-                    <TabItem Header="Model Validation" ux:Icon.Kind="Wipe">
+                    <TabItem Header="Model Validation"
+                             ux:Icon.Kind="Wipe"
+                             IsEnabled="{Binding Connection.CanUseFeeFeatures}"
+                             ToolTip="{Binding Connection.UnavailableReason}"
+                             ToolTipService.ShowOnDisabled="True">
                         <p:ModelValidationPage/>
                     </TabItem>
                  
@@ -110,7 +126,11 @@
                         <p:MiniToolsPage/>
                     </TabItem>-->
 
-                    <TabItem Header="Model Control" ux:Icon.Kind="RobotWorkpiece">
+                    <TabItem Header="Model Control"
+                             ux:Icon.Kind="RobotWorkpiece"
+                             IsEnabled="{Binding Connection.CanUseFeeFeatures}"
+                             ToolTip="{Binding Connection.UnavailableReason}"
+                             ToolTipService.ShowOnDisabled="True">
                         <p:ModelControlPage/>
                     </TabItem>
 

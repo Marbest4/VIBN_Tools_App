@@ -97,6 +97,14 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
 
         public FeeInterface ParentInterface { get; set; }
 
+        /// <summary>
+        /// Set only by the visual Container2FEE executor after an unambiguous
+        /// existing signal was resolved. The subsequent legacy assignment then
+        /// reuses its GUID without updating or overwriting the variable.
+        /// </summary>
+        [System.Xml.Serialization.XmlIgnore]
+        public bool ReuseExistingWithoutUpdate { get; set; }
+
 
 
 
@@ -147,6 +155,14 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
 
             if (tempInterface == null)
                 throw new InvalidOperationException("No FeeInterface provided!");
+
+            if (ReuseExistingWithoutUpdate)
+            {
+                if (Guid == Guid.Empty)
+                    throw new InvalidOperationException("Existing interface signal has no valid GUID.");
+                ParentInterface = tempInterface;
+                return true;
+            }
 
             if (!await Services.ApiInstance.Interface.UpdateOrCreateVariableAsync(new ApiInterfaceVariableDefinition
             {

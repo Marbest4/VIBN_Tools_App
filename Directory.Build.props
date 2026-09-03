@@ -12,7 +12,6 @@
   <PropertyGroup Condition="'$(MSBuildProjectName)' == 'VIBN_Tools'">
     <FeeScreenSimInstallRoot Condition="'$(FeeScreenSimInstallRoot)' == ''">$(ProgramFiles)\fe.screen-sim V5</FeeScreenSimInstallRoot>
     <FeeScreenSimRoot Condition="'$(FEE_SCREEN_SIM_ROOT)' != ''">$(FEE_SCREEN_SIM_ROOT)</FeeScreenSimRoot>
-    <FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == '' and Exists('$(MSBuildThisFileDirectory)external\fe-screen-sim\Bin\FS.SDK.dll')">$(MSBuildThisFileDirectory)external\fe-screen-sim</FeeScreenSimRoot>
   </PropertyGroup>
 
   <!-- Visual Studio builds do not execute Build.ps1. Discover complete SDK
@@ -23,5 +22,6 @@
     <_InstalledFeeSdkMarkerPath Condition="Exists('$(FeeScreenSimInstallRoot)')">$([System.String]::Join(';', $([System.IO.Directory]::GetFiles('$(FeeScreenSimInstallRoot)', 'FS.SDK.dll', System.IO.SearchOption.AllDirectories))))</_InstalledFeeSdkMarkerPath>
     <_HasMultipleInstalledFeeSdks>$([System.Text.RegularExpressions.Regex]::IsMatch('$(_InstalledFeeSdkMarkerPath)', ';'))</_HasMultipleInstalledFeeSdks>
     <FeeScreenSimRoot Condition="'$(_InstalledFeeSdkMarkerPath)' != '' and '$(_HasMultipleInstalledFeeSdks)' != 'True'">$([System.IO.Path]::GetDirectoryName($([System.IO.Path]::GetDirectoryName('$(_InstalledFeeSdkMarkerPath)'))))</FeeScreenSimRoot>
+    <FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == '' and '$(_InstalledFeeSdkMarkerPath)' == '' and Exists('$(MSBuildThisFileDirectory)external\fe-screen-sim\Bin\FS.SDK.dll')">$(MSBuildThisFileDirectory)external\fe-screen-sim</FeeScreenSimRoot>
   </PropertyGroup>
 </Project>

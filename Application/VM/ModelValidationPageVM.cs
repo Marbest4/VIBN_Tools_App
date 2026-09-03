@@ -4,6 +4,7 @@ using System.Windows.Threading;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.ModelValidation;
+using VIBN_Tools.Application;
 
 namespace VIBN_Tools.Application.VM
 {
@@ -22,6 +23,17 @@ namespace VIBN_Tools.Application.VM
 
         public double NameColumnWidth { get; set; }
         public double IssueColumnWidth { get; set; }
+
+        private string _updateStatusText = "FEE-Objekte noch nicht aktualisiert.";
+        public string UpdateStatusText
+        {
+            get => _updateStatusText;
+            private set
+            {
+                _updateStatusText = value;
+                OnPropertyChanged();
+            }
+        }
 
 
         private bool _showGuidColumn;
@@ -166,9 +178,24 @@ namespace VIBN_Tools.Application.VM
 
         public async Task Update_FeeObjectData(object arg)
         {
-            IsBusyUpdatingFeeData = true;
+            if (IsBusyUpdatingFeeData)
+                return;
 
-            await Services.FeeObjects.UpdateFeeDataAsync();
+            IsBusyUpdatingFeeData = true;
+            UpdateStatusText = "FEE-Objekte und Validierungsdaten werden aktualisiert …";
+            try
+            {
+                await Services.FeeObjects.UpdateFeeDataAsync();
+            }
+            catch (Exception exception)
+            {
+                UpdateStatusText = "Update Objects ist fehlgeschlagen. Details stehen im Protokoll.";
+                ApplicationLogService.Instance.Error("Model Validation", UpdateStatusText, exception);
+            }
+            finally
+            {
+                IsBusyUpdatingFeeData = false;
+            }
 
         }
 
@@ -254,6 +281,8 @@ namespace VIBN_Tools.Application.VM
             CalculateColumnWidths();
 
             IsBusyUpdatingFeeData = false;
+            UpdateStatusText = $"{allFeeObjects.Count} FEE-Objekte in {e.ElapsedTime.TotalSeconds:F1} s aktualisiert.";
+            ApplicationLogService.Instance.Information("Model Validation", UpdateStatusText);
         }
 
 

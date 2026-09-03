@@ -7,6 +7,8 @@ namespace VIBN_Tools.Settings
     /// <summary>Polls the FEE SDK state and exposes confirmed connection transitions to the UI.</summary>
     public class FeeConnectionService : NotifyBase
     {
+        public const string MissingConnectionMessage = "Keine Verbindung zu FEE vorhanden.";
+
         private readonly DispatcherTimer _timer;
 
         public event Action Connected;
@@ -22,12 +24,29 @@ namespace VIBN_Tools.Settings
             {
                 bool changed = SetPropertyChange(ref _isConnected, value);
 
+                if (changed)
+                {
+                    OnPropertyChanged(nameof(CanUseFeeFeatures));
+                    OnPropertyChanged(nameof(UnavailableReason));
+                }
+
                 if (changed && value)
                 {
                     Connected?.Invoke();
                 }
             }
         }
+
+        /// <summary>
+        /// Central capability used by all UI actions that require a confirmed
+        /// Project-Settings connection. It deliberately follows the SDK state,
+        /// not merely a completed Connect call.
+        /// </summary>
+        public bool CanUseFeeFeatures => IsConnected;
+
+        /// <summary>Reason shown by disabled FEE-dependent controls.</summary>
+        public string? UnavailableReason =>
+            IsConnected ? null : MissingConnectionMessage;
 
         private bool _isConnecting;
         public bool IsConnecting
@@ -90,6 +109,16 @@ namespace VIBN_Tools.Settings
 
         private void CheckConnection()
         {
+            // Project Settings initializes the shared SDK before normal UI use.
+            // A disconnected design-time or smoke-test view must nevertheless
+            // remain loadable without constructing the complete FEE runtime.
+            if (Services.ApiInstance is null)
+            {
+                IsConnected = false;
+                IsConnecting = false;
+                return;
+            }
+
             // API Call for Connection State
             var state = Services.ApiInstance.ApiState;
 

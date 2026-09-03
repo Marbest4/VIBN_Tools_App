@@ -202,7 +202,7 @@
                     </Grid.ColumnDefinitions>
 
                     <ux:Button Grid.Column="0" Margin="5" ux:Icon.Kind="Restart" Command="{Binding ReloadFeeInterfaces}" IsBusy="{Binding IsBusyReloadInterfaces}"/>
-                    <ux:Button Grid.Column="1" Margin="5" Content="Connect Interfaces" Command="{Binding ConnectInterfaces}" IsEnabled="{Binding CanConnetInterfaces}"/>
+                    <ux:Button Grid.Column="1" Margin="5" Content="Connect Interfaces" Command="{Binding ConnectInterfaces}" IsEnabled="{Binding CanConnetInterfaces}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
 
                 </Grid>
 
@@ -250,7 +250,7 @@
 
                 </DataGrid>
 
-                <ux:Button Grid.Row="2" Margin="5" Content="Merge Signals to new Interface" Command="{Binding MergeSignalsToInterface}" DebounceInterval="150"/>
+                <ux:Button Grid.Row="2" Margin="5" Content="Merge Signals to new Interface" Command="{Binding MergeSignalsToInterface}" DebounceInterval="150" IsEnabled="{Binding Connection.CanUseFeeFeatures}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
 
 
 

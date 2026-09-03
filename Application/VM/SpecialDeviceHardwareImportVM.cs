@@ -26,7 +26,9 @@ public sealed record SpecialDeviceLogicOption(DeviceManufacturer Manufacturer, E
     /// </summary>
     public static SpecialDeviceLogicOption? Suggest(TiaHardwareModuleInfo module)
     {
-        var text = $"{module.ModuleName} {module.ModuleType} {module.TypeIdentifier}";
+        var text = $"{module.DeviceName} {module.DeviceType} {module.Manufacturer} " +
+                   $"{module.ModuleName} {module.ModulePath} {module.ModuleType} " +
+                   $"{module.TypeIdentifier} {module.GsdName} {module.GsdType}";
         return All.FirstOrDefault(option => option switch
         {
             { Manufacturer: DeviceManufacturer.Cognex } => text.Contains("COGNEX", StringComparison.OrdinalIgnoreCase),
@@ -64,11 +66,12 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     private SpecialDeviceLogicOption? _selectedLogic;
     private RobotType? _selectedRobotType;
     private bool _isAdded;
+    private bool _isConfigurationSaved;
 
     public TiaHardwareDeviceRowVM(TiaHardwareModuleInfo module)
     {
         Module = module ?? throw new ArgumentNullException(nameof(module));
-        _prefix = CreatePrefix(module.ModuleName);
+        _prefix = CreatePrefix(GetPreferredDeviceName(module));
         _inputByte = module.InputStartByte >= 0 ? module.InputStartByte : null;
         _outputByte = module.OutputStartByte >= 0 ? module.OutputStartByte : null;
         _selectedLogic = SpecialDeviceLogicOption.Suggest(module);
@@ -76,6 +79,48 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
     }
 
     public TiaHardwareModuleInfo Module { get; }
+
+    /// <summary>
+    /// Stable across TIA reads as long as the physical device/module identity
+    /// is unchanged. Byte offsets are deliberately not part of the key so a
+    /// reviewed manual address correction can be restored. The address-set
+    /// ordinal keeps separate areas of the same DeviceItem distinguishable.
+    /// </summary>
+    public string MappingKey => string.Join("|",
+        DeviceName.Trim(),
+        ProfinetName.Trim(),
+        ModulePath.Trim(),
+        Slot,
+        Subslot,
+        Module.AddressSetIndex);
+
+    /// <summary>
+    /// Compatibility key used before separate address areas were introduced.
+    /// It is considered only for the first area so an old merged mapping can
+    /// never be duplicated across multiple new rows.
+    /// </summary>
+    public string LegacyMappingKey => string.Join("|",
+        DeviceName.Trim(),
+        ProfinetName.Trim(),
+        ModulePath.Trim(),
+        Slot,
+        Subslot);
+
+    public string DeviceGroupName
+    {
+        get
+        {
+            var name = !string.IsNullOrWhiteSpace(DeviceName)
+                ? DeviceName
+                : !string.IsNullOrWhiteSpace(ProfinetName)
+                    ? ProfinetName
+                    : "Gerät ohne Namen";
+            return string.IsNullOrWhiteSpace(DeviceType) ||
+                   name.Contains(DeviceType, StringComparison.OrdinalIgnoreCase)
+                ? name
+                : $"{name} ({DeviceType})";
+        }
+    }
 
     public int Slot => Module.Slot;
 
@@ -91,6 +136,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public string GsdName => Module.GsdName;
 
+    public string GsdDisplay => string.IsNullOrWhiteSpace(Module.GsdName)
+        ? Module.GsdType
+        : Module.GsdName;
+
     public string ProfinetName => Module.ProfinetName;
 
     public string IpAddress => Module.IpAddress;
@@ -101,13 +150,23 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public string ModuleType => Module.ModuleType;
 
+    public string ModuleTypeDisplay => !string.IsNullOrWhiteSpace(Module.ModuleType)
+        ? Module.ModuleType
+        : !string.IsNullOrWhiteSpace(Module.ModuleName)
+            ? Module.ModuleName
+            : Module.TypeIdentifier;
+
     public string TypeIdentifier => Module.TypeIdentifier;
 
     public string FirmwareVersion => Module.FirmwareVersion;
 
     public int InputLength => Module.InputLength;
 
+    public int InputLengthBits => Module.InputLengthBits;
+
     public int OutputLength => Module.OutputLength;
+
+    public int OutputLengthBits => Module.OutputLengthBits;
 
     public string InputAddressRange => FormatAddressRange(InputByte, InputLength);
 
@@ -119,6 +178,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _include = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(State));
         }
@@ -130,7 +190,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _prefix = value ?? string.Empty;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -140,8 +202,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _inputByte = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(InputAddressRange));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -151,8 +215,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _outputByte = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(OutputAddressRange));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -162,8 +228,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _selectedLogic = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RequiresRobotType));
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -173,7 +241,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         set
         {
             _selectedRobotType = value;
+            _isConfigurationSaved = false;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(State));
         }
     }
 
@@ -190,7 +260,60 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         }
     }
 
-    public string State => IsAdded ? "In Warteschlange" : Include ? "Ausgewählt" : "Nicht ausgewählt";
+    public string State => IsAdded
+        ? "In Warteschlange"
+        : _isConfigurationSaved
+            ? "Gespeichert"
+            : Include ? "Ausgewählt" : "Nicht ausgewählt";
+
+    public TiaHardwareMapping ToMapping() => new(
+        MappingKey,
+        Include,
+        Prefix,
+        InputByte,
+        OutputByte,
+        SelectedLogic?.Manufacturer.ToString() ?? string.Empty,
+        SelectedLogic?.DeviceType.ToString() ?? string.Empty,
+        SelectedRobotType?.ToString() ?? string.Empty);
+
+    public bool ApplyMapping(TiaHardwareMapping mapping)
+    {
+        var matchesCurrentKey = string.Equals(MappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase);
+        var matchesLegacyKey = Module.AddressSetIndex == 0 &&
+                               string.Equals(LegacyMappingKey, mapping.Key, StringComparison.OrdinalIgnoreCase);
+        if (!matchesCurrentKey && !matchesLegacyKey)
+            return false;
+
+        _include = mapping.Include;
+        _prefix = mapping.Prefix ?? string.Empty;
+        _inputByte = mapping.InputByte;
+        _outputByte = mapping.OutputByte;
+        _selectedLogic = SpecialDeviceLogicOption.All.FirstOrDefault(option =>
+            string.Equals(option.Manufacturer.ToString(), mapping.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(option.DeviceType.ToString(), mapping.DeviceType, StringComparison.OrdinalIgnoreCase));
+        _selectedRobotType = Enum.TryParse<RobotType>(mapping.RobotType, ignoreCase: true, out var robotType)
+            ? robotType
+            : null;
+        _isConfigurationSaved = true;
+
+        OnPropertyChanged(nameof(Include));
+        OnPropertyChanged(nameof(Prefix));
+        OnPropertyChanged(nameof(InputByte));
+        OnPropertyChanged(nameof(OutputByte));
+        OnPropertyChanged(nameof(InputAddressRange));
+        OnPropertyChanged(nameof(OutputAddressRange));
+        OnPropertyChanged(nameof(SelectedLogic));
+        OnPropertyChanged(nameof(SelectedRobotType));
+        OnPropertyChanged(nameof(RequiresRobotType));
+        OnPropertyChanged(nameof(State));
+        return true;
+    }
+
+    public void MarkConfigurationSaved()
+    {
+        _isConfigurationSaved = true;
+        OnPropertyChanged(nameof(State));
+    }
 
     public bool TryCreate(out SpecialDevice? device, out string error)
     {
@@ -236,6 +359,30 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
             .Trim('_');
         return result.Length == 0 ? "Device" : result;
     }
+
+    private static string GetPreferredDeviceName(TiaHardwareModuleInfo module)
+    {
+        if (!IsHardwareHierarchyName(module.DeviceName))
+            return FirstNotEmpty(module.DeviceName, module.ProfinetName, module.ModuleName);
+
+        // TIA sometimes exposes the station/rack root as "Baugruppenträger".
+        // The PROFINET station name is the stable physical device identity in
+        // that case and must become the Special Device prefix.
+        return FirstNotEmpty(module.ProfinetName, module.DeviceName, module.ModuleName);
+    }
+
+    private static bool IsHardwareHierarchyName(string value)
+    {
+        var normalized = (value ?? string.Empty).Trim();
+        return normalized.Length == 0 ||
+               normalized.Contains("Baugruppenträger", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Contains("Baugruppentraeger", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("Rack", StringComparison.OrdinalIgnoreCase) ||
+               normalized.StartsWith("Rail", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string FirstNotEmpty(params string[] values) =>
+        values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? string.Empty;
 
     private static string FormatAddressRange(int? start, int length)
     {

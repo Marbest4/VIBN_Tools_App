@@ -14,6 +14,8 @@ public sealed record ViCoPathsOptions(
         "VIBN_Tools",
         "ViCo");
 
+    public string AutoRefreshSettingsFile => Path.Combine(WorkingDirectory, "user-preferences.json");
+
     /// <summary>
     /// Historical encrypted assignments, read only during the one-time roles
     /// migration. New installations use <see cref="RolesFile"/> exclusively.

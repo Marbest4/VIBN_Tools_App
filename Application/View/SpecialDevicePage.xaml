@@ -4,6 +4,11 @@
              FontSize="14" UseLayoutRounding="True" SnapsToDevicePixels="True">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <CollectionViewSource x:Key="GroupedTiaHardwareRows" Source="{Binding TiaHardwareRows}" IsLiveGroupingRequested="True">
+            <CollectionViewSource.GroupDescriptions>
+                <PropertyGroupDescription PropertyName="DeviceGroupName" />
+            </CollectionViewSource.GroupDescriptions>
+        </CollectionViewSource>
     </UserControl.Resources>
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -64,7 +69,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <WrapPanel Grid.Row="1" Margin="0,10,0,0">
-                        <Button MinWidth="155" MinHeight="38" Content="In FEE erzeugen" Command="{Binding CreateSpecialDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" />
+                        <Button MinWidth="155" MinHeight="38" Content="In FEE erzeugen" Command="{Binding CreateSpecialDevicesCommand}" IsEnabled="{Binding CanCreateInFee}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                         <Button MinWidth="135" MinHeight="38" Margin="7,0,0,0" Content="Auswahl entfernen" Command="{Binding DeleteSelectedDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" />
                         <Button MinWidth="115" MinHeight="38" Margin="7,0,0,0" Content="Alle entfernen" Command="{Binding DeleteAllDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" />
                         <TextBlock Margin="15,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding SpecialDevices.Count, StringFormat={}Anzahl: {0}}" />
@@ -79,34 +84,43 @@
                 <WrapPanel>
                     <TextBlock Margin="0,0,7,0" VerticalAlignment="Center" Text="TIA-Version:" />
                     <ComboBox Width="115" MinHeight="34" ItemsSource="{Binding InstalledTiaVersions}" SelectedItem="{Binding SelectedTiaVersion}" />
-                    <Button MinWidth="145" MinHeight="34" Margin="7,0,0,0" Content="Mit TIA verbinden" Command="{Binding ConnectTiaCommand}" />
+                    <Button MinWidth="145" MinHeight="34" Margin="7,0,0,0" Content="Mit TIA verbinden" Command="{Binding ConnectTiaCommand}" IsEnabled="{Binding CanConnectTia}" />
+                    <Button MinWidth="165" MinHeight="34" Margin="7,0,0,0" Content="TIA trennen / abbrechen" Command="{Binding DisconnectTiaCommand}" IsEnabled="{Binding CanDisconnectTia}" />
                     <TextBlock Margin="22,0,7,0" VerticalAlignment="Center" Text="PLC:" />
                     <ComboBox Width="260" MinHeight="34" ItemsSource="{Binding TiaPlcs}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedTiaPlc}" />
-                    <Button MinWidth="105" MinHeight="34" Margin="7,0,0,0" Content="Auswählen" Command="{Binding SelectTiaPlcCommand}" />
-                    <Button MinWidth="155" MinHeight="34" Margin="7,0,0,0" Content="Hardware auslesen" Command="{Binding ReadTiaHardwareCommand}" />
+                    <Button MinWidth="105" MinHeight="34" Margin="7,0,0,0" Content="Auswählen" Command="{Binding SelectTiaPlcCommand}" IsEnabled="{Binding CanSelectTiaPlc}" />
+                    <Button MinWidth="155" MinHeight="34" Margin="7,0,0,0" Content="Hardware auslesen" Command="{Binding ReadTiaHardwareCommand}" IsEnabled="{Binding CanReadTiaHardware}" />
                 </WrapPanel>
-                <TextBlock Grid.Row="1" Margin="0,8" Foreground="#FF666666" Text="TIA-Modulstruktur und E-/A-Byteadressen werden gelesen. Logik, Präfix und Adressen vor der Übernahme prüfen." TextWrapping="Wrap" />
-                <DataGrid Grid.Row="2" ItemsSource="{Binding TiaHardwareRows}" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" EnableColumnVirtualization="True" RowHeight="32" ColumnHeaderHeight="36" HorizontalScrollBarVisibility="Auto">
+                <TextBlock Grid.Row="1" Margin="0,8" Foreground="#FF666666" Text="Module sind nach Gerätename gruppiert. Logik, Präfix und E-/A-Start vor der Übernahme prüfen; gespeicherte Zuordnungen werden beim nächsten Auslesen wiederhergestellt." TextWrapping="Wrap" />
+                <DataGrid Grid.Row="2" ItemsSource="{Binding Source={StaticResource GroupedTiaHardwareRows}}" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizingWhenGrouping="True" RowHeight="34" ColumnHeaderHeight="36" HorizontalScrollBarVisibility="Auto">
+                    <DataGrid.GroupStyle>
+                        <GroupStyle>
+                            <GroupStyle.HeaderTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,5,0,2" Padding="10,6" Background="#FFD9EAF7" BorderBrush="#FF7AA7C7" BorderThickness="1" CornerRadius="3">
+                                        <StackPanel>
+                                            <TextBlock Foreground="#FF174A6B" FontSize="15" FontWeight="SemiBold"
+                                                       Text="{Binding Items[0].DeviceName, StringFormat={}Gerät: {0}}" />
+                                            <TextBlock Margin="0,2,0,0" Foreground="#FF356A8A"
+                                                       Text="{Binding Items[0].DeviceType, StringFormat={}Gerätetyp: {0}}" />
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </GroupStyle.HeaderTemplate>
+                        </GroupStyle>
+                    </DataGrid.GroupStyle>
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="Übernehmen" Binding="{Binding Include}" Width="86" />
-                        <DataGridTextColumn Header="Gerätename" Binding="{Binding DeviceName, Mode=OneWay}" IsReadOnly="True" Width="190" />
-                        <DataGridTextColumn Header="Gerätetyp" Binding="{Binding DeviceType, Mode=OneWay}" IsReadOnly="True" Width="170" />
-                        <DataGridTextColumn Header="Hersteller" Binding="{Binding Manufacturer, Mode=OneWay}" IsReadOnly="True" Width="110" />
-                        <DataGridTextColumn Header="Bestellnummer" Binding="{Binding OrderNumber, Mode=OneWay}" IsReadOnly="True" Width="135" />
-                        <DataGridTextColumn Header="GSDML" Binding="{Binding GsdName, Mode=OneWay}" IsReadOnly="True" Width="150" />
-                        <DataGridTextColumn Header="PROFINET-Name" Binding="{Binding ProfinetName, Mode=OneWay}" IsReadOnly="True" Width="145" />
+                        <DataGridTextColumn Header="GSDML" Binding="{Binding GsdDisplay, Mode=OneWay}" IsReadOnly="True" Width="175" />
                         <DataGridTextColumn Header="IP-Adresse" Binding="{Binding IpAddress, Mode=OneWay}" IsReadOnly="True" Width="105" />
-                        <DataGridTextColumn Header="Slot" Binding="{Binding Slot, Mode=OneWay}" IsReadOnly="True" Width="60" />
-                        <DataGridTextColumn Header="Subslot" Binding="{Binding Subslot, Mode=OneWay}" IsReadOnly="True" Width="65" />
-                        <DataGridTextColumn Header="Modul" Binding="{Binding ModuleName, Mode=OneWay}" IsReadOnly="True" Width="160" />
-                        <DataGridTextColumn Header="Modulpfad" Binding="{Binding ModulePath, Mode=OneWay}" IsReadOnly="True" Width="220" />
-                        <DataGridTextColumn Header="Modultyp" Binding="{Binding ModuleType, Mode=OneWay}" IsReadOnly="True" Width="150" />
-                        <DataGridTextColumn Header="TIA-Typkennung" Binding="{Binding TypeIdentifier, Mode=OneWay}" IsReadOnly="True" Width="220" />
+                        <DataGridTextColumn Header="Modultyp" Binding="{Binding ModuleTypeDisplay, Mode=OneWay}" IsReadOnly="True" Width="190" />
                         <DataGridTextColumn Header="Firmware" Binding="{Binding FirmwareVersion, Mode=OneWay}" IsReadOnly="True" Width="85" />
-                        <DataGridTextColumn Header="E-Start" Binding="{Binding InputByte, UpdateSourceTrigger=PropertyChanged}" Width="75" />
-                        <DataGridTextColumn Header="E-Bereich" Binding="{Binding InputAddressRange, Mode=OneWay}" IsReadOnly="True" Width="92" />
-                        <DataGridTextColumn Header="A-Start" Binding="{Binding OutputByte, UpdateSourceTrigger=PropertyChanged}" Width="75" />
-                        <DataGridTextColumn Header="A-Bereich" Binding="{Binding OutputAddressRange, Mode=OneWay}" IsReadOnly="True" Width="92" />
+                        <DataGridTemplateColumn Header="E-Bereich" Width="145">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><TextBox Width="48" MinHeight="26" Text="{Binding InputByte, UpdateSourceTrigger=PropertyChanged}" ToolTip="E-Start bearbeiten" /><TextBlock Margin="7,0,0,0" VerticalAlignment="Center" Text="{Binding InputAddressRange, Mode=OneWay}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="A-Bereich" Width="145">
+                            <DataGridTemplateColumn.CellTemplate><DataTemplate><StackPanel Orientation="Horizontal"><TextBox Width="48" MinHeight="26" Text="{Binding OutputByte, UpdateSourceTrigger=PropertyChanged}" ToolTip="A-Start bearbeiten" /><TextBlock Margin="7,0,0,0" VerticalAlignment="Center" Text="{Binding OutputAddressRange, Mode=OneWay}" /></StackPanel></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTextColumn Header="E-Länge (Byte)" Binding="{Binding InputLength, Mode=OneWay}" IsReadOnly="True" Width="105" />
                         <DataGridTextColumn Header="A-Länge (Byte)" Binding="{Binding OutputLength, Mode=OneWay}" IsReadOnly="True" Width="105" />
                         <DataGridTextColumn Header="Präfix" Binding="{Binding Prefix, UpdateSourceTrigger=PropertyChanged}" Width="135" />
@@ -118,6 +132,7 @@
                 </DataGrid>
                 <DockPanel Grid.Row="3" Margin="0,9,0,0">
                     <Button DockPanel.Dock="Right" MinWidth="285" MinHeight="36" Content="Ausgewählte Geräte in Warteschlange übernehmen" Command="{Binding AddSelectedHardwareDevicesCommand}" />
+                    <Button DockPanel.Dock="Right" MinWidth="185" MinHeight="36" Margin="0,0,7,0" Content="Zuordnung speichern" Command="{Binding SaveTiaHardwareMappingCommand}" />
                     <ProgressBar DockPanel.Dock="Right" Width="125" Height="7" Margin="0,0,14,0" VerticalAlignment="Center" IsIndeterminate="True" Visibility="{Binding IsBusyTia, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </DockPanel>
             </Grid>

@@ -1,6 +1,7 @@
 using System.Security.Principal;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.GlobalClasses;
+using VIBN_Tools.Settings;
 
 namespace VIBN_Tools.Application.VM;
 
@@ -13,6 +14,8 @@ public sealed class MainWindowVM : MvvmBase
     private bool _canUseLevel7Features;
     private bool _canUseLevel8Features;
     private string _currentLevel = "Nicht erkannt";
+
+    public FeeConnectionService Connection => Services.Connection;
 
     /// <summary>CAD Wizard, Container Generation and Container2Fee.</summary>
     public bool CanUseLevel7Features

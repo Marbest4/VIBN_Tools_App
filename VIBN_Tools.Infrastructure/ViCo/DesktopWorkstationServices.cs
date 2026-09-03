@@ -351,6 +351,7 @@ public sealed class WindowsRemoteSessionService : IRemoteSessionService
     private sealed record RemoteSessionRow(string UserName, string State, DateTimeOffset? LogonAt);
 }
 
+#if !IBN_REMOTE_MINIMAL
 public sealed class ViCoRelatedPathResolver : IViCoRelatedPathResolver
 {
     private readonly string _simulationRoot;
@@ -586,3 +587,4 @@ public sealed class StandardProjectStructureService : IProjectStructureService
             Directory.CreateDirectory(Path.Combine(projectDirectory, folder));
     }
 }
+#endif

@@ -186,6 +186,7 @@ public sealed class ViCoConfigurationFieldVM : MvvmBase
 {
     private string _value;
     private string _originalValue;
+    private bool _existsOnBoard;
 
     public ViCoConfigurationFieldVM(ViCoConfigurationField field)
     {
@@ -193,13 +194,14 @@ public sealed class ViCoConfigurationFieldVM : MvvmBase
         SubtaskId = field.SubtaskId;
         _value = field.Value;
         _originalValue = field.Value;
+        _existsOnBoard = field.SubtaskId > 0;
     }
 
     public string Key { get; }
 
     public int SubtaskId { get; }
 
-    public bool CanSave => SubtaskId > 0;
+    public bool CanSave => _existsOnBoard;
 
     public string Value
     {
@@ -221,6 +223,8 @@ public sealed class ViCoConfigurationFieldVM : MvvmBase
     public void AcceptSavedValue()
     {
         _originalValue = Value;
+        _existsOnBoard = true;
         OnPropertyChanged(nameof(IsChanged));
+        OnPropertyChanged(nameof(CanSave));
     }
 }

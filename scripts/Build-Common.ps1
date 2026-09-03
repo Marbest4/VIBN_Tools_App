@@ -1,3 +1,47 @@
+function Get-InstalledFeeScreenSimRoots {
+    [CmdletBinding()]
+    param()
+
+    $installationRoots = [Collections.Generic.List[string]]::new()
+    if (-not [string]::IsNullOrWhiteSpace($env:ProgramFiles)) {
+        $installationRoots.Add((Join-Path $env:ProgramFiles 'fe.screen-sim V5'))
+    }
+    if (-not [string]::IsNullOrWhiteSpace(${env:ProgramFiles(x86)})) {
+        $installationRoots.Add((Join-Path ${env:ProgramFiles(x86)} 'fe.screen-sim V5'))
+    }
+
+    $detected = [Collections.Generic.List[object]]::new()
+    foreach ($installationRoot in ($installationRoots | Select-Object -Unique)) {
+        if (-not (Test-Path -LiteralPath $installationRoot -PathType Container)) { continue }
+        foreach ($directory in (Get-ChildItem -LiteralPath $installationRoot -Directory)) {
+            $match = [regex]::Match($directory.Name, '\d+(?:\.\d+){1,3}')
+            $parsed = [version]'0.0'
+            if ($match.Success) { [void][version]::TryParse($match.Value, [ref]$parsed) }
+            $detected.Add([pscustomobject]@{ Path = $directory.FullName; Version = $parsed })
+        }
+    }
+
+    return @($detected |
+        Sort-Object Version -Descending |
+        Select-Object -ExpandProperty Path -Unique)
+}
+
+function Get-CompleteInstalledFeeScreenSimRoots {
+    [CmdletBinding()]
+    param()
+
+    $complete = [Collections.Generic.List[string]]::new()
+    foreach ($candidate in (Get-InstalledFeeScreenSimRoots)) {
+        if (Test-Path -LiteralPath (Join-Path $candidate 'Bin\FS.SDK.dll') -PathType Leaf) {
+            $complete.Add((Resolve-Path -LiteralPath $candidate).Path)
+        }
+        else {
+            Write-Warning "FEE-Installation '$candidate' wird übersprungen: Bin\FS.SDK.dll fehlt."
+        }
+    }
+    return @($complete)
+}
+
 function Resolve-FeeScreenSimRoot {
     [CmdletBinding()]
     param([string]$ExplicitRoot)
@@ -6,17 +50,10 @@ function Resolve-FeeScreenSimRoot {
     $candidates = [Collections.Generic.List[string]]::new()
     if (-not [string]::IsNullOrWhiteSpace($ExplicitRoot)) { $candidates.Add($ExplicitRoot) }
     if (-not [string]::IsNullOrWhiteSpace($env:FEE_SCREEN_SIM_ROOT)) { $candidates.Add($env:FEE_SCREEN_SIM_ROOT) }
+    foreach ($installedRoot in (Get-InstalledFeeScreenSimRoots)) { $candidates.Add($installedRoot) }
+    # The repository-local SDK is a deterministic CI/test fallback, not a
+    # reason to ignore a newer complete product installation.
     $candidates.Add((Join-Path $repositoryRoot 'external\fe-screen-sim'))
-
-    $installationRoot = Join-Path $env:ProgramFiles 'fe.screen-sim V5'
-    if (Test-Path -LiteralPath $installationRoot -PathType Container) {
-        Get-ChildItem -LiteralPath $installationRoot -Directory |
-            Sort-Object {
-                $parsed = [version]'0.0'
-                if ([version]::TryParse($_.Name, [ref]$parsed)) { $parsed } else { [version]'0.0' }
-            } -Descending |
-            ForEach-Object { $candidates.Add($_.FullName) }
-    }
 
     $checked = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($candidate in $candidates) {
@@ -39,39 +76,114 @@ function Resolve-FeeScreenSimRoot {
     throw 'Keine vollständige fe.screen-sim-SDK-Installation gefunden. Unvollständige Versionen wurden übersprungen. FEE_SCREEN_SIM_ROOT setzen oder external\fe-screen-sim bereitstellen.'
 }
 
+function Select-FeeScreenSimRoot {
+    [CmdletBinding()]
+    param()
+
+    $complete = @(Get-CompleteInstalledFeeScreenSimRoots)
+    if ($complete.Count -eq 0) {
+        return (Resolve-FeeScreenSimRoot)
+    }
+    if ($complete.Count -eq 1) {
+        Write-Host "Eine vollständige FEE-SDK-Version erkannt: $($complete[0])"
+        return $complete[0]
+    }
+
+    Write-Host 'Mehrere vollständige FEE-SDK-Versionen wurden erkannt:'
+    for ($index = 0; $index -lt $complete.Count; $index++) {
+        $defaultText = if ($index -eq 0) { ' (neueste, Standard)' } else { '' }
+        Write-Host "  [$($index + 1)] $($complete[$index])$defaultText"
+    }
+    $answer = Read-Host 'SDK für Visual Studio und Build auswählen [1]'
+    if ([string]::IsNullOrWhiteSpace($answer)) { return $complete[0] }
+
+    $selection = 0
+    if (-not [int]::TryParse($answer, [ref]$selection) -or
+        $selection -lt 1 -or $selection -gt $complete.Count) {
+        throw "Ungültige SDK-Auswahl '$answer'."
+    }
+    return $complete[$selection - 1]
+}
+
 function Assert-LastExitCode {
     param([string]$Operation)
     if ($LASTEXITCODE -ne 0) { throw "$Operation ist mit Exitcode $LASTEXITCODE fehlgeschlagen." }
 }
 
-function Assert-FeeRuntimeClosure {
+function Get-FeeRuntimeClosure {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$FeeRoot)
 
+    $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
     $binRoot = Join-Path $FeeRoot 'Bin'
-    $assemblyFiles = Get-ChildItem -LiteralPath $binRoot -Recurse -Filter '*.dll' -File
-    $available = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($assemblyFile in $assemblyFiles) {
-        [void]$available.Add([IO.Path]::GetFileNameWithoutExtension($assemblyFile.Name))
+    $pluginAssembly = Join-Path $binRoot 'Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll'
+    $availableFiles = @(Get-ChildItem -LiteralPath $binRoot -Filter 'FS.*.dll' -File)
+    if ($availableFiles.Count -eq 0) {
+        throw "Im FEE-SDK '$FeeRoot' wurden keine FS.*-Runtime-Assemblies gefunden."
+    }
+    if (-not (Test-Path -LiteralPath $pluginAssembly -PathType Leaf)) {
+        throw "Im FEE-SDK '$FeeRoot' fehlt Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll."
     }
 
+    $available = [Collections.Generic.Dictionary[string, IO.FileInfo]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($assemblyFile in $availableFiles) {
+        $available[[IO.Path]::GetFileNameWithoutExtension($assemblyFile.Name)] = $assemblyFile
+    }
+
+    # The project references are the closure roots. Starting from them avoids
+    # packaging unrelated FS tools merely because they share the same Bin dir.
+    [xml]$project = Get-Content -LiteralPath (Join-Path $repositoryRoot 'VIBN_Tools.csproj') -Raw
+    $rootNames = @($project.SelectNodes('//Reference') |
+        ForEach-Object { [string]$_.Include } |
+        Where-Object { $_.StartsWith('FS.', [StringComparison]::OrdinalIgnoreCase) } |
+        Sort-Object -Unique)
+    $queue = [Collections.Generic.Queue[IO.FileInfo]]::new()
+    $selected = [Collections.Generic.Dictionary[string, IO.FileInfo]]::new([StringComparer]::OrdinalIgnoreCase)
+    foreach ($rootName in $rootNames) {
+        if (-not $available.ContainsKey($rootName)) {
+            throw "Die im Projekt referenzierte FEE-Assembly '$rootName.dll' fehlt unter '$binRoot'."
+        }
+        $rootFile = $available[$rootName]
+        $selected[$rootName] = $rootFile
+        $queue.Enqueue($rootFile)
+    }
+    $queue.Enqueue((Get-Item -LiteralPath $pluginAssembly))
+
+    $inspected = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     $missing = [Collections.Generic.SortedSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
-    foreach ($assemblyFile in $assemblyFiles) {
+    while ($queue.Count -gt 0) {
+        $assemblyFile = $queue.Dequeue()
+        if (-not $inspected.Add($assemblyFile.FullName)) { continue }
         try {
             $assembly = [Reflection.Assembly]::LoadFile($assemblyFile.FullName)
             foreach ($reference in $assembly.GetReferencedAssemblies()) {
-                if ($reference.Name.StartsWith('FS.', [StringComparison]::OrdinalIgnoreCase) -and
-                    -not $available.Contains($reference.Name)) {
+                if (-not $reference.Name.StartsWith('FS.', [StringComparison]::OrdinalIgnoreCase)) { continue }
+                if (-not $available.ContainsKey($reference.Name)) {
                     [void]$missing.Add($reference.Name)
+                    continue
+                }
+                $dependencyFile = $available[$reference.Name]
+                if (-not $selected.ContainsKey($reference.Name)) {
+                    $selected[$reference.Name] = $dependencyFile
+                    $queue.Enqueue($dependencyFile)
                 }
             }
         }
         catch {
-            throw "FEE-Assembly konnte nicht geprüft werden: $($assemblyFile.FullName). $($_.Exception.Message)"
+            throw "Benötigte FEE-Assembly konnte nicht geprüft werden: $($assemblyFile.FullName). $($_.Exception.Message)"
         }
     }
 
     if ($missing.Count -gt 0) {
         throw "Das FEE-SDK ist nur für den Build, nicht für ein lauffähiges Deployment vollständig. Fehlend: $($missing -join ', ')."
     }
+
+    return @($selected.Values | Sort-Object Name)
+}
+
+function Assert-FeeRuntimeClosure {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$FeeRoot)
+
+    [void]@(Get-FeeRuntimeClosure -FeeRoot $FeeRoot)
 }

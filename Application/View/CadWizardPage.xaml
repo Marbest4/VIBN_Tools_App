@@ -36,11 +36,11 @@
             </GroupBox.Header>
             <StackPanel Orientation="Vertical" Margin="5">
                 <TextBlock Margin="5,20,5,10" Text="{Binding ProjectSettings.SelectedTemplate, StringFormat={}PLC-Type: {0}}" Style="{StaticResource TextRobotoRegularStyle}"/>
-                <ux:Button Margin="5" Content="Create Joints" Command="{Binding CreateJoints}" IsBusy="{Binding IsBusyCreateJoints}" DebounceInterval="150" MinWidth="200" />
-                <ux:Button Margin="5" Content="Create Sensors" Command="{Binding CreateSensors}" IsBusy="{Binding IsBusyCreateSensors}" DebounceInterval="150" MinWidth="200" />
+                <ux:Button Margin="5" Content="Create Joints" Command="{Binding CreateJoints}" IsBusy="{Binding IsBusyCreateJoints}" DebounceInterval="150" MinWidth="200" IsEnabled="{Binding Connection.CanUseFeeFeatures}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                <ux:Button Margin="5" Content="Create Sensors" Command="{Binding CreateSensors}" IsBusy="{Binding IsBusyCreateSensors}" DebounceInterval="150" MinWidth="200" IsEnabled="{Binding Connection.CanUseFeeFeatures}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                 <ux:Button Margin="5" Content="Create Conveyors" Command="{Binding CreateConveyors}" IsBusy="{Binding IsBusyCreateConveyors}" DebounceInterval="150" MinWidth="200"  Visibility="Collapsed"/>
-                <ux:Button Margin="5" Content="Create Templates" Command="{Binding CreateTemplates}" IsBusy="{Binding IsBusyCreateTemplates}" DebounceInterval="150" MinWidth="200" />
-                <ux:Button Margin="5,30,5,5" Content="Delete Empty Nodes" Command="{Binding DeleteEmptyNodes}" IsBusy="{Binding IsBusyDeleteEmptyNodes}" DebounceInterval="150" MinWidth="200" />
+                <ux:Button Margin="5" Content="Create Templates" Command="{Binding CreateTemplates}" IsBusy="{Binding IsBusyCreateTemplates}" DebounceInterval="150" MinWidth="200" IsEnabled="{Binding Connection.CanUseFeeFeatures}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                <ux:Button Margin="5,30,5,5" Content="Delete Empty Nodes" Command="{Binding DeleteEmptyNodes}" IsBusy="{Binding IsBusyDeleteEmptyNodes}" DebounceInterval="150" MinWidth="200" IsEnabled="{Binding Connection.CanUseFeeFeatures}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
 
                 <!--<ux:Button Content="Test" Command="{Binding TestButton}"/>-->
 

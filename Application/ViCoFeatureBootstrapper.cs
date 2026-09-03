@@ -18,12 +18,18 @@ public static class ViCoFeatureBootstrapper
     private static readonly LegacyWorkstationCatalog SharedWorkstationCatalog =
         new(SharedOptions.ServerCacheRoot);
     private static readonly IViCoUserRoleStore SharedUserRoleStore = CreateUserRoleStore();
+    private static readonly IUserCredentialConfigurationService SharedCredentialConfiguration =
+        new UserEnvironmentCredentialConfigurationService();
 
     public static IWorkstationDirectory WorkstationDirectory { get; } =
         new WorkstationDirectory(SharedWorkstationCatalog);
 
     /// <summary>Single shared source of truth for all VIBN Tools role checks.</summary>
     public static IViCoUserRoleStore UserRoleStore => SharedUserRoleStore;
+
+    /// <summary>Shared per-user API/RDP configuration used by all live feature adapters.</summary>
+    public static IUserCredentialConfigurationService CredentialConfigurationService =>
+        SharedCredentialConfiguration;
 
     public static Task InitializeWorkstationDirectoryAsync(CancellationToken cancellationToken = default) =>
         WorkstationDirectory.RefreshAsync(cancellationToken);
@@ -67,7 +73,11 @@ public static class ViCoFeatureBootstrapper
     }
 
     public static SpecialDevicePageVM CreateSpecialDeviceViewModel() =>
-        new(CreateTiaBridgeClient(), FindInstalledTiaVersions(), ApplicationLogService.Instance);
+        new(
+            CreateTiaBridgeClient(),
+            FindInstalledTiaVersions(),
+            JsonTiaHardwareMappingStore.CreateDefault(),
+            ApplicationLogService.Instance);
 
     public static ViCoCopyPageVM CreateCopyViewModel()
     {
@@ -85,8 +95,6 @@ public static class ViCoFeatureBootstrapper
         var remoteDesktop = new WindowsRemoteDesktopService(
             options.WorkingDirectory,
             new WindowsTemporaryRemoteCredentialStore());
-        var apiKey = ResolveKanbanizeApiKey();
-
         return new ViCoSearchPageVM(
             SharedWorkstationCatalog,
             new ViCoWorkstationSearch(),
@@ -97,9 +105,12 @@ public static class ViCoFeatureBootstrapper
             new WindowsPathLauncher(),
             new KanbanizeRefreshService(
                 new HttpClient(),
-                apiKey,
+                SharedCredentialConfiguration.GetKanbanizeApiKey,
                 options.ServerCacheRoot),
-            new KanbanizeWorkstationConfigurationService(new HttpClient(), apiKey),
+            new KanbanizeWorkstationConfigurationService(
+                new HttpClient(),
+                SharedCredentialConfiguration.GetKanbanizeApiKey),
+            new JsonViCoAutoRefreshSettingsStore(options.AutoRefreshSettingsFile),
             WorkspaceContext,
             workstations => WorkstationDirectory.Synchronize(workstations),
             ApplicationLogService.Instance);
@@ -113,7 +124,7 @@ public static class ViCoFeatureBootstrapper
     {
         IKanbanizeCardService cards = new KanbanizeCardApiService(
             new HttpClient(),
-            ResolveKanbanizeApiKey());
+            SharedCredentialConfiguration.GetKanbanizeApiKey);
         return new KanbanizeCardPageVM(
             cards,
             new VibnWorkplaceSynchronizationService(cards),
@@ -190,14 +201,6 @@ public static class ViCoFeatureBootstrapper
             cancellationToken,
             options.CommissioningProjectsRoot,
             options.PlanningProjectsRoot);
-
-    private static string? ResolveKanbanizeApiKey()
-    {
-        return (Environment.GetEnvironmentVariable(
-                    "VIBN_VICO_KANBANIZE_API_KEY",
-                    EnvironmentVariableTarget.User) ??
-                Environment.GetEnvironmentVariable("VIBN_VICO_KANBANIZE_API_KEY"))?.Trim();
-    }
 
     private static IReadOnlyList<string> FindInstalledTiaVersions()
     {

@@ -32,6 +32,7 @@ namespace VIBN_Tools.Application.VM
         private readonly IWorkstationDirectory _workstations;
         private readonly INetworkAvailabilityService _availability;
         private readonly IApplicationLog _log;
+        private readonly IUserCredentialConfigurationService _credentialConfiguration;
         private CancellationTokenSource? _serverFilterCancellation;
         private int _serverRefreshVersion;
 
@@ -164,6 +165,81 @@ namespace VIBN_Tools.Application.VM
                 OnPropertyChanged();
             }
         }
+
+        public string UsedFeeSdkVersion { get; }
+
+        public string InstalledFeeVersion { get; }
+
+        public bool HasFeeVersionMismatch { get; }
+
+        public string FeeVersionStatus { get; }
+
+        private string _kanbanizeApiKeyInput = string.Empty;
+        public string KanbanizeApiKeyInput
+        {
+            get => _kanbanizeApiKeyInput;
+            set
+            {
+                _kanbanizeApiKeyInput = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _remoteDesktopPasswordInput = string.Empty;
+        public string RemoteDesktopPasswordInput
+        {
+            get => _remoteDesktopPasswordInput;
+            set
+            {
+                _remoteDesktopPasswordInput = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+
+        private bool _hasKanbanizeApiKey;
+        public bool HasKanbanizeApiKey
+        {
+            get => _hasKanbanizeApiKey;
+            private set
+            {
+                _hasKanbanizeApiKey = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(KanbanizeApiKeyStatus));
+            }
+        }
+
+        private bool _hasRemoteDesktopPassword;
+        public bool HasRemoteDesktopPassword
+        {
+            get => _hasRemoteDesktopPassword;
+            private set
+            {
+                _hasRemoteDesktopPassword = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(RemoteDesktopPasswordStatus));
+            }
+        }
+
+        public string KanbanizeApiKeyStatus => HasKanbanizeApiKey ? "Konfiguriert" : "Nicht konfiguriert";
+
+        public string RemoteDesktopPasswordStatus => HasRemoteDesktopPassword ? "Konfiguriert" : "Nicht konfiguriert";
+
+        private string _credentialStatus = "Zugangsdaten werden nur für den aktuellen Windows-Benutzer gespeichert.";
+        public string CredentialStatus
+        {
+            get => _credentialStatus;
+            private set
+            {
+                _credentialStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ICommand SaveIntegrationCredentials => GetCommandBinding(SaveIntegrationCredentialsForUser);
+
+        public ICommand DeleteKanbanizeApiKey => GetCommandBinding(DeleteKanbanizeApiKeyForUser);
+
+        public ICommand DeleteRemoteDesktopPassword => GetCommandBinding(DeleteRemoteDesktopPasswordForUser);
 
 
 
@@ -365,7 +441,9 @@ namespace VIBN_Tools.Application.VM
             FeeConnectionService connectionService,
             IWorkstationDirectory workstations,
             INetworkAvailabilityService? availability = null,
-            IApplicationLog? log = null)
+            IApplicationLog? log = null,
+            IFeeVersionInfoProvider? feeVersionInfoProvider = null,
+            IUserCredentialConfigurationService? credentialConfiguration = null)
         {
             _projectSettings = projectSettings;
             _connectionService = connectionService;
@@ -373,6 +451,19 @@ namespace VIBN_Tools.Application.VM
             _workstations = workstations;
             _availability = availability ?? new NetworkAvailabilityService();
             _log = log ?? NullApplicationLog.Instance;
+            _credentialConfiguration = credentialConfiguration ??
+                new UserEnvironmentCredentialConfigurationService();
+
+            var feeVersionInfo = (feeVersionInfoProvider ?? new FeeVersionInfoProvider()).Read();
+            UsedFeeSdkVersion = feeVersionInfo.UsedSdkVersion;
+            InstalledFeeVersion = feeVersionInfo.InstalledFeeVersion;
+            HasFeeVersionMismatch = feeVersionInfo.HasVersionMismatch;
+            FeeVersionStatus = feeVersionInfo.StatusMessage;
+            _log.Information(
+                "Project Settings",
+                $"Verwendete SDK-Version: {UsedFeeSdkVersion}; installierte FEE-Version: {InstalledFeeVersion}.");
+            if (HasFeeVersionMismatch)
+                _log.Warning("Project Settings", FeeVersionStatus);
 
             _workstations.PcNames.CollectionChanged += (_, _) => _ = RefreshOnlineServersAsync();
 
@@ -385,6 +476,7 @@ namespace VIBN_Tools.Application.VM
             Connection.Connected += OnConnected;
 
             LoadFeeData = false;
+            RefreshCredentialStatus();
             _ = RefreshOnlineServersAsync();
         }
 
@@ -501,6 +593,76 @@ namespace VIBN_Tools.Application.VM
         private void UpdateUsedDisplays()
         {
             UsedDisplays = new[] { UseDisplay1, UseDisplay2, UseDisplay3, UseDisplay4 }.Count(x => x);
+        }
+
+        private void SaveIntegrationCredentialsForUser()
+        {
+            try
+            {
+                var changed = false;
+                if (!string.IsNullOrWhiteSpace(KanbanizeApiKeyInput))
+                {
+                    _credentialConfiguration.SaveKanbanizeApiKey(KanbanizeApiKeyInput);
+                    changed = true;
+                }
+                if (!string.IsNullOrEmpty(RemoteDesktopPasswordInput))
+                {
+                    _credentialConfiguration.SaveRemoteDesktopPassword(RemoteDesktopPasswordInput);
+                    changed = true;
+                }
+
+                KanbanizeApiKeyInput = string.Empty;
+                RemoteDesktopPasswordInput = string.Empty;
+                RefreshCredentialStatus();
+                CredentialStatus = changed
+                    ? "Eingegebene Zugangsdaten wurden für diesen Windows-Benutzer gespeichert."
+                    : "Keine neuen Werte eingegeben; vorhandene Konfiguration bleibt unverändert.";
+                _log.Information("Zugangsdaten", CredentialStatus);
+            }
+            catch (Exception exception)
+            {
+                RefreshCredentialStatus();
+                CredentialStatus = "Zugangsdaten konnten nicht gespeichert werden.";
+                _log.Error("Zugangsdaten", CredentialStatus, exception);
+            }
+        }
+
+        private void DeleteKanbanizeApiKeyForUser()
+        {
+            UpdateCredentialConfiguration(
+                _credentialConfiguration.DeleteKanbanizeApiKey,
+                "Kanbanize API-Key wurde für diesen Windows-Benutzer entfernt.");
+        }
+
+        private void DeleteRemoteDesktopPasswordForUser()
+        {
+            UpdateCredentialConfiguration(
+                _credentialConfiguration.DeleteRemoteDesktopPassword,
+                "Remote-Desktop-Passwort wurde für diesen Windows-Benutzer entfernt.");
+        }
+
+        private void UpdateCredentialConfiguration(Action update, string successMessage)
+        {
+            try
+            {
+                update();
+                RefreshCredentialStatus();
+                CredentialStatus = successMessage;
+                _log.Information("Zugangsdaten", successMessage);
+            }
+            catch (Exception exception)
+            {
+                RefreshCredentialStatus();
+                CredentialStatus = "Zugangsdaten konnten nicht entfernt werden.";
+                _log.Error("Zugangsdaten", CredentialStatus, exception);
+            }
+        }
+
+        private void RefreshCredentialStatus()
+        {
+            var status = _credentialConfiguration.ReadStatus();
+            HasKanbanizeApiKey = status.HasKanbanizeApiKey;
+            HasRemoteDesktopPassword = status.HasRemoteDesktopPassword;
         }
 
         private async Task CheckServerAsync(string serverName)

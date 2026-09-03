@@ -36,6 +36,12 @@ namespace VIBN_Tools.ContainerGeneration.Models
             SavedData Project = serializer.Deserialize(fs) as SavedData
                 ?? throw new InvalidDataException("The selected file does not contain a valid VIBN Tools workspace.");
 
+            // Keep workspace files from older application versions loadable.
+            Project.FilteredEntries ??= [];
+            Project.UnassignedEntries ??= [];
+            Project.ContainerList ??= [];
+            Project.EntryStates ??= [];
+            Project.ActivityLog ??= [];
             Project.FilePath = filename;
             Project.ApplyEntryStates();
 
@@ -62,8 +68,24 @@ namespace VIBN_Tools.ContainerGeneration.Models
                 throw new InvalidOperationException("No save path was selected.");
 
             XmlSerializer serializer = new XmlSerializer(typeof(SavedData));
-            using TextWriter writer = new StreamWriter(FilePath);
-            serializer.Serialize(writer, this);
+            var fullPath = Path.GetFullPath(FilePath);
+            var directory = Path.GetDirectoryName(fullPath)
+                            ?? throw new InvalidOperationException("The save directory could not be determined.");
+            Directory.CreateDirectory(directory);
+            var temporaryPath = Path.Combine(
+                directory,
+                $".{Path.GetFileName(fullPath)}.{System.Guid.NewGuid():N}.tmp");
+            try
+            {
+                using (TextWriter writer = new StreamWriter(temporaryPath))
+                    serializer.Serialize(writer, this);
+                File.Move(temporaryPath, fullPath, overwrite: true);
+            }
+            finally
+            {
+                if (File.Exists(temporaryPath))
+                    File.Delete(temporaryPath);
+            }
         }
 
         public void CaptureEntryStates()

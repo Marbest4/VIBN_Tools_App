@@ -26,6 +26,10 @@ try
     VerifyWorkstationOccupancyAndUnifiedSearch();
     Console.WriteLine("Running shared workstation directory smoke test...");
     await VerifyWorkstationDirectoryAsync();
+    Console.WriteLine("Running per-user credential configuration smoke test...");
+    VerifyUserCredentialConfiguration();
+    Console.WriteLine("Running ViCo auto-refresh preference smoke test...");
+    await VerifyAutoRefreshPreferencesAsync(temporaryRoot);
     Console.WriteLine("Running ViCo project identity and path smoke test...");
     VerifyProjectIdentityAndPaths(temporaryRoot);
     Console.WriteLine("Running Remote Desktop profile smoke test...");
@@ -254,6 +258,61 @@ static async Task VerifyWorkstationDirectoryAsync()
         "Kanbanize user priority in the shared workstation directory failed.");
 }
 
+static void VerifyUserCredentialConfiguration()
+{
+    var variables = new Dictionary<(string Name, EnvironmentVariableTarget Target), string?>();
+    var service = new UserEnvironmentCredentialConfigurationService(
+        (name, target) => variables.GetValueOrDefault((name, target)),
+        (name, value, target) => variables[(name, target)] = value);
+
+    Assert(!service.ReadStatus().HasKanbanizeApiKey &&
+           !service.ReadStatus().HasRemoteDesktopPassword,
+        "A fresh user credential configuration must report both values as missing.");
+
+    service.SaveKanbanizeApiKey("  test-api-key  ");
+    service.SaveRemoteDesktopPassword(" test password ");
+    var configured = service.ReadStatus();
+    Assert(configured.HasKanbanizeApiKey && configured.HasRemoteDesktopPassword,
+        "Saved per-user credentials were not detected.");
+    Assert(service.GetKanbanizeApiKey() == "test-api-key",
+        "The API key provider did not return the current persisted value.");
+    Assert(variables[(UserEnvironmentCredentialConfigurationService.RemoteDesktopPasswordVariable,
+            EnvironmentVariableTarget.Process)] == " test password ",
+        "The RDP password must be available immediately without trimming or restarting the app.");
+
+    service.DeleteKanbanizeApiKey();
+    service.DeleteRemoteDesktopPassword();
+    Assert(!service.ReadStatus().HasKanbanizeApiKey &&
+           !service.ReadStatus().HasRemoteDesktopPassword,
+        "Deleted credentials still appear configured.");
+
+    string? dynamicApiKey = null;
+    using var httpClient = new HttpClient();
+    var dynamicAdapter = new KanbanizeCardApiService(
+        httpClient,
+        () => dynamicApiKey,
+        "https://example.test/api/v2");
+    Assert(!dynamicAdapter.IsConfigured, "A missing dynamic API key was accepted.");
+    dynamicApiKey = "configured-later";
+    Assert(dynamicAdapter.IsConfigured,
+        "A Kanbanize adapter did not observe an API key configured after construction.");
+}
+
+static async Task VerifyAutoRefreshPreferencesAsync(string temporaryRoot)
+{
+    var file = Path.Combine(temporaryRoot, "preferences", "vico.json");
+    var store = new JsonViCoAutoRefreshSettingsStore(file);
+    await store.SaveAsync(new ViCoAutoRefreshSettings(0));
+    var normalized = await store.LoadAsync();
+    Assert(normalized.IntervalMinutes == ViCoAutoRefreshPolicy.MinimumIntervalMinutes,
+        "An invalid auto-refresh interval was not normalized before persistence.");
+
+    await File.WriteAllTextAsync(file, "not-json");
+    var recovered = await store.LoadAsync();
+    Assert(recovered == ViCoAutoRefreshSettings.Default,
+        "A corrupt preference file must fall back to the documented default.");
+}
+
 static void VerifyProjectIdentityAndPaths(string temporaryRoot)
 {
     var simulationRoot = Path.Combine(temporaryRoot, "simulation");
@@ -452,7 +511,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         new[]
         {
             new KanbanizeCardInfo(201, 1541, 28125, 29373, "Bestehende Karte", "102", sourceDeadline.AddDays(-3), expectedStart.AddDays(-1)),
-            new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd.AddHours(4), expectedStart.AddHours(4)),
             new KanbanizeCardInfo(209, 1541, 28125, 29373, "*[Gen]* GM9000", null, expectedEnd, expectedStart),
             new KanbanizeCardInfo(206, 1541, 28125, 29373, "Doppelte Eins", "106", sourceDeadline),
             new KanbanizeCardInfo(207, 1541, 28125, 29373, "Doppelte Zwei", "106", sourceDeadline)
@@ -465,6 +524,17 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         "The preview must distinguish missing, stale and already-current target schedules.");
     Assert(preview.Items.Single(item => item.SourceCard.Id == 109).Action == VibnWorkplaceSynchronizationAction.Unchanged,
         "A legacy generated title must prevent duplicates even if its custom source ID is absent.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 105).Action == VibnWorkplaceSynchronizationAction.Unchanged,
+        "Different times on the same local calendar dates must not trigger a schedule update.");
+    var localDate = new DateTime(2026, 8, 27);
+    var localOffset = TimeZoneInfo.Local.GetUtcOffset(localDate);
+    Assert(VibnWorkplaceSynchronizationPolicy.HasEquivalentDeadline(
+            new DateTimeOffset(2026, 8, 27, 8, 0, 0, localOffset),
+            new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset)) &&
+           !VibnWorkplaceSynchronizationPolicy.HasEquivalentDeadline(
+               new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset),
+               new DateTimeOffset(2026, 8, 28, 8, 0, 0, TimeZoneInfo.Local.GetUtcOffset(localDate.AddDays(1)))),
+        "Kanbanize planning dates must be compared by local calendar date and ignore the time component.");
     Assert(preview.ConflictCount == 1 && preview.ExcludedSourceCardCount == 1,
         "Duplicate target IDs must be reported and archived source cards excluded.");
     Assert(preview.Items.Where(item => item.SourceCard.Deadline is not null).All(item =>

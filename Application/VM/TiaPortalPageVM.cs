@@ -45,7 +45,6 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
         ConnectCommand = GetCommandBindingAsync(ConnectAsync);
         SelectPlcCommand = GetCommandBindingAsync(SelectPlcAsync);
-        LoadHardwareCommand = GetCommandBindingAsync(LoadHardwareAsync);
         LoadBlocksCommand = GetCommandBindingAsync(LoadBlocksAsync);
         LoadDataTypesCommand = GetCommandBindingAsync(LoadDataTypesAsync);
         ConfigureAxesCommand = GetCommandBindingAsync(ConfigureAxesAsync);
@@ -64,13 +63,9 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     public ObservableCollection<TiaAxisInfo> Axes { get; } = new();
 
-    public ObservableCollection<TiaHardwareModuleInfo> HardwareModules { get; } = new();
-
     public ICommand ConnectCommand { get; }
 
     public ICommand SelectPlcCommand { get; }
-
-    public ICommand LoadHardwareCommand { get; }
 
     public ICommand LoadBlocksCommand { get; }
 
@@ -208,7 +203,6 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
             var plcs = await _client.ListPlcsAsync();
             Replace(Plcs, plcs);
             SelectedPlc = Plcs.FirstOrDefault();
-            HardwareModules.Clear();
             StatusText = $"Mit TIA Portal {SelectedVersion} verbunden; {Plcs.Count} PLC(s) gefunden.";
         });
     }
@@ -223,27 +217,7 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
             await _client.SelectPlcAsync(SelectedPlc.Index);
             ProgramItems.Clear();
             Axes.Clear();
-            HardwareModules.Clear();
             StatusText = $"PLC '{SelectedPlc.Name}' ist ausgewählt.";
-        });
-    }
-
-    private async Task LoadHardwareAsync()
-    {
-        if (SelectedPlc is null)
-            return;
-
-        await RunBusyAsync("TIA-Hardwarekonfiguration wird gelesen …", async () =>
-        {
-            // Select again so the bridge state always follows the combobox
-            // selection, even if the user skipped the explicit select button.
-            await _client.SelectPlcAsync(SelectedPlc.Index);
-            var modules = await _client.ListHardwareAsync();
-            Replace(HardwareModules, modules);
-            var addressed = HardwareModules.Count(module =>
-                module.InputStartByte >= 0 || module.OutputStartByte >= 0);
-            StatusText = $"{HardwareModules.Count} TIA-Hardwareelement(e) geladen; " +
-                         $"{addressed} mit E-/A-Adresse.";
         });
     }
 

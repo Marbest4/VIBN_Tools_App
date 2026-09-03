@@ -163,7 +163,7 @@
                 </ItemsControl>
 
                 <ux:LoadingThreeDots Grid.Row="1" Visibility="Hidden"/>
-                <ux:Button Grid.Row="2" Margin="5" Content="Start Generation" MinWidth="300" Command="{Binding StartGeneration}" DebounceInterval="150" IsEnabled="{Binding CanExecuteGeneration}" IsBusy="{Binding IsBusyStartGeneration}"/>
+                <ux:Button Grid.Row="2" Margin="5" Content="Start Generation" MinWidth="300" Command="{Binding StartGeneration}" DebounceInterval="150" IsEnabled="{Binding CanExecuteGeneration}" IsBusy="{Binding IsBusyStartGeneration}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
             </Grid>
 
 

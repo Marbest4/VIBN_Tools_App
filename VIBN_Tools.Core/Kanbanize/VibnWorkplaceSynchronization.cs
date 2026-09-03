@@ -119,13 +119,17 @@ public static class VibnWorkplaceSynchronizationPolicy
             "*[Gen]*",
             StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Compares instants with second precision to avoid timezone/JSON round-trip noise.</summary>
+    /// <summary>
+    /// Compares the local calendar date only. Kanbanize may return different
+    /// times for the same planning day; those time components must not trigger
+    /// a schedule update.
+    /// </summary>
     public static bool HasEquivalentDeadline(DateTimeOffset? left, DateTimeOffset? right)
     {
         if (left is null || right is null)
             return left is null && right is null;
 
-        return Math.Abs((left.Value.UtcDateTime - right.Value.UtcDateTime).TotalSeconds) < 1;
+        return left.Value.ToLocalTime().Date == right.Value.ToLocalTime().Date;
     }
 
     /// <summary>

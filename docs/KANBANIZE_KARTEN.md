@@ -21,8 +21,8 @@ Beide Abläufe enthalten keine Lizenzanfrage- oder Lizenzdatenlogik.
 
 1. **Boards aktualisieren** drücken.
 2. Quellboard „Virtuelle Inbetriebnahme“ sowie Zielboard „Arbeitsplätze“ und die gewünschte Zielposition auswählen.
-3. **Prüfen** drücken und jede Zeile der Vorschau lesen.
-4. Ausschließlich die gewünschten Zeilen in der Spalte **Sync** markieren.
+3. **Prüfen** drücken und jede Zeile der Vorschau lesen. Neu anzulegende Karten sind in **Sync** standardmäßig markiert; Aktualisierungen bestehender Karten nicht.
+4. Ausschließlich die gewünschten Zeilen in der Spalte **Sync** markieren. **Alle selektieren** und **Alle deselektieren** wirken nur auf schreibbare Vorschauzeilen.
 5. Nur wenn Vorschau und Zielposition fachlich korrekt sind, **Synchronisieren** drücken. Nicht markierte Zeilen werden garantiert nicht geschrieben.
 
 ### Auswahlregel
@@ -39,6 +39,8 @@ Eine Quellkarte ist zulässig, wenn ihr Titel `Grundinbetriebnahme` enthält, si
 Der Start wird im bestehenden Startdatums-Custom-Field des Arbeitsplätze-Boards (Feld-ID `508`) gespeichert. Das Ende wird als reguläre Kanbanize-Deadline gespeichert. `actual_end_time` wird ausdrücklich nicht geschrieben, weil es einen tatsächlichen Abschluss statt eines Plantermins beschreibt.
 
 Fehlt die Deadline einer Quellkarte, zeigt die Vorschau für genau diese Karte einen Konflikt. Andere gültige, markierte Karten können weiterhin synchronisiert werden.
+
+Beim Prüfen werden Start und Deadline ausschließlich nach dem lokalen Kalendertag verglichen. Unterschiedliche Uhrzeiten am selben Tag erzeugen deshalb keinen unnötigen Updatevorschlag.
 
 ### Duplikat- und Änderungsregel
 

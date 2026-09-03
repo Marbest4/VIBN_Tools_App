@@ -14,17 +14,25 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
 {
     private const string DefaultApiBaseUrl = "https://grobgroup.kanbanize.com/api/v2";
     private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
+    private readonly Func<string?> _apiKeyProvider;
     private readonly string _apiBaseUrl;
 
     public KanbanizeCardApiService(HttpClient httpClient, string? apiKey, string? apiBaseUrl = null)
+        : this(httpClient, () => apiKey, apiBaseUrl)
+    {
+    }
+
+    public KanbanizeCardApiService(
+        HttpClient httpClient,
+        Func<string?> apiKeyProvider,
+        string? apiBaseUrl = null)
     {
         _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
-        _apiKey = apiKey?.Trim() ?? string.Empty;
+        _apiKeyProvider = apiKeyProvider ?? throw new ArgumentNullException(nameof(apiKeyProvider));
         _apiBaseUrl = (apiBaseUrl ?? DefaultApiBaseUrl).TrimEnd('/');
     }
 
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_apiKey);
+    public bool IsConfigured => !string.IsNullOrWhiteSpace(ResolveApiKey());
 
     public async Task<IReadOnlyList<KanbanizeBoardInfo>> LoadBoardsAsync(CancellationToken cancellationToken = default)
     {
@@ -293,7 +301,7 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
     {
         var request = new HttpRequestMessage(method, _apiBaseUrl + relativeUrl);
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-        request.Headers.TryAddWithoutValidation("apikey", _apiKey);
+        request.Headers.TryAddWithoutValidation("apikey", ResolveApiKey());
         return request;
     }
 
@@ -441,4 +449,6 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
         if (!IsConfigured)
             throw new InvalidOperationException("Kanbanize API access is not configured.");
     }
+
+    private string ResolveApiKey() => _apiKeyProvider()?.Trim() ?? string.Empty;
 }

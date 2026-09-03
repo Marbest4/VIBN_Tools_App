@@ -499,6 +499,14 @@ namespace VIBN_Tools.Application.VM
         /// <returns></returns>
         private async Task<bool> Start_Generation(object parameter)
         {
+            if (!Connection.CanUseFeeFeatures)
+            {
+                VIBN_Tools.Application.ApplicationLogService.Instance.Warning(
+                    "Container2Fee",
+                    $"Start Generation wurde nicht ausgeführt: {FeeConnectionService.MissingConnectionMessage}");
+                return false;
+            }
+
             // Enable/Disable View Elements
             EnableOpenContainerXml = false;
             IsBusyStartGeneration = true;
