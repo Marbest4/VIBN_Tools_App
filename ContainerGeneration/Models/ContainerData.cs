@@ -226,10 +226,21 @@ namespace VIBN_Tools.ContainerGeneration.Models
                     TempValid = false;
                     ErrorBuilder.Append("Slots need filled out." + Environment.NewLine);
                 }
-                else if (DataList.GroupBy(item => item.Slot).Where(group => group.Count() > 1).ToList().Count != 0)
+                else
                 {
-                    TempValid = false;
-                    ErrorBuilder.Append("Duplicate slots found." + Environment.NewLine);
+                    var duplicateErrors = DataList
+                        .GroupBy(item => item.Slot, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => ContainerSlotMultiplicityPolicy.GetDuplicateError(
+                            group.Key,
+                            group.Count()))
+                        .Where(error => !string.IsNullOrWhiteSpace(error))
+                        .ToArray();
+                    if (duplicateErrors.Length > 0)
+                    {
+                        TempValid = false;
+                        foreach (var error in duplicateErrors)
+                            ErrorBuilder.AppendLine(error);
+                    }
                 }
                 if (!(MaxSignals == null || DataList.Count <= MaxSignals))
                 {

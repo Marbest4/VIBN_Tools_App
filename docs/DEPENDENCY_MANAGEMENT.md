@@ -30,6 +30,7 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 - Neue XML-Definitionen werden per Wildcard automatisch veröffentlicht.
 - `SixLabors.Fonts` ist explizit auf `1.0.1` festgelegt, weil ClosedXML und NPOI dieselbe binär kompatible Assembly laden müssen.
 - Build und Publish kopieren nicht mehr pauschal den FEE-`Bin`-/Pluginbaum. Der Releasepfad berechnet aus direkten Referenzen und `ReadingUnitPlugin.dll` die rekursiv benötigte `FS.*`-Closure. So gelangen weder unbenutzte FS-Werkzeuge noch Hersteller-Drittanbieterdateien in das Paket und können keine Paketabhängigkeiten überschreiben.
+- Container-Generation- und UI-Startup-Smoke-Test laden Container2FEE- beziehungsweise FEE-Discovery-Typen. Da klassische DLL-Referenzen über eine `ProjectReference` nicht vollständig in den Testausgabeordner transitieren, kopieren ausschließlich diese Testprojekte die unveränderten `SDK/FS.*.dll` als Laufzeitfixture. Produkt-Build und SDK-Auswahl bleiben davon unberührt.
 - `.vsconfig` und `Prepare-Development.cmd` bilden die minimale Entwicklungsumgebung und die normale Solution-Wiederherstellung reproduzierbar ab.
 
 Der vom Anwender bereitgestellte Ordner `SDK` bleibt in seinem flachen Uploadlayout unverändert. Hauptprojekt und rekursive Publish-Closure sind mit dem vollständigen Satz verifiziert; `FS.SDK.dll` trägt Version `5.0.11.48415`. Der Closure-Test umfasst 16 benötigte `FS.*`-Assemblies. Ein erfolgreicher Build belegt weiterhin nur den technischen Abhängigkeitsabschluss, nicht die Live-Kompatibilität mit einem konkreten FEE-Host.

@@ -92,7 +92,7 @@ Der aktuelle Importfluss besitzt bereits wichtige Stabilitätsbausteine:
 Offene Kernpunkte:
 
 - Der Vergleich zweier fertiger ContainerFiles mit selektiver Übernahme existiert nicht.
-- Die Validierung behandelt doppelte Slots derzeit pauschal als Fehler. Fachlich ist inzwischen geklärt: `PLC_OUT_` darf nicht mehrfach belegt werden; jede `PLC_IN_`-Mehrfachbelegung ist zulässig, wenn jedes beteiligte Signal über ein eigenes `FeeSimpleMove` verlustfrei auf den gemeinsamen Eingang geführt wird. Diese Regel ist noch nicht atomar in Validierung, Mapping und Executor umgesetzt.
+- Die Slot-Multiplizität ist jetzt zentral und case-insensitive geregelt: `PLC_OUT_` und sonstige Slots dürfen nicht mehrfach belegt werden. Jede `PLC_IN_`-Mehrfachbelegung bleibt zulässig. Einzel-Slotmodelle werden beim FEE-Export über je ein `FeeSimpleMove` pro Signal verlustfrei auf den gemeinsamen Eingang geführt; bereits listenbasierte Grob-Container behalten ihren bewährten Move-Ablauf. Policy, XML-Parsing und Signalzählung sind automatisch getestet; die tatsächlichen SDK-Kanten benötigen weiterhin eine FEE-Live-Abnahme.
 - Erzeugung und FEE-Abbildung verteilen Typwissen über Switches, Factories, Slot-Reflection und einen separaten Metadatenkatalog.
 
 ### 5.2 FEE und Container2FEE
@@ -150,7 +150,7 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 | Proprietäre FEE-/Grob-Abhängigkeiten sind binär und versionsgebunden | falsche DLL-Mischung kann trotz erfolgreichem Build zur Laufzeit scheitern | unveränderten vollständigen SDK-Satz verwenden, Closure vor Publish erzwingen und reale FEE-Abnahme getrennt dokumentieren |
 | Container-Golden-Master deckt Requirements noch nicht vollständig ab | unbemerkte Generatorregression | freigegebene Requirements- und erwartete Containerdatei versionieren oder intern referenzieren |
 | Großes `ContainerGenerationPageVM` | hohe Kopplung und UI-Regressionen | erst Policies/Services extrahieren, dann UI; jeder Schritt mit Golden Master |
-| PLC_IN-Regel wird nur teilweise umgesetzt | Validierung könnte Eingänge erlauben, während der Executor Signale verliert | Slot-Policy, Mapping-Plan und `FeeSimpleMove`-Ausführung in einem atomaren Schritt ändern und gemeinsam testen |
+| PLC_IN-Fan-in scheitert erst im proprietären SDK | automatischer Test kann reale FEE-Slotkanten nicht beobachten | zentrale Preflight-Policy und Parsertests sind vorhanden; vollständige Move-/Slotverschaltung in einer FEE-Testkopie live abnehmen |
 | TIA-Openness-Versionen und Proxytypen | Laufzeitfehler trotz erfolgreichem Build | Bridge isoliert lassen, DTO-kompatibel erweitern, reale Projekte versionenweise abnehmen |
 | FEE-Rückabbildung ohne Provenienz | Datenverlust oder falsche Container | Altmodelle nur mit Confidence/Diagnose, neue Modelle mit stabilen IDs |
 | Kanbanize-Titel als implizites Datenmodell | falsche Konflikte/Duplikate | Titelgrammatik und Rollen als explizite Parser-/Policy-Tests |

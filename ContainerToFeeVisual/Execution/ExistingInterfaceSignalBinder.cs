@@ -1,4 +1,3 @@
-using System.Reflection;
 using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 
@@ -102,20 +101,7 @@ internal static class ExistingInterfaceSignalBinder
 
     private static IEnumerable<FeeInterfaceSignal> EnumerateSignals(ContainerBaseClass container)
     {
-        foreach (var property in container.GetType().GetProperties(BindingFlags.Instance | BindingFlags.Public))
-        {
-            if (property.PropertyType == typeof(FeeInterfaceSignal) &&
-                property.GetValue(container) is FeeInterfaceSignal signal)
-            {
-                yield return signal;
-            }
-            else if (property.PropertyType == typeof(List<FeeInterfaceSignal>) &&
-                     property.GetValue(container) is IEnumerable<FeeInterfaceSignal> signals)
-            {
-                foreach (var listSignal in signals.Where(item => item is not null))
-                    yield return listSignal;
-            }
-        }
+        return container.EnumerateAssignedSignals();
     }
 
     private static string SignalIdentity(FeeInterfaceSignal signal) =>

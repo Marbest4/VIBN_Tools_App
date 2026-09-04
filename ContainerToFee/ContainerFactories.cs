@@ -14,8 +14,9 @@ namespace VIBN_Tools.ContainerToFee
             }
 
             // Always same process
-            await fullContainer.CreateLogicAsync(parentObject);
+            var logic = await fullContainer.CreateLogicAsync(parentObject);
             await fullContainer.AssignSignalsAsync(targetInterface);
+            await container.AssignAdditionalInputFanInsAsync(logic, targetInterface);
             await fullContainer.CreateSimObjectsAsync();
             await fullContainer.AssignSimObjectsAsync();
         }
@@ -33,8 +34,9 @@ namespace VIBN_Tools.ContainerToFee
             }
 
             // Always same process
-            await logicContainer.CreateLogicAsync(parentObject);
+            var logic = await logicContainer.CreateLogicAsync(parentObject);
             await logicContainer.AssignSignalsAsync(targetInterface);
+            await container.AssignAdditionalInputFanInsAsync(logic, targetInterface);
         }
     }
 

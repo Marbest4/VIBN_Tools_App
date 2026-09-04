@@ -81,6 +81,8 @@ Der alte Reiter und `ContainerToFeePageVM` bleiben die Verhaltensreferenz. Neue 
 
 `RuntimeVisualPlanBinder` ist der einzige Übergang vom visuellen Plan zu den Legacy-Containern. Vollständige Generierung und `ExistingSimObjectLinkAdapter` dürfen keine zweite Zuordnungslogik aufbauen. Die Auswahlgrenze ist ein vollständiger unterstützter Container: Logik, Signale und Hilfsobjekte bilden im bisherigen Executor eine Abhängigkeitseinheit. Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
 
+`ContainerSlotMultiplicityPolicy` ist die einzige fachliche Quelle für doppelte Slots. Validierung und FEE-Parser müssen sie beide aufrufen. `ContainerBaseClass` bewahrt sämtliche eingelesenen Signale in einer case-insensitiven Slotabbildung auf; deshalb dürfen Binder oder Diagnosen nicht erneut nur über einzelne Reflection-Properties iterieren. Ein mehrfach belegter einfacher `PLC_IN_`-Slot wird erst nach dem Erzeugen der Ziel-Logik über `AssignAdditionalInputFanInsAsync` mit je einem `FeeSimpleMove` pro Signal verbunden. Listen-Slots erledigen dies weiterhin in der konkreten Containerklasse und dürfen nicht zusätzlich in den zentralen Fan-in gelangen.
+
 Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den aktuellen Objektbestand aus **Model Validation → Update Objects**, genau ein vorhandenes gleichnamiges `FeeLogic` je ausgewähltem `ILogicSimObjectOwner` und validiert alle Arbeitseinträge vor dem ersten Slot-Schreibzugriff.
 
 ### Neues Special Device
