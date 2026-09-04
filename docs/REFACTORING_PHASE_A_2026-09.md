@@ -9,12 +9,15 @@ Dieses Dokument ist die technische Ausgangsbasis für die schrittweise Weiterent
 
 | Prüfung | Ergebnis | Grenze |
 | --- | --- | --- |
-| `dotnet build VIBN_Tools_App.sln -c Release` | erfolgreich, 0 Warnungen, 0 Fehler | Build benötigte die separat bereitgestellte FEE-SDK-Testlaufzeit und einen internen NuGet-Paketordner |
+| `dotnet build VIBN_Tools_App.sln -c Release --no-restore` | erfolgreich, 0 Warnungen, 0 Fehler | verwendet das Repository-SDK; in der Codex-Sandbox wurden `TargetPlatformSdkPath` und `TargetPlatformDisplayName` explizit gesetzt, um ausschließlich deren gesperrten Windows-SDK-Suchpfad zu umgehen |
+| `dotnet build VIBN_Tools.csproj -c Release --no-restore` | erfolgreich, 0 Warnungen, 0 Fehler | verwendet automatisch das unveränderte flache Repository-SDK `SDK` in Version `5.0.11.48415` |
 | `Tests/CoreSmokeTests` | erfolgreich | keine Live-Zugriffe auf Kanbanize, TIA oder FEE |
 | `Tests/ContainerGenerationSmokeTests` | erfolgreich; Interface5: 420, Interface7: 345 Signale | bekannte Beispieldaten, kein vollständiger fachlicher Golden Master |
 | `Tests/UiStartupSmokeTests` | erfolgreich | prüft Initialisierung und Bindings, keine vollständigen Benutzerabläufe |
 
-Das Repository enthält weder das proprietäre FEE-SDK noch eine eigenständig nutzbare interne Paketquelle. Ein frischer Rechner kann die Solution daher nicht ausschließlich aus dem Git-Stand reproduzieren. Das SDK wurde für die Prüfung nur über `FEE_SCREEN_SIM_ROOT` eingebunden und nicht verändert.
+Das Repository enthält inzwischen ein vom Anwender bereitgestelltes, unverändertes flaches FEE-SDK unter `SDK`. Es reicht zum Kompilieren des Hauptprojekts. Es ist jedoch **keine vollständige FEE-Laufzeit**: Die rekursive Abhängigkeitsprüfung meldet `FS.Bridge`, `FS.Gui`, `FS.Render`, `FS.SDK.Localization` und `FS.Serialization` als fehlend. Insbesondere lässt sich das ebenfalls unverändert übernommene Projekt `Grob Generation Interface` ohne `FS.SDK.Localization.dll` nicht bauen. Ein Installer oder eine reale FEE-Abnahme darf deshalb mit diesem Teilsatz nicht als funktionsfähig ausgewiesen werden. Der private Grob.UX-Paketzugriff bleibt auf frischen Rechnern ebenfalls erforderlich.
+
+`Projekt1.7z` ist als reales TIA-V20-Testartefakt vorhanden und enthält `Projekt1/Projekt1.ap20`. Auf dem aktuellen Prüfhost ist jedoch weder TIA Portal V20 noch die dazugehörige `Siemens.Engineering.dll` installiert. Archivstruktur und Version sind geprüft; Hardwareauslesung über Openness ist damit noch nicht live verifiziert.
 
 ## 2. Solution und Abhängigkeitsrichtung
 
@@ -89,7 +92,7 @@ Der aktuelle Importfluss besitzt bereits wichtige Stabilitätsbausteine:
 Offene Kernpunkte:
 
 - Der Vergleich zweier fertiger ContainerFiles mit selektiver Übernahme existiert nicht.
-- Die Validierung behandelt doppelte Slots derzeit pauschal als Fehler. Die geforderte unterschiedliche Semantik für `PLC_OUT` und `PLC_IN` ist noch nicht als Domänen-Policy modelliert.
+- Die Validierung behandelt doppelte Slots derzeit pauschal als Fehler. Fachlich ist inzwischen geklärt: `PLC_OUT_` darf nicht mehrfach belegt werden; jede `PLC_IN_`-Mehrfachbelegung ist zulässig, wenn jedes beteiligte Signal über ein eigenes `FeeSimpleMove` verlustfrei auf den gemeinsamen Eingang geführt wird. Diese Regel ist noch nicht atomar in Validierung, Mapping und Executor umgesetzt.
 - Erzeugung und FEE-Abbildung verteilen Typwissen über Switches, Factories, Slot-Reflection und einen separaten Metadatenkatalog.
 
 ### 5.2 FEE und Container2FEE
@@ -98,7 +101,7 @@ Die FEE-Seite verwendet Wrapper wie `FeeAbstractObject`, `FeeLogic`, `FeeInterfa
 
 Der aktuelle Plan unterscheidet Container, Logiken, Signale, technische Ziele, Erzeugungsauswahl, Interface-Auswahl und Kanten. Die Ausführung kennt jedoch getrennte Modi „Signale erzeugen“ und „vorhandenes Interface wiederverwenden“. Das Zielverhalten – alle vorhandenen Interfaces durchsuchen, passende Signale wiederverwenden und nur fehlende Signale in der Grob Generation Interface erzeugen – ist noch nicht implementiert.
 
-Für eine Rückrichtung FEE → Container fehlt ein kanonisches Zwischenmodell. In bestehenden FEE-Modellen sind ursprüngliche Container-ID, Typ und Slot nicht überall eindeutig als Provenienz hinterlegt. Eine verlustfreie Rückabbildung beliebiger historischer Modelle kann deshalb nicht zugesagt werden.
+Für eine Rückrichtung FEE → Container fehlt ein kanonisches Zwischenmodell. In bestehenden FEE-Modellen sind ursprüngliche Container-ID, Typ und Slot nicht überall eindeutig als Provenienz hinterlegt. Der fachliche Scope ist inzwischen festgelegt: Die erste Version muss nur künftig durch Container2FEE erzeugte Modelle mit Provenienz zuverlässig erkennen und rückwandeln; historische Modelle gehören nicht zum garantierten Round-Trip.
 
 Empfehlung: zuerst ein gemeinsames semantisches Mapping-Modell und eine Mapping-Policy für beide Richtungen einführen. Neue Generationen erhalten zusätzlich stabile Provenienz. Historische Modelle werden heuristisch eingelesen und müssen Unsicherheiten explizit anzeigen.
 
@@ -144,10 +147,10 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 
 | Risiko | Auswirkung | Gegenmaßnahme |
 | --- | --- | --- |
-| Proprietäres FEE-SDK und interner NuGet-Feed fehlen im Repository | nicht reproduzierbarer Build/CI | dokumentierte Bootstrap-Prüfung, interner Windows-Agent, SDK niemals kopieren oder verändern |
+| Repository-SDK ist nur ein unvollständiger Build-Satz; privater NuGet-Zugriff bleibt nötig | Hauptprojekt kompiliert, Grob-Plugin/Installer und reale FEE-Laufzeit sind nicht reproduzierbar | fehlende Herstellerassemblies vollständig und lizenzkonform bereitstellen; Abhängigkeitsabschluss vor Publish erzwingen; gelieferte DLLs nicht verändern |
 | Container-Golden-Master deckt Requirements noch nicht vollständig ab | unbemerkte Generatorregression | freigegebene Requirements- und erwartete Containerdatei versionieren oder intern referenzieren |
 | Großes `ContainerGenerationPageVM` | hohe Kopplung und UI-Regressionen | erst Policies/Services extrahieren, dann UI; jeder Schritt mit Golden Master |
-| Uneindeutige PLC_IN-/PLC_OUT-Fachregel | falsche FEE-Verknüpfungen | Regel vor Implementierung mit konkreten XML-/FEE-Beispielen festlegen |
+| PLC_IN-Regel wird nur teilweise umgesetzt | Validierung könnte Eingänge erlauben, während der Executor Signale verliert | Slot-Policy, Mapping-Plan und `FeeSimpleMove`-Ausführung in einem atomaren Schritt ändern und gemeinsam testen |
 | TIA-Openness-Versionen und Proxytypen | Laufzeitfehler trotz erfolgreichem Build | Bridge isoliert lassen, DTO-kompatibel erweitern, reale Projekte versionenweise abnehmen |
 | FEE-Rückabbildung ohne Provenienz | Datenverlust oder falsche Container | Altmodelle nur mit Confidence/Diagnose, neue Modelle mit stabilen IDs |
 | Kanbanize-Titel als implizites Datenmodell | falsche Konflikte/Duplikate | Titelgrammatik und Rollen als explizite Parser-/Policy-Tests |
@@ -155,13 +158,17 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 | Umgebungsvariablen für Secrets | lokal auslesbarer als Vault | Credential-Store-Adapter; keine Logs, Exporte oder Repositorywerte |
 | Live-Schreibzugriffe auf FEE/TIA/Kanbanize | externe Seiteneffekte | Preview, selektive Bestätigung, Backup/Idempotenz und getrennte Live-Abnahme |
 
-## 8. Tatsächlich blockierende Fachfragen
+## 8. Geklärte Fachregeln und verbleibende externe Blocker
 
-Diese Fragen blockieren nicht Navigation, Diagnose, read-only Discovery oder Testausbau. Sie blockieren jeweils die genannte mutierende Fachfunktion:
+Geklärt sind:
 
-1. **PLC_IN/PLC_OUT:** Welche konkrete Mehrfachbelegung ist bei `PLC_IN` erlaubt, und wie müssen Quelle, Ziel, Richtung und Benennung der `FeeSimpleMove`-Verknüpfung für jedes Signal aussehen? Ein minimales Sollbeispiel mit zwei Signalen auf demselben Slot wird benötigt. Für `PLC_OUT` ist zu bestätigen, ob jede zweite Belegung unabhängig von Signal-ID/Adresse zwingend ein Fehler ist.
-2. **Grob Generation Interface:** Woran wird dieses Interface stabil erkannt – exakter Name, Typ, Provider/GUID oder anderes SDK-Merkmal? Wie wird bei mehreren Treffern entschieden?
-3. **Kanbanize-Rollenlogik:** Welche verbindliche Titel-/Feldgrammatik kennzeichnet Rolle (`CLIENT`, `CORE`) und Zusatzbezeichnung? Benötigt werden anonymisierte Beispiele für „gleicher Termin“, „unterschiedliche Rolle“ und „CORE doppelt“.
-4. **FEE2Container-Altbestand:** Muss die erste Version beliebige historische FEE-Modelle verlustfrei rückwandeln, oder dürfen nur künftig von VIBN Tools erzeugte Modelle mit Provenienz vollständig round-trip-fähig sein? Für Altmodelle kann realistisch nur eine diagnostizierte heuristische Zuordnung zugesagt werden.
+1. **PLC_IN/PLC_OUT:** Jede `PLC_IN_`-Mehrfachbelegung ist mit einem eigenen `FeeSimpleMove` je Signal zulässig. `PLC_OUT_` bleibt eindeutig und darf nicht mehrfach verschaltet werden.
+2. **Grob Generation Interface:** Erkennung über den Namen `Grob Generation Interface`, GUID `a6222164-be37-49de-b760-9b1c97c320bb` und Provider `GrobGenerationInterface.Interface.GrobInterfaceProvider`. Mehrdeutige oder widersprüchliche Treffer müssen die Generierung vor Schreibzugriff blockieren.
+3. **Kanbanize:** Der generierte Marker `*[Gen]*` begrenzt den Basisnamen von rechts. Die kopierte Hauptkarte erhält den Zusatz `CORE`, weitere Karten den Zusatz `CLIENT`. Parser-Tests müssen weiterhin verschiedene Orts- und Kundenlängen sowie bereits ergänzte Rollen abdecken.
+4. **FEE2Container:** Garantierter Round-Trip nur für künftig durch Container2FEE erzeugte Modelle mit Provenienz.
 
-Für die selektive Achsenkonfiguration wird zusätzlich ein reales, nicht sensibles Beispielprojekt oder eine exportierte Achsenstruktur für die Live-Abnahme benötigt. Die read-only Protokollerweiterung kann vorher implementiert werden.
+Verbleibende externe Blocker sind keine offenen Businessentscheidungen:
+
+- Für Build und Laufzeit des unverändert übernommenen Grob-Plugins fehlt `FS.SDK.Localization.dll`; für ein vollständiges FEE-Deployment fehlen außerdem die oben genannten transitive Assemblies.
+- Für die TIA-Live-Abnahme von `Projekt1.7z` wird eine installierte TIA-Portal-V20-/Openness-Umgebung benötigt.
+- Für die selektive Achsenkonfiguration sind reale ausgelesene Achsendaten weiterhin erforderlich; das TIA-Beispielprojekt kann dafür erst auf einem entsprechend ausgestatteten Rechner ausgewertet werden.

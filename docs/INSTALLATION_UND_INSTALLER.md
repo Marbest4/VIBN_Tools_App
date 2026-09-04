@@ -62,14 +62,17 @@ Der Publish enthält nicht den vollständigen FEE-Installationsordner. Das Skrip
 2. `FEE_SCREEN_SIM_ROOT`
 3. installierte Unterordner von `C:\Program Files\fe.screen-sim V5`, absteigend nach Version
 4. `external\fe-screen-sim` als CI-/Testfallback
+5. `SDK` als unveränderter flacher Repository-Buildfallback
 
-Installationsordner ohne `Bin\FS.SDK.dll` werden mit einer Warnung übersprungen. Ohne explizite oder zuvor gespeicherte Auswahl wird die höchste vollständige Version gewählt und als
+Produktinstallationen benötigen `Bin\FS.SDK.dll`; die beiden Repository-Fallbacks dürfen zusätzlich das flache Layout mit `FS.SDK.dll` direkt im Stammordner verwenden. Ordner ohne diese Markierung werden mit einer Warnung übersprungen. Ohne explizite oder zuvor gespeicherte Auswahl wird die höchste vollständige Installation gewählt und als
 
 ```text
 FEE SDK erkannt: Version ... unter '...'
 ```
 
 ausgegeben. `Prepare-Development.cmd` listet mehrere vollständige SDKs absteigend auf, markiert die neueste als Standard und lässt den Entwickler den Referenzordner auswählen. Die Auswahl wird als `FEE_SCREEN_SIM_ROOT` für den aktuellen Windows-Benutzer gespeichert. Visual Studio muss danach neu gestartet werden, weil bereits geladene Projektverweise nicht innerhalb eines laufenden Prozesses ausgetauscht werden können. Eine Laufzeit-Auswahl in Project Settings wäre technisch zu spät und ist deshalb bewusst nicht vorhanden.
+
+Der aktuell eingecheckte flache Ordner `SDK` in Version `5.0.11.48415` genügt für den Hauptprojekt-Build, aber nicht für Publish/Installer oder das Projekt `Grob Generation Interface`. Die Abhängigkeitsprüfung meldet derzeit `FS.Bridge`, `FS.Gui`, `FS.Render`, `FS.SDK.Localization` und `FS.Serialization` als fehlend. Diese Dateien dürfen nur als vollständig zusammengehöriger, lizenzkonform freigegebener Herstellersatz ergänzt werden; einzelne Assemblies aus anderen Versionen zu mischen ist nicht unterstützt.
 
 ### Direktes Debuggen in Visual Studio
 

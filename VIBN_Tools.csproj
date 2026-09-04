@@ -13,7 +13,7 @@
 	     must run a build whose minimum framework version is 8.0.0. -->
 	<RollForward>LatestPatch</RollForward>
 	<BaseOutputPath>$(MSBuildProjectDirectory)\artifacts\build\</BaseOutputPath>
-	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**;VIBN_Tools.IbnRemote\**;VIBN_Tools.IbnRemote.Infrastructure\**</DefaultItemExcludes>
+	<DefaultItemExcludes>$(DefaultItemExcludes);Tests\**;VIBN_Tools.Core\**;VIBN_Tools.Infrastructure\**;VIBN_Tools.Tia.Client\**;VIBN_Tools.Tia.Contracts\**;VIBN_Tools.TiaBridge\**;VIBN_Tools.IbnRemote\**;VIBN_Tools.IbnRemote.Infrastructure\**;Grob Generation Interface\**;SDK\**</DefaultItemExcludes>
   </PropertyGroup>
 
   <!-- F5 must work on a development PC without a separately matching global
@@ -51,10 +51,6 @@
   </ItemGroup>
 
   <ItemGroup>
-	<!-- Expose only the selected SDK version (not the machine-specific path) to
-	     Project Settings for runtime diagnostics. -->
-	<AssemblyMetadata Include="FeeSdkVersion" Value="$([System.IO.Path]::GetFileName('$(FeeScreenSimRoot)'))" />
-
 	<PackageReference Include="ClosedXML" Version="0.105.0" />
 	<PackageReference Include="Grob.UX" Version="1.8.93" />
 	<PackageReference Include="Microsoft.ML" Version="5.0.0" />
@@ -92,51 +88,51 @@
 
   <ItemGroup>
     <Reference Include="FS.API">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.API.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.API.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.Components">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Components.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.Components.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.Content">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Content.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.Content.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.Input">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Input.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.Input.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Mathematics">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Mathematics.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.Mathematics.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Network">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Network.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.Network.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Packets">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Packets.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.Packets.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Util">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Util.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.Util.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.SDK.Wpf">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.SDK.Wpf.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.SDK.Wpf.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="FS.Util">
-      <HintPath>$(FeeScreenSimRoot)\Bin\FS.Util.dll</HintPath>
+      <HintPath>$(FeeScreenSimBinPath)\FS.Util.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="ReadingUnitPlugin">
-      <HintPath>$(FeeScreenSimRoot)\Bin\Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll</HintPath>
+      <HintPath>$(FeeReadingUnitPluginPath)</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>
@@ -172,7 +168,7 @@
     <RemoveDir Directories="$(TargetDir)Plugins"
                Condition="Exists('$(TargetDir)Plugins')" />
     <ItemGroup>
-      <FeeRuntimeAssembly Include="$(FeeScreenSimRoot)\Bin\FS.*.dll" />
+      <FeeRuntimeAssembly Include="$(FeeScreenSimBinPath)\FS.*.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(FeeRuntimeAssembly)"
           DestinationFolder="$(TargetDir)"
@@ -202,7 +198,7 @@
            project's direct references. The fallback keeps direct IDE publish
            functional, but the supported installer path always uses the lean
            closure. -->
-      <FeePublishAssembly Include="$(FeeScreenSimRoot)\Bin\FS.*.dll" />
+      <FeePublishAssembly Include="$(FeeScreenSimBinPath)\FS.*.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(FeePublishAssembly)"
           DestinationFolder="$(PublishDir)"

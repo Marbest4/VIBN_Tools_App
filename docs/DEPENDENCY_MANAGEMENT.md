@@ -23,14 +23,18 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 ## Umgesetzter Zwischenstand
 
 - NuGet-Versionen stehen vorerst explizit an den `PackageReference`-Einträgen. Das erhält die Restore-Kompatibilität mit den aktuell eingesetzten Visual-Studio-/NuGet-Versionen.
-- `Directory.Build.props` ermittelt `FeeScreenSimRoot` aus Parameter/Environment, `external`, danach installierter Standardversion.
-- `Directory.Build.targets` bricht früh mit einer klaren SDK-Meldung ab.
+- `Directory.Build.props` ermittelt `FeeScreenSimRoot` aus Environment, einer eindeutigen vollständigen Installation, `external` und zuletzt dem flachen Repository-Ordner `SDK`.
+- `Directory.Build.targets` bricht früh mit einer klaren SDK-Meldung ab und liest die tatsächlich referenzierte Assemblyversion aus `FS.SDK.dll` aus.
 - Alle FS-Referenzen verwenden denselben Root und `Private=true`.
 - `Build.ps1` erkennt die höchste installierte Version automatisch.
 - Neue XML-Definitionen werden per Wildcard automatisch veröffentlicht.
 - `SixLabors.Fonts` ist explizit auf `1.0.1` festgelegt, weil ClosedXML und NPOI dieselbe binär kompatible Assembly laden müssen.
 - Build und Publish kopieren nicht mehr pauschal den FEE-`Bin`-/Pluginbaum. Der Releasepfad berechnet aus direkten Referenzen und `ReadingUnitPlugin.dll` die rekursiv benötigte `FS.*`-Closure. So gelangen weder unbenutzte FS-Werkzeuge noch Hersteller-Drittanbieterdateien in das Paket und können keine Paketabhängigkeiten überschreiben.
 - `.vsconfig` und `Prepare-Development.cmd` bilden die minimale Entwicklungsumgebung und die normale Solution-Wiederherstellung reproduzierbar ab.
+
+Der vom Anwender bereitgestellte Ordner `SDK` bleibt in seinem flachen Uploadlayout unverändert. Er ist ein Build-/Testfallback, kein Beleg für eine auslieferbare FEE-Laufzeit. Der Hauptprojekt-Build ist mit Version `5.0.11.48415` verifiziert. Die Publish-Closure stoppt dagegen bewusst, solange `FS.Bridge`, `FS.Gui`, `FS.Render`, `FS.SDK.Localization` und `FS.Serialization` fehlen. Dadurch kann aus einem erfolgreichen Compilerlauf nicht versehentlich ein unvollständiges Setup werden.
+
+Das separat übernommene Projekt `Grob Generation Interface` wird nicht durch die Wildcard des SDK-Style-Hauptprojekts kompiliert. Es bleibt bytegleich zur gelieferten Quelle und wird erst als eigenes Solution-Projekt aktiviert, wenn mindestens `FS.SDK.Localization.dll` und der vollständige kompatible SDK-Satz vorhanden sind.
 
 Eine spätere zentrale Paketverwaltung kann nach Vereinheitlichung und Prüfung der Entwicklerumgebungen nach [Microsofts NuGet Central Package Management](https://learn.microsoft.com/en-gb/nuget/consume-packages/central-package-management) erneut eingeführt werden.
 

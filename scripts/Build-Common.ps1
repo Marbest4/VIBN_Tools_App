@@ -42,6 +42,32 @@ function Get-CompleteInstalledFeeScreenSimRoots {
     return @($complete)
 }
 
+function Get-FeeScreenSimBinPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$FeeRoot)
+
+    $absoluteRoot = [IO.Path]::GetFullPath($FeeRoot)
+    $installedBin = Join-Path $absoluteRoot 'Bin'
+    if (Test-Path -LiteralPath (Join-Path $installedBin 'FS.SDK.dll') -PathType Leaf) {
+        return $installedBin
+    }
+    if (Test-Path -LiteralPath (Join-Path $absoluteRoot 'FS.SDK.dll') -PathType Leaf) {
+        return $absoluteRoot
+    }
+    return $null
+}
+
+function Get-FeeReadingUnitPluginPath {
+    [CmdletBinding()]
+    param([Parameter(Mandatory)][string]$FeeBinPath)
+
+    $installedPlugin = Join-Path $FeeBinPath 'Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll'
+    if (Test-Path -LiteralPath $installedPlugin -PathType Leaf) { return $installedPlugin }
+    $flatPlugin = Join-Path $FeeBinPath 'ReadingUnitPlugin.dll'
+    if (Test-Path -LiteralPath $flatPlugin -PathType Leaf) { return $flatPlugin }
+    return $null
+}
+
 function Resolve-FeeScreenSimRoot {
     [CmdletBinding()]
     param([string]$ExplicitRoot)
@@ -54,6 +80,7 @@ function Resolve-FeeScreenSimRoot {
     # The repository-local SDK is a deterministic CI/test fallback, not a
     # reason to ignore a newer complete product installation.
     $candidates.Add((Join-Path $repositoryRoot 'external\fe-screen-sim'))
+    $candidates.Add((Join-Path $repositoryRoot 'SDK'))
 
     $checked = [Collections.Generic.HashSet[string]]::new([StringComparer]::OrdinalIgnoreCase)
     foreach ($candidate in $candidates) {
@@ -61,19 +88,20 @@ function Resolve-FeeScreenSimRoot {
         $absoluteCandidate = [IO.Path]::GetFullPath($candidate)
         if (-not $checked.Add($absoluteCandidate)) { continue }
 
-        $marker = Join-Path $absoluteCandidate 'Bin\FS.SDK.dll'
-        if (Test-Path -LiteralPath $marker -PathType Leaf) {
+        $binPath = Get-FeeScreenSimBinPath -FeeRoot $absoluteCandidate
+        if (-not [string]::IsNullOrWhiteSpace($binPath)) {
             $resolved = (Resolve-Path -LiteralPath $absoluteCandidate).Path
-            Write-Host "FEE SDK erkannt: Version $([IO.Path]::GetFileName($resolved)) unter '$resolved'."
+            $sdkVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo((Join-Path $binPath 'FS.SDK.dll')).FileVersion
+            Write-Host "FEE SDK erkannt: Version $sdkVersion unter '$resolved'."
             return $resolved
         }
 
         if (Test-Path -LiteralPath $absoluteCandidate -PathType Container) {
-            Write-Warning "FEE-Installation '$absoluteCandidate' wird übersprungen: Bin\FS.SDK.dll fehlt."
+            Write-Warning "FEE-SDK '$absoluteCandidate' wird übersprungen: FS.SDK.dll fehlt in Bin oder im Stammordner."
         }
     }
 
-    throw 'Keine vollständige fe.screen-sim-SDK-Installation gefunden. Unvollständige Versionen wurden übersprungen. FEE_SCREEN_SIM_ROOT setzen oder external\fe-screen-sim bereitstellen.'
+    throw 'Kein vollständiges fe.screen-sim-SDK gefunden. FEE_SCREEN_SIM_ROOT setzen oder external\fe-screen-sim beziehungsweise SDK bereitstellen.'
 }
 
 function Select-FeeScreenSimRoot {
@@ -115,14 +143,17 @@ function Get-FeeRuntimeClosure {
     param([Parameter(Mandatory)][string]$FeeRoot)
 
     $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-    $binRoot = Join-Path $FeeRoot 'Bin'
-    $pluginAssembly = Join-Path $binRoot 'Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll'
+    $binRoot = Get-FeeScreenSimBinPath -FeeRoot $FeeRoot
+    if ([string]::IsNullOrWhiteSpace($binRoot)) {
+        throw "Im FEE-SDK '$FeeRoot' fehlt FS.SDK.dll in Bin oder im Stammordner."
+    }
+    $pluginAssembly = Get-FeeReadingUnitPluginPath -FeeBinPath $binRoot
     $availableFiles = @(Get-ChildItem -LiteralPath $binRoot -Filter 'FS.*.dll' -File)
     if ($availableFiles.Count -eq 0) {
         throw "Im FEE-SDK '$FeeRoot' wurden keine FS.*-Runtime-Assemblies gefunden."
     }
-    if (-not (Test-Path -LiteralPath $pluginAssembly -PathType Leaf)) {
-        throw "Im FEE-SDK '$FeeRoot' fehlt Plugins\ReadingUnitPlugin\ReadingUnitPlugin.dll."
+    if ([string]::IsNullOrWhiteSpace($pluginAssembly)) {
+        throw "Im FEE-SDK '$FeeRoot' fehlt ReadingUnitPlugin.dll im Pluginpfad oder im flachen SDK-Ordner."
     }
 
     $available = [Collections.Generic.Dictionary[string, IO.FileInfo]]::new([StringComparer]::OrdinalIgnoreCase)
