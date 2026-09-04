@@ -17,6 +17,8 @@
 - [Datenflüsse](DATENFLUESSE.md) – PC-Daten, RDP, Konfiguration, Kanbanize, TIA und FEE.
 - [Architektur](ARCHITECTURE.md) – kurze technische Übersicht in Englisch.
 - [Umsetzungsstatus 2026](UMSETZUNGSSTATUS_2026.md) – Abgleich zwischen implementiert, automatisch geprüft und fachlich noch offen.
+- [Refactoring Phase A](REFACTORING_PHASE_A_2026-09.md) – verifizierte Ausgangsarchitektur, Tab-/Service-Zuordnung, Datenmodelle, Risiken und Zielreihenfolge.
+- [Anforderungsmatrix Refactoring](REQUIREMENT_MATRIX_2026-09.md) – vollständige Traceability von Ist-Stand, betroffenem Code, geplantem Scope und Verifikation.
 
 ## Kompatibilitätshinweis
 
