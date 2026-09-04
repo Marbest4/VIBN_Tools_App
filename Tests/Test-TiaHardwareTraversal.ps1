@@ -160,7 +160,9 @@ function New-PnPnDevice() {
     $device = [FakeTiaDevice]::new()
     # Some TIA projects expose the root station only as a generic rack name.
     # The reader must still promote the actual device-head name below it.
-    $device.Name = 'Baugruppenträger'
+    # Keep the generated C# fixture ASCII-compatible so the test behaves the
+    # same under Windows PowerShell 5.1 and PowerShell 7.
+    $device.Name = 'Baugruppentraeger'
     $device.TypeName = 'GSD device'
     $device.TypeIdentifier = 'GSDML-V2.35-SIEMENS-PNPNIOC-20200924.XML'
 
@@ -275,7 +277,8 @@ if ($null -eq $fallbackRow -or $fallbackRow.OutputStartByte -ne 40 -or $fallback
 
 $pnPnRows = @($rows | Where-Object DeviceName -eq 'PN-PN-Coupler_1' | Sort-Object Slot)
 if ($pnPnRows.Count -ne 2) {
-    throw "Exakt zwei semantisch eindeutige PN/PN-Zeilen erwartet, aber $($pnPnRows.Count) erhalten."
+    $actualDevices = @($rows | ForEach-Object { "[$($_.DeviceIndex)] $($_.DeviceName) / $($_.ModuleName)" }) -join '; '
+    throw "Exakt zwei semantisch eindeutige PN/PN-Zeilen erwartet, aber $($pnPnRows.Count) erhalten. Gelesen: $actualDevices"
 }
 
 $firstSafe = $pnPnRows[0]

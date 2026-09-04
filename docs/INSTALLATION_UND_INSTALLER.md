@@ -72,7 +72,7 @@ FEE SDK erkannt: Version ... unter '...'
 
 ausgegeben. `Prepare-Development.cmd` listet mehrere vollständige SDKs absteigend auf, markiert die neueste als Standard und lässt den Entwickler den Referenzordner auswählen. Die Auswahl wird als `FEE_SCREEN_SIM_ROOT` für den aktuellen Windows-Benutzer gespeichert. Visual Studio muss danach neu gestartet werden, weil bereits geladene Projektverweise nicht innerhalb eines laufenden Prozesses ausgetauscht werden können. Eine Laufzeit-Auswahl in Project Settings wäre technisch zu spät und ist deshalb bewusst nicht vorhanden.
 
-Der aktuell eingecheckte flache Ordner `SDK` in Version `5.0.11.48415` genügt für den Hauptprojekt-Build, aber nicht für Publish/Installer oder das Projekt `Grob Generation Interface`. Die Abhängigkeitsprüfung meldet derzeit `FS.Bridge`, `FS.Gui`, `FS.Render`, `FS.SDK.Localization` und `FS.Serialization` als fehlend. Diese Dateien dürfen nur als vollständig zusammengehöriger, lizenzkonform freigegebener Herstellersatz ergänzt werden; einzelne Assemblies aus anderen Versionen zu mischen ist nicht unterstützt.
+Der eingecheckte flache Ordner `SDK` enthält den vollständigen derzeit benötigten Abhängigkeitsabschluss. Hauptprojekt, `Grob Generation Interface` und Solution bauen gemeinsam. Einzelne Assemblies aus anderen Versionen zu mischen bleibt nicht unterstützt; vor Installer/Publish berechnet das Buildskript weiterhin die rekursive Runtime-Closure und bricht bei jeder Lücke ab.
 
 ### Direktes Debuggen in Visual Studio
 

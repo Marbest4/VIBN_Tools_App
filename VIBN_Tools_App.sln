@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.IbnRemote", "VIB
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VIBN_Tools.IbnRemote.Infrastructure", "VIBN_Tools.IbnRemote.Infrastructure\VIBN_Tools.IbnRemote.Infrastructure.csproj", "{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GrobGenerationInterface", "Grob Generation Interface\GrobGenerationInterface.csproj", "{840B22CA-DDBC-4162-BA3F-26D919712D0E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -74,6 +76,10 @@ Global
 		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7AB6FC59-DF3D-4C96-BD0A-948C30CBFB8E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{840B22CA-DDBC-4162-BA3F-26D919712D0E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{840B22CA-DDBC-4162-BA3F-26D919712D0E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{840B22CA-DDBC-4162-BA3F-26D919712D0E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{840B22CA-DDBC-4162-BA3F-26D919712D0E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

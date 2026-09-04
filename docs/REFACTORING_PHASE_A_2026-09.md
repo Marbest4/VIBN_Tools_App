@@ -15,9 +15,9 @@ Dieses Dokument ist die technische Ausgangsbasis für die schrittweise Weiterent
 | `Tests/ContainerGenerationSmokeTests` | erfolgreich; Interface5: 420, Interface7: 345 Signale | bekannte Beispieldaten, kein vollständiger fachlicher Golden Master |
 | `Tests/UiStartupSmokeTests` | erfolgreich | prüft Initialisierung und Bindings, keine vollständigen Benutzerabläufe |
 
-Das Repository enthält inzwischen ein vom Anwender bereitgestelltes, unverändertes flaches FEE-SDK unter `SDK`. Es reicht zum Kompilieren des Hauptprojekts. Es ist jedoch **keine vollständige FEE-Laufzeit**: Die rekursive Abhängigkeitsprüfung meldet `FS.Bridge`, `FS.Gui`, `FS.Render`, `FS.SDK.Localization` und `FS.Serialization` als fehlend. Insbesondere lässt sich das ebenfalls unverändert übernommene Projekt `Grob Generation Interface` ohne `FS.SDK.Localization.dll` nicht bauen. Ein Installer oder eine reale FEE-Abnahme darf deshalb mit diesem Teilsatz nicht als funktionsfähig ausgewiesen werden. Der private Grob.UX-Paketzugriff bleibt auf frischen Rechnern ebenfalls erforderlich.
+Das Repository enthält inzwischen den vollständigen, vom Anwender bereitgestellten flachen FEE-SDK-Satz unter `SDK`. Die rekursive Abhängigkeitsprüfung löst alle 16 benötigten `FS.*`-Assemblies auf. Das unverändert übernommene Projekt `Grob Generation Interface` ist als eigenes Solution-Projekt eingebunden; seine maschinenspezifischen SDK- und Ausgabepfade werden ausschließlich zentral überschrieben. Hauptprojekt, Plugin und vollständige Solution bauen gemeinsam mit 0 Warnungen und 0 Fehlern. Eine reale FEE-Abnahme benötigt weiterhin einen laufenden kompatiblen FEE-Host und ersetzt nicht den Buildnachweis.
 
-`Projekt1.7z` ist als reales TIA-V20-Testartefakt vorhanden und enthält `Projekt1/Projekt1.ap20`. Auf dem aktuellen Prüfhost ist jedoch weder TIA Portal V20 noch die dazugehörige `Siemens.Engineering.dll` installiert. Archivstruktur und Version sind geprüft; Hardwareauslesung über Openness ist damit noch nicht live verifiziert.
+`Projekt1.7z` ist als reales TIA-V20-Testartefakt vorhanden und enthält `Projekt1/Projekt1.ap20`. TIA Portal V20 und die zugehörige `Siemens.Engineering.dll` sind installiert; die Bridge baut gegen diese reale PublicAPI. Die synthetische Traversierung läuft unter Windows PowerShell 5.1 und PowerShell 7. Für den Live-Attach fehlt noch die Windows-Gruppenmitgliedschaft des aktuellen Benutzers in `Siemens TIA Openness` und danach eine neue Anmeldung.
 
 ## 2. Solution und Abhängigkeitsrichtung
 
@@ -147,7 +147,7 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 
 | Risiko | Auswirkung | Gegenmaßnahme |
 | --- | --- | --- |
-| Repository-SDK ist nur ein unvollständiger Build-Satz; privater NuGet-Zugriff bleibt nötig | Hauptprojekt kompiliert, Grob-Plugin/Installer und reale FEE-Laufzeit sind nicht reproduzierbar | fehlende Herstellerassemblies vollständig und lizenzkonform bereitstellen; Abhängigkeitsabschluss vor Publish erzwingen; gelieferte DLLs nicht verändern |
+| Proprietäre FEE-/Grob-Abhängigkeiten sind binär und versionsgebunden | falsche DLL-Mischung kann trotz erfolgreichem Build zur Laufzeit scheitern | unveränderten vollständigen SDK-Satz verwenden, Closure vor Publish erzwingen und reale FEE-Abnahme getrennt dokumentieren |
 | Container-Golden-Master deckt Requirements noch nicht vollständig ab | unbemerkte Generatorregression | freigegebene Requirements- und erwartete Containerdatei versionieren oder intern referenzieren |
 | Großes `ContainerGenerationPageVM` | hohe Kopplung und UI-Regressionen | erst Policies/Services extrahieren, dann UI; jeder Schritt mit Golden Master |
 | PLC_IN-Regel wird nur teilweise umgesetzt | Validierung könnte Eingänge erlauben, während der Executor Signale verliert | Slot-Policy, Mapping-Plan und `FeeSimpleMove`-Ausführung in einem atomaren Schritt ändern und gemeinsam testen |
@@ -169,6 +169,6 @@ Geklärt sind:
 
 Verbleibende externe Blocker sind keine offenen Businessentscheidungen:
 
-- Für Build und Laufzeit des unverändert übernommenen Grob-Plugins fehlt `FS.SDK.Localization.dll`; für ein vollständiges FEE-Deployment fehlen außerdem die oben genannten transitive Assemblies.
-- Für die TIA-Live-Abnahme von `Projekt1.7z` wird eine installierte TIA-Portal-V20-/Openness-Umgebung benötigt.
+- Der SDK-Abhängigkeitsabschluss und der Build des unveränderten Grob-Plugins sind erledigt; offen bleibt ausschließlich die reale Ausführung in einem kompatiblen FEE-Host.
+- Für die TIA-Live-Abnahme von `Projekt1.7z` muss der aktuelle Benutzer Mitglied der vorhandenen lokalen Gruppe `Siemens TIA Openness` sein und sich danach neu anmelden.
 - Für die selektive Achsenkonfiguration sind reale ausgelesene Achsendaten weiterhin erforderlich; das TIA-Beispielprojekt kann dafür erst auf einem entsprechend ausgestatteten Rechner ausgewertet werden.

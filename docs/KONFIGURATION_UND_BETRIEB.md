@@ -65,7 +65,7 @@ Das ist korrekt, wenn FEE die Verbindung nicht bestätigt. Die Anwendung setzt `
 
 Project Settings zeigt zusätzlich **Verwendete SDK-Version** und **Installierte FEE-Version**. Die erste Angabe stammt vorrangig aus der tatsächlich geladenen `FS.SDK.dll`. Für die zweite Angabe gilt eine Installation nur dann als vollständig, wenn in genau ihrem Installationspfad `Bin\FS.SDK.dll` vorhanden ist. Höhere, aber unvollständige Versionsordner und Registry-Einträge ohne dieses Merkmal werden ignoriert. Eine rote Abweichung ist ein Diagnosehinweis: Sie verhindert den Start nicht, sollte aber vor FEE-Schreiboperationen mit der freigegebenen Kompatibilitätsmatrix abgeglichen werden.
 
-Für Entwickler kann der Hauptprojekt-Build als letzte Priorität den flachen Repository-Ordner `SDK` verwenden. Diese Auswahl wird korrekt als Assemblyversion angezeigt, zählt aber nicht als lokal installierte FEE-Version. Der aktuelle Repository-Satz ist nur buildfähig; Publish/Installer müssen wegen fehlender transitiver FEE-Assemblies abbrechen. Eine grüne Buildausgabe ersetzt daher keine FEE-Live-Abnahme.
+Für Entwickler kann der Build als letzte Priorität den flachen Repository-Ordner `SDK` verwenden. Diese Auswahl wird korrekt als Assemblyversion angezeigt, zählt aber nicht als lokal installierte FEE-Version. Der Repository-Satz besitzt inzwischen einen vollständigen rekursiven Abhängigkeitsabschluss; eine grüne Buildausgabe ersetzt dennoch keine FEE-Live-Abnahme.
 
 ### Remote-FEE-Version ist nicht als Spalte vorhanden
 

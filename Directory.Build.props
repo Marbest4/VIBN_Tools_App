@@ -27,6 +27,15 @@
     <FeeScreenSimRoot Condition="'$(FeeScreenSimRoot)' == '' and '$(_InstalledFeeSdkMarkerPath)' == '' and Exists('$(RepositoryFeeSdkRoot)\FS.SDK.dll')">$(RepositoryFeeSdkRoot)</FeeScreenSimRoot>
   </PropertyGroup>
 
+  <!-- Keep the delivered Grob Generation Interface project byte-for-byte
+       unchanged. Repository-specific SDK and output locations are injected
+       from the solution root instead of editing its vendor project file. -->
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GrobGenerationInterface'">
+    <GrobGenerationInterfaceSdkRoot>$(MSBuildThisFileDirectory)SDK</GrobGenerationInterfaceSdkRoot>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\plugin-build\</BaseOutputPath>
+    <OutDir>$(MSBuildThisFileDirectory)artifacts\plugin-build\$(Configuration)\net8.0-windows\</OutDir>
+  </PropertyGroup>
+
   <!-- Product installations contain Bin and a nested plugin directory. The
        explicitly supplied repository SDK is intentionally kept byte-for-byte
        in its flat upload layout. Both layouts feed the same project references. -->

@@ -27,4 +27,32 @@
              Importance="High"
              Text="FEE SDK erkannt: Version $(FeeScreenSimSdkVersion) unter '$(FeeScreenSimBinPath)'." />
   </Target>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'GrobGenerationInterface'">
+    <Reference Remove="FS.SDK;FS.SDK.Localization;FS.SDK.Network;FS.SDK.Packets;FS.SDK.Util" />
+    <Reference Include="FS.SDK" HintPath="$(GrobGenerationInterfaceSdkRoot)\FS.SDK.dll" Private="true" />
+    <Reference Include="FS.SDK.Localization" HintPath="$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Localization.dll" Private="true" />
+    <Reference Include="FS.SDK.Network" HintPath="$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Network.dll" Private="true" />
+    <Reference Include="FS.SDK.Packets" HintPath="$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Packets.dll" Private="true" />
+    <Reference Include="FS.SDK.Util" HintPath="$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Util.dll" Private="true" />
+    <!-- FS.Bridge from the supplied SDK targets System.Text.Json 9. Match the
+         host dependency explicitly instead of suppressing MSB3277. -->
+    <PackageReference Include="System.Text.Json" Version="9.0.0" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(MSBuildProjectName)' == 'GrobGenerationInterface'">
+    <!-- The vendor project declares a machine-specific absolute output path.
+         Override it after project evaluation without modifying that project. -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)artifacts\plugin-build\</BaseOutputPath>
+    <OutputPath>$(BaseOutputPath)$(Configuration)\</OutputPath>
+  </PropertyGroup>
+
+  <Target Name="ValidateGrobGenerationInterfaceSdk"
+          BeforeTargets="ResolveAssemblyReferences"
+          Condition="'$(MSBuildProjectName)' == 'GrobGenerationInterface'">
+    <Error Condition="!Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.dll') or !Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Localization.dll')"
+           Text="Das Grob Generation Interface benötigt den vollständigen Repository-SDK-Satz einschließlich FS.SDK.Localization.dll." />
+    <Message Importance="High"
+             Text="Grob Generation Interface verwendet unveränderte Quellen mit SDK aus '$(GrobGenerationInterfaceSdkRoot)'." />
+  </Target>
 </Project>

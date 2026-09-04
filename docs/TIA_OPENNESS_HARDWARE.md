@@ -81,7 +81,7 @@ Die Bridge akzeptiert V15 bis V22 und lädt die zur gewählten Installation geh�
 
 ## Live-Abnahme
 
-Das Repository enthält `Projekt1.7z` mit dem TIA-V20-Projekt `Projekt1/Projekt1.ap20` und zugehörigen GSD-Dateien als kleines reales Testartefakt. Archiv und Projektversion wurden geprüft. Auf dem aktuellen Prüfhost fehlen jedoch TIA Portal V20 und die passende `Siemens.Engineering.dll`; deshalb wurde das Projekt weder geöffnet noch verändert und die Openness-Hardwareauslesung damit noch nicht live ausgeführt. Für die Abnahme ist das Archiv auf einem entsprechend ausgestatteten Rechner zu entpacken, in TIA vollständig zu öffnen und anschließend read-only über die Bridge einzulesen.
+Das Repository enthält `Projekt1.7z` mit dem TIA-V20-Projekt `Projekt1/Projekt1.ap20` und zugehörigen GSD-Dateien als kleines reales Testartefakt. Archiv und Projektversion wurden geprüft. TIA Portal V20 und die passende `Siemens.Engineering.dll` sind auf dem Prüfhost vorhanden; die Bridge baut dagegen. Das Projekt wurde in einen ignorierten Testartefaktordner entpackt, aber noch nicht über Openness angefügt: Die lokale Gruppe `Siemens TIA Openness` ist vorhanden und leer. Vor der Live-Abnahme muss der aktuelle Windows-Benutzer hinzugefügt und Windows neu angemeldet werden.
 
 Für einen PN/PN-Coupler ist mindestens zu prüfen:
 
