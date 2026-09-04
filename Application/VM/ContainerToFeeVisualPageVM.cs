@@ -81,6 +81,18 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         DeselectAllCommand = new VisualRelayCommand(
             () => SetAllGenerationSelected(false),
             () => HasPlan && !IsBusy);
+        ExpandAllCommand = new VisualRelayCommand(
+            () => SetTreeExpanded(true),
+            () => HasPlan && !IsBusy);
+        CollapseAllCommand = new VisualRelayCommand(
+            () => SetTreeExpanded(false),
+            () => HasPlan && !IsBusy);
+        SelectAllMissingCreationCommand = new VisualRelayCommand(
+            () => SetAllCreationRequested(true),
+            () => HasPlan && !IsBusy);
+        DeselectAllMissingCreationCommand = new VisualRelayCommand(
+            () => SetAllCreationRequested(false),
+            () => HasPlan && !IsBusy);
         CancelCommand = new VisualRelayCommand(CancelOperation, () => IsBusy);
         UndoCommand = new VisualRelayCommand(Undo, () => _planService.CanUndo && !IsBusy);
         RedoCommand = new VisualRelayCommand(Redo, () => _planService.CanRedo && !IsBusy);
@@ -134,6 +146,14 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     public ICommand SelectAllCommand { get; }
 
     public ICommand DeselectAllCommand { get; }
+
+    public ICommand ExpandAllCommand { get; }
+
+    public ICommand CollapseAllCommand { get; }
+
+    public ICommand SelectAllMissingCreationCommand { get; }
+
+    public ICommand DeselectAllMissingCreationCommand { get; }
 
     public ICommand CancelCommand { get; }
 
@@ -241,35 +261,6 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         }
     }
 
-    public bool SelectedContainerSupportsGeneration =>
-        SelectedTreeNode?.CanSelectGeneration == true;
-
-    public bool CreateSignalsForSelection
-    {
-        get
-        {
-            var containerId = SelectedTreeNode?.ContainerId;
-            return containerId is null ||
-                   _planService.CurrentPlan?.ShouldCreateSignals(containerId) != false;
-        }
-        set
-        {
-            var containerId = SelectedTreeNode?.ContainerId;
-            if (containerId is null ||
-                CreateSignalsForSelection == value ||
-                !_planService.SetSignalCreation(containerId, value))
-            {
-                return;
-            }
-
-            StatusText = value
-                ? "Die Signale dieses Containers werden erzeugt."
-                : "Vorhandene Signale werden im ausgewählten Interface gesucht und nur neu verknüpft.";
-            _log.Information(LogArea, StatusText);
-            OnPropertyChanged();
-        }
-    }
-
     public ContainerToFeeVisualFeeInterfaceVM? SelectedExistingInterface
     {
         get => _selectedExistingInterface;
@@ -320,9 +311,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             _selectedTreeNode = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedContainerSupportsCreation));
-            OnPropertyChanged(nameof(SelectedContainerSupportsGeneration));
             OnPropertyChanged(nameof(IsCreationRequestedForSelection));
-            OnPropertyChanged(nameof(CreateSignalsForSelection));
             RefreshSelectionProjection();
         }
     }
@@ -523,6 +512,27 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         _log.Information(LogArea, StatusText);
     }
 
+    private void SetAllCreationRequested(bool requested)
+    {
+        var changed = _planService.SetAllCreationRequested(requested);
+        StatusText = changed == 0
+            ? requested
+                ? "Die Erzeugung fehlender SimObjects war bereits überall aktiviert."
+                : "Die Erzeugung fehlender SimObjects war bereits überall deaktiviert."
+            : requested
+                ? $"Für {changed} Container wurde die Erzeugung fehlender SimObjects aktiviert."
+                : $"Für {changed} Container wurde die Erzeugung fehlender SimObjects deaktiviert.";
+        _log.Information(LogArea, StatusText);
+    }
+
+    private void SetTreeExpanded(bool expanded)
+    {
+        foreach (var node in TreeRoots.SelectMany(root => root.SelfAndDescendants()))
+            node.IsExpanded = expanded;
+
+        StatusText = expanded ? "Beide Strukturen wurden aufgeklappt." : "Beide Strukturen wurden zugeklappt.";
+    }
+
     private void HandleDrop(ContainerToFeeVisualDropRequest? request)
     {
         if (request?.Target is not ContainerToFeeVisualTargetVM target)
@@ -671,7 +681,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
                 string.Equals(
                     item.GuidString,
                     plan.ExistingInterfaceSelection?.InterfaceGuid,
-                    StringComparison.OrdinalIgnoreCase));
+                    StringComparison.OrdinalIgnoreCase)) ?? AvailableFeeInterfaces.FirstOrDefault(item => item.IsNone);
         }
         finally
         {
@@ -688,9 +698,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         OnPropertyChanged(nameof(HasValidationErrors));
         OnPropertyChanged(nameof(IsFeeObjectDiscoveryAvailable));
         OnPropertyChanged(nameof(SelectedContainerSupportsCreation));
-        OnPropertyChanged(nameof(SelectedContainerSupportsGeneration));
         OnPropertyChanged(nameof(IsCreationRequestedForSelection));
-        OnPropertyChanged(nameof(CreateSignalsForSelection));
         InvalidateCommands();
     }
 
@@ -719,7 +727,9 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             .ToHashSet(StringComparer.Ordinal);
         return targets.All(target => assignedTargetIds.Contains(target.Id))
             ? ContainerToFeeVisualNodeState.Assigned
-            : ContainerToFeeVisualNodeState.Missing;
+            : plan.IsCreationRequested(node.Id)
+                ? ContainerToFeeVisualNodeState.CreationPending
+                : ContainerToFeeVisualNodeState.Missing;
     }
 
     private void SetGenerationSelected(string containerId, bool selected)
@@ -807,14 +817,18 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     private void RefreshFeeInterfaceProjection(IReadOnlyList<VisualFeeInterface>? interfaces = null)
     {
         var selectedGuid = _planService.CurrentPlan?.ExistingInterfaceSelection?.InterfaceGuid;
-        var source = interfaces ?? AvailableFeeInterfaces.Select(item => item.Model).ToArray();
+        var source = interfaces ?? AvailableFeeInterfaces
+            .Where(item => item.Model is not null)
+            .Select(item => item.Model!)
+            .ToArray();
         ReplaceCollection(
             AvailableFeeInterfaces,
-            source.Select(item => new ContainerToFeeVisualFeeInterfaceVM(item)));
+            new[] { ContainerToFeeVisualFeeInterfaceVM.None }
+                .Concat(source.Select(item => new ContainerToFeeVisualFeeInterfaceVM(item))));
         SelectedExistingInterface = AvailableFeeInterfaces.FirstOrDefault(item => string.Equals(
             item.GuidString,
             selectedGuid,
-            StringComparison.OrdinalIgnoreCase));
+            StringComparison.OrdinalIgnoreCase)) ?? AvailableFeeInterfaces.First(item => item.IsNone);
     }
 
     private void PublishIssues(IEnumerable<VisualIssue> issues)
@@ -937,8 +951,10 @@ public sealed record ContainerToFeeVisualNodeState(string Background, string Des
     public static ContainerToFeeVisualNodeState None { get; } = new("Transparent", string.Empty);
     public static ContainerToFeeVisualNodeState Assigned { get; } =
         new("#FFC6EFCE", "Alle benötigten FEE-SimObjects sind zugeordnet.");
+    public static ContainerToFeeVisualNodeState CreationPending { get; } =
+        new("#FFFFE1E1", "Mindestens ein SimObject fehlt und wird bei der Generierung erzeugt.");
     public static ContainerToFeeVisualNodeState Missing { get; } =
-        new("#FFFFC7CE", "Mindestens ein benötigtes FEE-SimObject fehlt.");
+        new("#FFEF9A9A", "Mindestens ein benötigtes FEE-SimObject fehlt; automatische Erzeugung ist deaktiviert.");
 }
 
 public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
@@ -1055,18 +1071,21 @@ public sealed class ContainerToFeeVisualTargetVM
     public string StateBackground => IsAssigned
         ? "#FFC6EFCE"
         : IsCreationRequested
-            ? "#FFFFF2CC"
-            : "#FFFFC7CE";
+            ? "#FFFFE1E1"
+            : "#FFEF9A9A";
 }
 
 /// <summary>Presentation wrapper for one existing FEE interface.</summary>
-public sealed class ContainerToFeeVisualFeeInterfaceVM(VisualFeeInterface model)
+public sealed class ContainerToFeeVisualFeeInterfaceVM(VisualFeeInterface? model)
 {
-    public VisualFeeInterface Model { get; } = model;
-    public string GuidString => Model.GuidString;
-    public string Name => Model.Name;
-    public int SignalCount => Model.SignalCount;
-    public string DisplayName => $"{Name} ({SignalCount} Signale)";
+    public static ContainerToFeeVisualFeeInterfaceVM None { get; } = new(null);
+
+    public VisualFeeInterface? Model { get; } = model;
+    public bool IsNone => Model is null;
+    public string GuidString => Model?.GuidString ?? string.Empty;
+    public string Name => Model?.Name ?? "Keins";
+    public int SignalCount => Model?.SignalCount ?? 0;
+    public string DisplayName => IsNone ? "Keins" : $"{Name} ({SignalCount} Signale)";
 }
 
 /// <summary>Presentation state showing whether an FEE object is already assigned.</summary>

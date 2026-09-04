@@ -32,57 +32,66 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             var selectedBindings = binding.Containers
                 .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
                 .ToArray();
-            var createSignalBindings = selectedBindings
-                .Where(item => plan.ShouldCreateSignals(item.PlanNode.Id))
-                .ToArray();
-            var reuseSignalBindings = selectedBindings
-                .Where(item => !plan.ShouldCreateSignals(item.PlanNode.Id))
-                .ToArray();
-
-            FeeInterface? existingInterface = null;
-            if (reuseSignalBindings.Length > 0)
+            var generationInterfaceResolution = GrobGenerationInterfaceResolver.Resolve(
+                runtimeInterfaces.Values);
+            if (!generationInterfaceResolution.IsValid)
             {
-                var selectedInterface = plan.ExistingInterfaceSelection;
-                if (selectedInterface is null ||
-                    !runtimeInterfaces.TryGetValue(selectedInterface.InterfaceGuid, out existingInterface))
-                {
-                    return Failure(
-                        "Das ausgewählte Interface für vorhandene Signale ist nicht verfügbar.",
-                        "EXISTING_INTERFACE_MISSING");
-                }
-
-                var signalIssues = ExistingInterfaceSignalBinder.Bind(
-                    reuseSignalBindings,
-                    existingInterface);
-                if (signalIssues.Count > 0)
-                {
-                    return new VisualExecutionResult(
-                        false,
-                        "Vorhandene Signale konnten nicht eindeutig aufgelöst werden.",
-                        signalIssues);
-                }
+                var issue = generationInterfaceResolution.Issue!;
+                return new VisualExecutionResult(false, issue.Message, [issue]);
             }
+            var generationInterface = generationInterfaceResolution.Interface!;
+
+            var signalRequests = selectedBindings
+                .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
+                    new SignalResolutionRequest(
+                        binding.PlanNode.Id,
+                        binding.PlanNode.Name,
+                        signal)))
+                .Concat(binding.UnknownSignals.Select(signal =>
+                    new SignalResolutionRequest(
+                        "unknown-signals",
+                        "Unbekannte Signale",
+                        signal)))
+                .ToArray();
+            var signalPlan = SignalResolutionPlanner.Build(
+                signalRequests,
+                runtimeInterfaces.Values);
+            if (!signalPlan.IsValid)
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Vorhandene Signale konnten nicht eindeutig aufgelöst werden.",
+                    signalPlan.Issues);
+            }
+            signalPlan.ApplyExistingBindings();
 
             var selectedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
                 .ToArray();
             ContainerToFeeService.LinkAddonContainers(selectedContainers);
-            var sortedCreateSignalContainers = createSignalBindings
-                .Select(item => item.RuntimeContainer)
-                .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
-                .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
-                .ToArray();
-            var sortedReuseSignalContainers = reuseSignalBindings
+            var sortedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
                 .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
                 .ToArray();
 
-            var timestamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
-            var unknownInterface = new FeeInterface
+            // Create only the unique missing variables before any BasicFrame,
+            // logic or SimObject is written. All later legacy calls reuse the
+            // resolved GUIDs and therefore cannot duplicate the variables.
+            foreach (var missing in signalPlan.MissingSignals)
             {
-                Name = $"Unknown Signals (generated at {timestamp})",
-            };
+                if (!await missing.Signal.CreateSignalAsync(generationInterface))
+                {
+                    return Failure(
+                        $"Signal '{missing.Signal.Tag}' konnte im Grob Generation Interface nicht erzeugt werden. " +
+                        "Bereits zuvor angelegte Signale können bestehen geblieben sein; Containerobjekte wurden noch nicht erzeugt.",
+                        "GENERATED_SIGNAL_NOT_AVAILABLE",
+                        missing.ContainerId);
+                }
+            }
+            signalPlan.ApplyCreatedBindings(generationInterface);
+
+            var timestamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
 
             if (selectedContainers.Length > 0)
             {
@@ -94,56 +103,35 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 await basicFrame.SendAndWaitAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
-                if (sortedCreateSignalContainers.Length > 0)
-                {
-                    var generatedInterface = new FeeInterface
-                    {
-                        Name = $"Auto Generated (at {timestamp})",
-                    };
-                    if (!await generatedInterface.CreateInterfaceAsync())
-                    {
-                        return Failure(
-                            "Das neue FEE-Interface wurde nicht verfügbar; es wurden keine Signale erzeugt.",
-                            "GENERATED_INTERFACE_NOT_AVAILABLE");
-                    }
-                    await ContainerToFeeService.CreateAllContainersAsync(
-                        sortedCreateSignalContainers,
-                        generatedInterface,
-                        basicFrame);
-                }
-
-                if (sortedReuseSignalContainers.Length > 0)
-                {
-                    await ContainerToFeeService.CreateAllContainersAsync(
-                        sortedReuseSignalContainers,
-                        existingInterface!,
-                        basicFrame);
-                }
+                await ContainerToFeeService.CreateAllContainersAsync(
+                    sortedContainers,
+                    generationInterface,
+                    basicFrame);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
             if (binding.UnknownSignals.Count > 0)
             {
-                await unknownInterface.CreateInterfaceAsync();
                 await Parallel.ForEachAsync(
                     binding.UnknownSignals,
                     cancellationToken,
                     async (signal, token) =>
                     {
                         token.ThrowIfCancellationRequested();
-                        await signal.CreateSignalAsync(unknownInterface);
+                        await signal.CreateSignalAsync(generationInterface);
                     });
             }
 
             logger.Information(
                 $"Visuelle Generierung abgeschlossen: {selectedContainers.Length} Container " +
-                $"({sortedCreateSignalContainers.Length} mit neuen, " +
-                $"{sortedReuseSignalContainers.Length} mit vorhandenen Signalen), " +
+                $"({signalPlan.ExistingBindings.Count} vorhandene, " +
+                $"{signalPlan.MissingSignals.Count} neu zu erzeugende Signale), " +
                 $"{binding.UnknownSignals.Count} unbekannte Signale.");
             return new VisualExecutionResult(
                 true,
                 $"Generierung abgeschlossen: {selectedContainers.Length} Container wurden verarbeitet; " +
-                $"{sortedReuseSignalContainers.Length} davon verwenden vorhandene Signale ohne Überschreiben.",
+                $"{signalPlan.ExistingBindings.Count} Signale wurden wiederverwendet und " +
+                $"{signalPlan.MissingSignals.Count} im Grob Generation Interface erzeugt.",
                 []);
         }
         catch (OperationCanceledException)

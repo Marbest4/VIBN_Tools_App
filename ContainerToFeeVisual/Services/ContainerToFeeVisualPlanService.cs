@@ -308,8 +308,8 @@ public sealed class ContainerToFeeVisualPlanService
         var requests = plan.CreationRequests
             .Where(item => item.ContainerId != containerId)
             .ToList();
-        if (requested)
-            requests.Add(new VisualCreationRequest(containerId, true));
+        if (!requested)
+            requests.Add(new VisualCreationRequest(containerId, false));
         plan.ReplaceCreationRequests(requests);
         RecordMutation(before);
         RaisePlanChanged();
@@ -363,33 +363,27 @@ public sealed class ContainerToFeeVisualPlanService
         return changed;
     }
 
-    /// <summary>
-    /// Controls whether one container creates its signals. When disabled the
-    /// executor resolves the signals in the selected existing interface and
-    /// only writes the slot assignments.
-    /// </summary>
-    public bool SetSignalCreation(string containerId, bool createSignals)
+    /// <summary>Enables or disables creation for every supported container in one undo step.</summary>
+    public int SetAllCreationRequested(bool requested)
     {
         var plan = CurrentPlan;
-        var container = plan?.FindNode(containerId);
-        if (plan is null || container?.Kind != VisualNodeKind.Container ||
-            !ContainerMetadataCatalog.TryGet(container.TypeName, out _))
-        {
-            return false;
-        }
-        if (plan.ShouldCreateSignals(containerId) == createSignals)
-            return true;
+        if (plan is null)
+            return 0;
+
+        var containers = plan.Nodes
+            .Where(node => node.Kind == VisualNodeKind.Container && node.SupportsCreation)
+            .ToArray();
+        var changed = containers.Count(node => plan.IsCreationRequested(node.Id) != requested);
+        if (changed == 0)
+            return 0;
 
         var before = Capture(plan);
-        var selections = plan.SignalCreationSelections
-            .Where(item => item.ContainerId != containerId)
-            .ToList();
-        if (!createSignals)
-            selections.Add(new VisualSignalCreationSelection(containerId, false));
-        plan.ReplaceSignalCreationSelections(selections);
+        plan.ReplaceCreationRequests(requested
+            ? []
+            : containers.Select(node => new VisualCreationRequest(node.Id, false)));
         RecordMutation(before);
         RaisePlanChanged();
-        return true;
+        return changed;
     }
 
     public bool SetExistingInterface(VisualFeeInterface? feeInterface)
@@ -482,36 +476,12 @@ public sealed class ContainerToFeeVisualPlanService
             }
         }
 
-        var reuseSignalContainers = plan.Nodes.Where(node =>
+        var selectedContainers = plan.Nodes.Where(node =>
                 node.Kind == VisualNodeKind.Container &&
                 ContainerMetadataCatalog.TryGet(node.TypeName, out _) &&
-                plan.IsGenerationSelected(node.Id) &&
-                !plan.ShouldCreateSignals(node.Id))
+                plan.IsGenerationSelected(node.Id))
             .ToArray();
-        if (reuseSignalContainers.Length > 0)
-        {
-            var interfaceSelection = plan.ExistingInterfaceSelection;
-            if (interfaceSelection is null)
-            {
-                issues.Add(new VisualIssue(
-                    VisualIssueSeverity.Error,
-                    "EXISTING_INTERFACE_NOT_SELECTED",
-                    "Für Container ohne Signalerzeugung muss ein vorhandenes FEE-Interface ausgewählt werden."));
-            }
-            else if (_hasDiscoveredFeeInterfaces &&
-                     !_runtimeInterfaces.ContainsKey(interfaceSelection.InterfaceGuid))
-            {
-                issues.Add(new VisualIssue(
-                    VisualIssueSeverity.Error,
-                    "EXISTING_INTERFACE_MISSING",
-                    $"Das ausgewählte FEE-Interface '{interfaceSelection.InterfaceName}' ist nicht mehr vorhanden."));
-            }
-        }
-
-        if (!plan.Nodes.Any(node =>
-                node.Kind == VisualNodeKind.Container &&
-                ContainerMetadataCatalog.TryGet(node.TypeName, out _) &&
-                plan.IsGenerationSelected(node.Id)))
+        if (selectedContainers.Length == 0)
         {
             issues.Add(new VisualIssue(
                 VisualIssueSeverity.Warning,
@@ -548,11 +518,7 @@ public sealed class ContainerToFeeVisualPlanService
             AutoAssignMatches();
         }
 
-        if (plan.Nodes.Any(node =>
-                node.Kind == VisualNodeKind.Container &&
-                plan.IsGenerationSelected(node.Id) &&
-                !plan.ShouldCreateSignals(node.Id)) &&
-            !_hasDiscoveredFeeInterfaces)
+        if (!_hasDiscoveredFeeInterfaces)
         {
             await DiscoverFeeInterfacesAsync(cancellationToken);
         }
@@ -677,7 +643,7 @@ public sealed class ContainerToFeeVisualPlanService
                     target.Id));
             }
         }
-        foreach (var request in requests.Where(item => item.IsRequested))
+        foreach (var request in requests.Where(item => !item.IsRequested))
         {
             var node = plan.FindNode(request.ContainerId);
             if (node is null || !node.SupportsCreation)
@@ -685,7 +651,7 @@ public sealed class ContainerToFeeVisualPlanService
                 issues.Add(new VisualIssue(
                     VisualIssueSeverity.Warning,
                     "SIDECAR_CREATION_UNSUPPORTED",
-                    "Eine nicht mehr unterstützte Erzeugungsanforderung wurde ignoriert.",
+                    "Eine nicht mehr unterstützte Erzeugungsausnahme wurde ignoriert.",
                     request.ContainerId));
             }
         }
@@ -719,15 +685,29 @@ public sealed class ContainerToFeeVisualPlanService
         if (issues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
             return issues;
 
+        if (document.SchemaVersion < 4 && requests.Count > 0)
+        {
+            issues.Add(new VisualIssue(
+                VisualIssueSeverity.Info,
+                "SIDECAR_CREATION_DEFAULT_MIGRATED",
+                "Fehlende SimObjects werden jetzt standardmäßig erzeugt; die frühere Positivliste wurde migriert."));
+            requests = [];
+        }
+        if (signalCreationSelections.Count > 0)
+        {
+            issues.Add(new VisualIssue(
+                VisualIssueSeverity.Info,
+                "SIDECAR_SIGNAL_SELECTION_IGNORED",
+                "Die frühere Auswahl 'Signale erzeugen' ist entfallen. Signale werden automatisch gesucht, wiederverwendet oder im Grob Generation Interface erzeugt."));
+        }
+
         plan.ReplaceAssignments(assignments);
         plan.ReplaceCreationRequests(requests.Where(request =>
-            request.IsRequested && plan.FindNode(request.ContainerId)?.SupportsCreation == true));
+            !request.IsRequested && plan.FindNode(request.ContainerId)?.SupportsCreation == true));
         plan.ReplaceGenerationSelections(generationSelections.Where(selection =>
             !selection.IsSelected &&
             plan.FindNode(selection.ContainerId)?.Kind == VisualNodeKind.Container));
-        plan.ReplaceSignalCreationSelections(signalCreationSelections.Where(selection =>
-            !selection.CreateSignals &&
-            plan.FindNode(selection.ContainerId)?.Kind == VisualNodeKind.Container));
+        plan.ReplaceSignalCreationSelections([]);
         plan.SetExistingInterfaceSelection(document.ExistingInterfaceSelection);
         return issues;
     }

@@ -99,7 +99,7 @@ Offene Kernpunkte:
 
 Die FEE-Seite verwendet Wrapper wie `FeeAbstractObject`, `FeeLogic`, `FeeInterface`, `FeeInterfaceSignal` und Logiktypen wie `FeeSimpleMove`, `FeeNot`, `FeeAnd` und `FeeOr`. Die visuelle Variante besitzt bereits getrennte Bereiche für Planning, Discovery, Persistence und Execution sowie einen fingerprintgeschützten Sidecar.
 
-Der aktuelle Plan unterscheidet Container, Logiken, Signale, technische Ziele, Erzeugungsauswahl, Interface-Auswahl und Kanten. Die Ausführung kennt jedoch getrennte Modi „Signale erzeugen“ und „vorhandenes Interface wiederverwenden“. Das Zielverhalten – alle vorhandenen Interfaces durchsuchen, passende Signale wiederverwenden und nur fehlende Signale in der Grob Generation Interface erzeugen – ist noch nicht implementiert.
+Der aktuelle Plan unterscheidet Container, Logiken, Signale, technische Ziele, Erzeugungsauswahl, optionale Interface-Präferenz und Kanten. Die frühere getrennte Signalerzeugung ist entfernt: `SignalResolutionPlanner` durchsucht alle geladenen Interfaces, blockiert mehrdeutige oder widersprüchliche Identitäten, dedupliziert neue Variablen und erzeugt nur fehlende Signale im streng über Name, Provider-GUID und Provider erkannten Grob Generation Interface. Policy und WPF-Start sind automatisch getestet; die reale SDK-Ausführung ist noch live abzunehmen.
 
 Für eine Rückrichtung FEE → Container fehlt ein kanonisches Zwischenmodell. In bestehenden FEE-Modellen sind ursprüngliche Container-ID, Typ und Slot nicht überall eindeutig als Provenienz hinterlegt. Der fachliche Scope ist inzwischen festgelegt: Die erste Version muss nur künftig durch Container2FEE erzeugte Modelle mit Provenienz zuverlässig erkennen und rückwandeln; historische Modelle gehören nicht zum garantierten Round-Trip.
 

@@ -11,6 +11,7 @@ using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.ContainerToFeeVisual;
+using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.Settings;
 using VIBN_Tools.Tia.Contracts;
@@ -38,6 +39,7 @@ internal static class Program
             VerifyInstalledFeeVersionRequiresSdk();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
             VerifyExistingSignalReuseDoesNotCallUpdate();
+            VerifySignalResolutionPlanner();
             var projectPage = new ViCoPage();
             var projectViewModel = (ViCoPageVM)projectPage.DataContext;
             projectViewModel.Projects.Add(new ProjectLocation("GM1234/05-130", @"C:\Projects\GM1234\05-130"));
@@ -109,11 +111,25 @@ internal static class Program
             visualContainerViewModel.SelectedTreeNode = visualContainerViewModel.TreeRoots
                 .SelectMany(root => root.SelfAndDescendants())
                 .First(node => node.Kind == VisualNodeKind.Container);
-            if (visualContainerViewModel.SelectedTreeNode.StateBackground != "#FFFFC7CE" ||
-                visualContainerViewModel.CreateSignalsForSelection)
+            if (visualContainerViewModel.SelectedTreeNode.StateBackground != "#FFEF9A9A" ||
+                visualContainerViewModel.AvailableFeeInterfaces.All(item => !item.IsNone))
             {
                 throw new InvalidOperationException(
-                    "Visual container status or restored signal-creation selection is incorrect.");
+                    "Visual container status or explicit no-interface selection is incorrect.");
+            }
+            visualContainerViewModel.CollapseAllCommand.Execute(null);
+            if (visualContainerViewModel.TreeRoots
+                .SelectMany(root => root.SelfAndDescendants())
+                .Any(node => node.IsExpanded))
+            {
+                throw new InvalidOperationException("Visual collapse-all command left expanded nodes.");
+            }
+            visualContainerViewModel.ExpandAllCommand.Execute(null);
+            if (visualContainerViewModel.TreeRoots
+                .SelectMany(root => root.SelfAndDescendants())
+                .Any(node => !node.IsExpanded))
+            {
+                throw new InvalidOperationException("Visual expand-all command left collapsed nodes.");
             }
             var visualContainerPage = new ContainerToFeeVisualPage
             {
@@ -326,6 +342,69 @@ internal static class Program
         }
     }
 
+    private static void VerifySignalResolutionPlanner()
+    {
+        var generationInterface = new FeeInterface
+        {
+            Name = GrobGenerationInterfaceResolver.InterfaceName,
+            ProviderGuid = Defines.GrobGenerationInterfaceProviderGuid,
+            ProviderName = GrobGenerationInterfaceResolver.ProviderName,
+            Signals = []
+        };
+        var existingInterface = new FeeInterface
+        {
+            Name = "PLC Interface",
+            ProviderName = "Other.Provider",
+            Signals =
+            [
+                new FeeInterfaceSignal
+                {
+                    Guid = Guid.NewGuid(),
+                    Tag = "Ready",
+                    Address = "%I1.0"
+                }
+            ]
+        };
+        existingInterface.Signals[0].ParentInterface = existingInterface;
+        var ready = new FeeInterfaceSignal { Tag = "Ready", Address = "%I1.0" };
+        var missing = new FeeInterfaceSignal { Tag = "Missing", Address = "%I1.1" };
+        var duplicateMissing = new FeeInterfaceSignal { Tag = "Missing", Address = "%I1.1" };
+        var plan = SignalResolutionPlanner.Build(
+            [
+                new SignalResolutionRequest("container-1", "Sensor 1", ready),
+                new SignalResolutionRequest("container-2", "Sensor 2", missing),
+                new SignalResolutionRequest("container-3", "Sensor 3", duplicateMissing)
+            ],
+            [generationInterface, existingInterface]);
+        if (!plan.IsValid || plan.ExistingBindings.Count != 1 ||
+            plan.MissingSignals.Count != 1 || plan.MissingAliases.Count != 1)
+            throw new InvalidOperationException("Resolve-or-create signal planning is not deterministic.");
+
+        plan.ApplyExistingBindings();
+        if (!ready.ReuseExistingWithoutUpdate || ready.Guid != existingInterface.Signals[0].Guid ||
+            !ReferenceEquals(ready.ParentInterface, existingInterface))
+        {
+            throw new InvalidOperationException("Resolved signal identity or provenance was not retained.");
+        }
+
+        var conflict = SignalResolutionPlanner.Build(
+            [new SignalResolutionRequest(
+                "container-3",
+                "Sensor 3",
+                new FeeInterfaceSignal { Tag = "Ready", Address = "%I9.9" })],
+            [existingInterface]);
+        if (conflict.IsValid || conflict.Issues.Single().Code != "EXISTING_SIGNAL_IDENTITY_CONFLICT")
+            throw new InvalidOperationException("Conflicting tag/address identity must block before FEE writes.");
+
+        var generationResolution = GrobGenerationInterfaceResolver.Resolve(
+            [generationInterface, existingInterface]);
+        if (!generationResolution.IsValid ||
+            !ReferenceEquals(generationResolution.Interface, generationInterface))
+        {
+            throw new InvalidOperationException("Grob Generation Interface identity was not resolved strictly.");
+        }
+    }
+
     private static ContainerToFeeVisualPlanService VerifyContainerToFeeVisualPlan()
     {
         var directory = Path.Combine(
@@ -373,16 +452,20 @@ internal static class Program
                 throw new InvalidOperationException("Visual container-selection undo failed.");
             if (!service.Redo() || service.CurrentPlan!.IsGenerationSelected(container.Id))
                 throw new InvalidOperationException("Visual container-selection redo failed.");
-            if (!container.SupportsCreation || !service.SetCreationRequested(container.Id, true))
-                throw new InvalidOperationException("Visual creation request could not be enabled.");
-            if (!service.Undo() || service.CurrentPlan!.IsCreationRequested(container.Id))
+            if (!container.SupportsCreation || !service.CurrentPlan!.IsCreationRequested(container.Id))
+                throw new InvalidOperationException("Missing SimObjects must be created by default.");
+            if (!service.SetCreationRequested(container.Id, false))
+                throw new InvalidOperationException("Visual creation request could not be disabled.");
+            if (!service.Undo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
                 throw new InvalidOperationException("Visual creation-request undo failed.");
-            if (!service.Redo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
+            if (!service.Redo() || service.CurrentPlan!.IsCreationRequested(container.Id))
                 throw new InvalidOperationException("Visual creation-request redo failed.");
-            if (!service.SetSignalCreation(container.Id, false) ||
-                service.CurrentPlan.ShouldCreateSignals(container.Id))
+            if (service.SetAllCreationRequested(true) != 1 ||
+                !service.CurrentPlan.IsCreationRequested(container.Id) ||
+                service.SetAllCreationRequested(false) != 1 ||
+                service.CurrentPlan.IsCreationRequested(container.Id))
             {
-                throw new InvalidOperationException("Visual signal-creation selection could not be disabled.");
+                throw new InvalidOperationException("Visual all/none creation selection is inconsistent.");
             }
             var selectedInterface = new VisualFeeInterface(
                 Guid.NewGuid().ToString("D"),
@@ -398,9 +481,8 @@ internal static class Program
                 .GetAwaiter()
                 .GetResult();
             if (!restoredResult.Success ||
-                restored.CurrentPlan?.IsCreationRequested(container.Id) != true ||
+                restored.CurrentPlan?.IsCreationRequested(container.Id) != false ||
                 restored.CurrentPlan.IsGenerationSelected(container.Id) ||
-                restored.CurrentPlan.ShouldCreateSignals(container.Id) ||
                 restored.CurrentPlan.ExistingInterfaceSelection?.InterfaceGuid != selectedInterface.GuidString)
                 throw new InvalidOperationException("Visual sidecar was not restored correctly.");
 

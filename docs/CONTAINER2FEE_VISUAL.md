@@ -15,11 +15,11 @@ Die visuelle Seite kann eine Container-XML bereits ohne FEE-Verbindung lesen und
 3. Nach erfolgreicher FEE-Verbindung **FEE aktualisieren** drücken. Noch freie Ziele werden wie im bisherigen Ablauf anhand von identischem Komponentennamen und kompatiblem Typ automatisch zugeordnet.
 4. Ein FEE-SimObject von rechts auf ein kompatibles Ziel in der Mitte ziehen. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt. Dasselbe FEE-Objekt kann nie gleichzeitig mehreren Containern gehören.
 5. In der linken Struktur pro vollständigem Container festlegen, ob er verarbeitet wird. **Alle selektieren** und **Alle deselektieren** ändern diese Auswahl gemeinsam. Kindobjekte erben die Containerentscheidung, weil Logik, Signale und technische Hilfsobjekte keine unabhängig ausführbaren Legacy-Einheiten sind.
-6. Optional **Fehlende SimObjects bei der Generierung erzeugen** aktivieren. Ein ausgewählter Container mit SimObjectTarget benötigt entweder eine grüne Zuordnung oder diese Erzeugungsoption; andernfalls bleibt das Ziel rot und die Validierung erklärt den Fehler.
+6. **Fehlende SimObjects bei der Generierung erzeugen** ist standardmäßig aktiv. Die Einstellung kann je Container oder über **Alle/Keine** für alle erzeugbaren Container geändert werden. Ein ausgewählter Container mit SimObjectTarget benötigt entweder eine grüne Zuordnung oder diese Erzeugungsoption; andernfalls bleibt das Ziel dunkelrot und die Validierung erklärt den Fehler.
 7. Änderungen mit **Rückgängig/Wiederholen** korrigieren und über **Plan speichern** sichern.
 8. Für eine vollständige Neuerzeugung **Start Generation** drücken. Wenn Container/Logiken bereits existieren, kann stattdessen **Nur SimObjects verknüpfen** verwendet werden.
 
-Technische Objekte sind im Baum standardmäßig eingeklappt. Die Suchfelder filtern Plan beziehungsweise FEE-Objekte. **Nur kompatible Objekte** bezieht sich auf das aktuell ausgewählte Ziel.
+Technische Objekte sind im Baum standardmäßig eingeklappt. **Alles aufklappen/Alles zuklappen** wirkt auf die kombinierte Container- und Objektstruktur. Die Suchfelder filtern Plan beziehungsweise FEE-Objekte. **Nur kompatible Objekte** bezieht sich auf das aktuell ausgewählte Ziel.
 
 ## Sidecar-Datei
 
@@ -29,7 +29,7 @@ Benutzeränderungen werden nicht in die Container-XML geschrieben. Standardmäß
 Container.xml.container2fee.visual.json
 ```
 
-Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, Erzeugungswünsche und abgewählte Container. Schema 2 liest weiterhin Sidecars aus Schema 1; dort nicht vorhandene Containerselektionen gelten kompatibel als ausgewählt. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
+Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, ausdrücklich deaktivierte SimObject-Erzeugung und abgewählte Container. Schema 4 liest weiterhin Sidecars aus Schema 1–3 und migriert deren frühere Positivliste auf den neuen sicheren Standard. Die entfernte Einstellung **Signale erzeugen** wird beim Laden alter Sidecars ignoriert und als Information ausgewiesen. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
 
 ## Drag-and-drop-Regeln
 
@@ -42,8 +42,8 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, Er
 ## Statusfarben und Link-only
 
 - Ein SimObjectTarget ist **grün**, wenn ein aktuell vorhandenes, typkompatibles FEE-SimObject zugeordnet ist.
-- Es ist **gelb**, wenn das fehlende SimObject bei der vollständigen Generierung erzeugt werden soll.
-- Es ist **rot**, wenn weder Zuordnung noch Erzeugungswunsch vorliegt. Die Validierung nennt Container, Ziel und mögliche Korrekturen.
+- Es ist **hellrot**, wenn das fehlende SimObject bei der vollständigen Generierung erzeugt werden soll.
+- Es ist **dunkelrot**, wenn weder Zuordnung noch Erzeugungswunsch vorliegt. Die Validierung nennt das konkrete Ziel und mögliche Korrekturen.
 - Ein Eintrag unter **Verfügbare FEE-SimObjects** wird grün, sobald er zugeordnet ist, und nennt das Ziel.
 
 **Nur SimObjects verknüpfen** erzeugt keine BasicFrames, Interfaces, Signale, Logiken oder Container. Der Befehl verwendet die in **Model Validation → Update Objects** eingelesenen `FeeLogic`-Objekte. Für jeden ausgewählten Container muss genau ein vorhandenes LogicObject mit identischem Komponentennamen existieren. Fehlende oder doppelte Logiknamen sowie nicht mehr verfügbare SimObjects brechen vor dem ersten Schreibzugriff mit einer präzisen Fehlermeldung ab. Der Vorgang ist auf `ILogicSimObjectOwner` begrenzt; reine SimObject-Container besitzen keine bestehende Logik, an die in diesem Modus verknüpft werden könnte.
@@ -63,7 +63,9 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, Er
 
 ## Bewusste technische Grenzen
 
-Der bestehende FEE-Executor unterstützt keinen transaktionalen Rollback. Wird eine laufende SDK-Schreiboperation abgebrochen, kann bereits erzeugter Inhalt bestehen bleiben und muss in FEE geprüft werden. Der neue Reiter validiert daher vollständig vor dem Start und nutzt den vorhandenen Executor unverändert. Eine freie grafische Neuverdrahtung oder unabhängige Auswahl einzelner Signale/Hilfsobjekte wäre eine Funktionsänderung und ist nicht Bestandteil dieser Version.
+Vor einer vollständigen Generierung durchsucht `SignalResolutionPlanner` alle eingelesenen Interfaces. Ein vorhandenes Signal wird nur bei eindeutiger, widerspruchsfreier Identität wiederverwendet und niemals aktualisiert. Fehlende Signale werden dedupliziert und ausschließlich im Interface mit Name `Grob Generation Interface`, Provider-GUID `a6222164-be37-49de-b760-9b1c97c320bb` und Provider `GrobGenerationInterface.Interface.GrobInterfaceProvider` erzeugt. Kein Treffer, mehrere Treffer oder Tag-/Adresswidersprüche stoppen vor BasicFrame-, Logik- und SimObject-Erzeugung. Das rechts auswählbare bevorzugte Interface ist optional; **Keins** ist ein expliziter Eintrag.
+
+Der bestehende FEE-Executor unterstützt keinen transaktionalen Rollback. Wird eine laufende SDK-Schreiboperation abgebrochen, kann bereits erzeugter Inhalt bestehen bleiben und muss in FEE geprüft werden. Die neue Pipeline führt deshalb zuerst alle read-only Prüfungen und danach die fehlenden Signalvariablen aus; erst anschließend entstehen BasicFrame, Logiken und SimObjects. Scheitert die SDK-Anlage einer späteren Variablen, können zuvor angelegte Variablen bestehen bleiben. Eine freie grafische Neuverdrahtung oder unabhängige Auswahl einzelner Signale/Hilfsobjekte ist nicht Bestandteil dieser Version.
 
 Die Legacy-Bezeichnungen `PLC_IN_PartPresent` und `PLC_IN_NoPartPresent` werden für `GrobSensor` kompatibel auf Kanal 1 abgebildet; bei zwei gleichnamigen Einträgen erfolgt die Zuordnung auf Kanal 1/2. Die Validierung nennt bei einem wirklich unbekannten Slot jetzt zusätzlich alle zulässigen Slotnamen.
 
