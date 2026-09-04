@@ -473,6 +473,10 @@ static void VerifyRoleAdministrationPolicy()
 
     Assert(ViCoRolePolicy.GetEffectiveLevel(@"grob\lutzma", null) == "Level9",
         "lutzma must be an effective Level9 administrator even before the compatible store is refreshed.");
+    Assert(ViCoRolePolicy.HasMinimumLevel("Level9", 9),
+        "Level9 must satisfy the administration navigation gate.");
+    Assert(!ViCoRolePolicy.HasMinimumLevel("Level8", 9),
+        "Level8 must not satisfy the administration navigation gate.");
     var mandatoryUserDowngrade = ViCoRolePolicy.PlanSave(twoLevel9.Select(role =>
         WindowsUserIdentity.Equals(role.UserName, "lutzma")
             ? role with { Level = "Level8" }

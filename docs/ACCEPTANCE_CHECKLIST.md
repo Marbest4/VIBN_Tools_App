@@ -15,8 +15,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] Nicht-Level7-Benutzer sehen CAD Wizard, Container Generation und Container2Fee nicht.
 - [ ] Level7 sieht genau diese drei Bereiche zusätzlich.
-- [ ] Level8 sieht außerdem Kanbanize Karten, AI-Test und ViCo-Verwaltung.
-- [ ] Level9 kann Rollen ändern; Level8 kann sie nur ansehen.
+- [ ] Level8 sieht außerdem Kanbanize Karten und AI-Test, aber keine Administration.
+- [ ] Level9 sieht den Hauptreiter Administration und kann Rollen ändern.
 - [ ] `lutzma` wird als Level9 erkannt und kann nicht verändert/entfernt werden.
 - [ ] Eine Änderung, die weniger als zwei Level9-Benutzer hinterließe, wird abgewiesen.
 

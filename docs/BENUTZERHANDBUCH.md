@@ -12,7 +12,10 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | --- | --- | --- |
 | Project Settings | Online-FEE-PC wählen, Verbindung prüfen, Projektbasis anlegen | alle |
 | Kanbanize Karten | VIBN-Karten ins Arbeitsplätze-Board synchronisieren; eigene Karten erstellen | Level8 |
-| ViCo | PC-/Projektsuche, Transfer, TIA Portal und Verwaltung | alle; Verwaltung ab Level8 |
+| ViCo | PC-/Projektsuche sowie Projekte und Favoriten | alle |
+| Transfer | Dateien und Ordner zwischen Projektpfaden übertragen | alle |
+| TIA Portal | PLC-, Bibliotheks- und Achsenfunktionen über die isolierte TIA-Bridge | alle |
+| Administration | Rollen, Termine und verfügbare Versionen verwalten | Level9 |
 | CAD Wizard | Joints, Sensoren, Templates und CAD-Hilfen | Level7 |
 | Zuli Converter | Zuli-Datei einlesen und Interface-Datei erzeugen | alle |
 | Container Generation | Container aus Interface- und Requirements-Dateien prüfen und generieren | Level7 |
@@ -29,9 +32,9 @@ Die Berechtigungen sind im Detail in der [Rollenverwaltung](ROLLENVERWALTUNG.md)
 ## Empfohlener Arbeitsablauf
 
 1. In **Project Settings** den gewünschten Online-PC filtern, auswählen und die FEE-Verbindung aufbauen.
-2. In **ViCo → Übersicht & Verbindung** den Arbeitsplatz oder das Projekt suchen und Kanbanize-Daten aktualisieren, falls notwendig.
+2. In **ViCo → PC-/Projektsuche** den Arbeitsplatz oder das Projekt suchen und Kanbanize-Daten aktualisieren, falls notwendig.
 3. Falls eine Karte benötigt wird, im Hauptreiter **Kanbanize Karten** zuerst die Vorschau ausführen und erst danach bewusst synchronisieren.
-4. Für TIA-nahe Schritte **ViCo → TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **Special Devices** verwenden.
+4. Für TIA-nahe Schritte den Hauptreiter **TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **Special Devices** verwenden.
 5. Änderungen, Fehler und externe Zugriffe am unteren Rand im Diagnoseprotokoll nachvollziehen.
 
 ## Project Settings
@@ -51,7 +54,7 @@ Im Bereich **Kanbanize- und Remote-Konfiguration** werden API-Key und RDP-Passwo
 
 ## ViCo
 
-### Übersicht & Verbindung
+### PC-/Projektsuche
 
 Die Unterseite **PC-/Projektsuche** besitzt ein gemeinsames Suchfeld. Es durchsucht ausschließlich die sichtbaren Betriebsdaten PC, Projekt, Software, Standort, Projekt-IP, Sonstiges und Benutzer. Status-, RDP- und ausgeblendete Diagnosedaten erzeugen keine unerwarteten Treffer.
 
@@ -102,11 +105,15 @@ Die rechte Seite enthält die vorhandenen Unteraufgaben einer Kanbanize-Karte mi
 
 Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken oder im Wertefeld **Enter** betätigen. Enter übernimmt zuerst den aktuellen Text, speichert alle geänderten Standardwerte direkt über die Kanbanize-API und aktualisiert anschließend Tabellenzeile, Benutzerzuordnung und Cache-Projektion. Bestehende Unteraufgaben werden aktualisiert, fehlende Standard-Unteraufgaben werden ergänzt. Fehlt die Karte vollständig, zeigt die letzte Tabellenspalte dies rot an; **Standardkarte anlegen** erzeugt nach ausdrücklicher Bestätigung genau eine `KONFIGURATION`-Karte mit den fünf Standard-Unteraufgaben. Normale Projektkarten bleiben unverändert.
 
-### Projekte & Favoriten und Transfer
+### Projekte & Favoriten
 
-**Projekte & Favoriten** durchsucht Simulationsprojekte, öffnet die Auswahl und verwaltet kompatible ViCo-Favoriten. **Transfer** kopiert ausgewählte Dateien/Ordner mit begrenzter Parallelität. Diese Begrenzung hält die Desktop-Oberfläche auch bei größeren Übertragungen reaktionsfähig.
+**Projekte & Favoriten** durchsucht Simulationsprojekte, öffnet die Auswahl und verwaltet kompatible ViCo-Favoriten.
 
-### TIA Portal
+## Transfer
+
+Der eigene Hauptreiter **Transfer** kopiert ausgewählte Dateien/Ordner mit begrenzter Parallelität. Diese Begrenzung hält die Desktop-Oberfläche auch bei größeren Übertragungen reaktionsfähig.
+
+## TIA Portal
 
 1. lokale TIA-Version wählen;
 2. **Verbinden** drücken und die gefundene PLC auswählen;
@@ -117,9 +124,9 @@ Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche
 
 Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **Special Devices**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
-### Verwaltung
+## Administration
 
-Der Reiter ist ab Level8 sichtbar. Level9 kann Benutzer anlegen, entfernen und die Stufe ändern. `lutzma` ist stets Level9 und es müssen immer mindestens zwei verschiedene Level9-Benutzer bestehen. Details: [Rollenverwaltung](ROLLENVERWALTUNG.md).
+Der Hauptreiter ist ausschließlich mit Level9 sichtbar. Level9 kann Benutzer anlegen, entfernen und die Stufe ändern. `lutzma` ist stets Level9 und es müssen immer mindestens zwei verschiedene Level9-Benutzer bestehen. Details: [Rollenverwaltung](ROLLENVERWALTUNG.md).
 
 ## Kanbanize Karten
 

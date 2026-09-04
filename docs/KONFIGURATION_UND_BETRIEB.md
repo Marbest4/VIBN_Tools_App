@@ -87,7 +87,7 @@ Die Benutzervariable `VIBN_RDP_PASSWORD` fehlt oder ist leer. Unter **Project Se
 
 Vorhandene Standard-Unteraufgaben werden per PATCH gespeichert; fehlende Standard-Unteraufgaben werden per POST an `/cards/{card}/subtasks` ergänzt. Fehlt die gesamte Karte, kann sie nur über **Standardkarte anlegen** bewusst erzeugt werden.
 
-In **ViCo → Übersicht & Verbindung → Arbeitsplatz-Konfiguration** speichert Enter den aktuellen Editorwert zusammen mit allen weiteren geänderten Standardfeldern. Erst nach erfolgreicher Board-Antwort werden Tabellenzeile, Benutzerzuordnung und gemeinsamer Arbeitsplatzbestand aktualisiert. Während eines laufenden Schreibzugriffs wird ein zweiter Enter-Befehl ignoriert; bei einem Fehler bleiben die Änderungen im Editor erhalten und der Fehler steht im Anwendungslog.
+In **ViCo → PC-/Projektsuche → Arbeitsplatz-Konfiguration** speichert Enter den aktuellen Editorwert zusammen mit allen weiteren geänderten Standardfeldern. Erst nach erfolgreicher Board-Antwort werden Tabellenzeile, Benutzerzuordnung und gemeinsamer Arbeitsplatzbestand aktualisiert. Während eines laufenden Schreibzugriffs wird ein zweiter Enter-Befehl ignoriert; bei einem Fehler bleiben die Änderungen im Editor erhalten und der Fehler steht im Anwendungslog.
 
 ### Kanbanize meldet 400 bei `fields`
 

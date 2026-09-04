@@ -27,7 +27,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - Die ViCo-Übersicht zeigt den Countdown bis zum nächsten Kanbanize-AutoUpdate; das 1–1440-Minuten-Intervall wird lokal pro Benutzer gespeichert.
 - Kanbanize synchronisiert keine Duplikate und ändert bei vorhandenen generierten Karten ausschließlich den berechneten Starttermin und die Deadline.
 - Die TIA-Openness-Kommunikation läuft in einem separaten Bridge-Prozess; ein TIA-Fehler beendet nicht die WPF-Anwendung.
-- Rollen ersetzen Lizenzanfragen. Level7 schaltet CAD Wizard, Container Generation und Container2Fee frei; Level8 zusätzlich AI-Test und Kanbanize; die ViCo-Verwaltung ist ab Level8 sichtbar und ab Level9 schreibbar.
+- Rollen ersetzen Lizenzanfragen. Level7 schaltet CAD Wizard, Container Generation und Container2Fee frei; Level8 zusätzlich AI-Test und Kanbanize; Administration ist ausschließlich ab Level9 sichtbar und schreibbar.
 
 ## Build und lokale Prüfungen
 

@@ -80,6 +80,20 @@
                     <TabItem Header="ViCo" ux:Icon.Kind="TaskListAssigned">
                         <p:ViCoWorkspacePage/>
                     </TabItem>
+
+                    <TabItem Header="Transfer" ux:Icon.Kind="FileSync">
+                        <p:ViCoCopyPage />
+                    </TabItem>
+
+                    <TabItem Header="TIA Portal" ux:Icon.Kind="Cad">
+                        <p:TiaPortalPage />
+                    </TabItem>
+
+                    <TabItem Header="Administration"
+                             ux:Icon.Kind="Settings"
+                             Visibility="{Binding CanUseLevel9Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:ViCoAdministrationPage />
+                    </TabItem>
                     
                     <TabItem Header="CAD Wizard"
                              ux:Icon.Kind="Cad"

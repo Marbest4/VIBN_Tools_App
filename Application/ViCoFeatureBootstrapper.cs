@@ -143,15 +143,6 @@ public static class ViCoFeatureBootstrapper
             ApplicationLogService.Instance);
     }
 
-    /// <summary>Creates the authorization gate for the ViCo workspace navigation.</summary>
-    public static ViCoWorkspacePageVM CreateWorkspaceViewModel()
-    {
-        return new ViCoWorkspacePageVM(
-            SharedUserRoleStore,
-            WindowsIdentity.GetCurrent().Name,
-            ApplicationLogService.Instance);
-    }
-
     private static IViCoUserRoleStore CreateUserRoleStore()
     {
         return new JsonViCoUserRoleStore(

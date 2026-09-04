@@ -4,7 +4,7 @@
 
 | Klasse/Datei | Aufgabe |
 | --- | --- |
-| `Application/View/MainWindow.xaml` | Hauptnavigation, zentrierte Reiterbeschriftungen und Level7-/Level8-Sichtbarkeit |
+| `Application/View/MainWindow.xaml` | Hauptnavigation, zentrierte Reiterbeschriftungen und Level7-/Level8-/Level9-Sichtbarkeit |
 | `Application/VM/MainWindowVM.cs` | lädt Arbeitsplätze/Rollen beim Start und berechnet Hauptreiter-Berechtigungen |
 | `Application/ViCoFeatureBootstrapper.cs` | Composition Root für ViCo, Kanbanize, RDP, Rollen und TIA-Bridge |
 | `Application/ApplicationLogService.cs` | zentraler Anwendungslog für Status, Warnungen und Fehler |
@@ -51,7 +51,6 @@
 | `ViCoConfigurationFieldVM` | Änderungsnachverfolgung einer vorhandenen Konfigurations-Unteraufgabe |
 | `ViCoPageVM` | Projekte und Favoriten |
 | `ViCoCopyPageVM` | Transfer zwischen Quell- und Zielpfaden |
-| `ViCoWorkspacePageVM` | Sichtbarkeit des Verwaltungsreiters ab Level8 |
 | `ViCoAdministrationPageVM` | Rollen, Termine, Versionen; nur Level9 schreibt Rollen |
 | `TiaPortalPageVM` | PLC-, Library- und Achsenansicht mit abgefangenen Bridge-Fehlern |
 

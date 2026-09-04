@@ -92,7 +92,7 @@ Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den akt
 
 ### Neue Rolle oder Reiterberechtigung
 
-Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWindowVM`/`MainWindow.xaml` bzw. `ViCoWorkspacePageVM`. Die Regel darf nicht als Zeichenvergleich in mehreren XAML-Dateien dupliziert werden.
+Rollenlogik liegt allein in `ViCoRolePolicy`. Die Hauptnavigation bindet ausschließlich die von `MainWindowVM` berechneten Level7-/Level8-/Level9-Gates. Die Regel darf nicht als Zeichenvergleich in mehreren XAML-Dateien dupliziert werden.
 
 ## Nebenläufigkeit und UI-Stabilität
 

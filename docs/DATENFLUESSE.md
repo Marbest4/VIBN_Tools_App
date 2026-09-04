@@ -99,8 +99,7 @@ flowchart LR
     J[Windows-Benutzer] --> R[roles.json]
     R --> P[ViCoRolePolicy]
     P --> M[MainWindowVM]
-    P --> V[ViCoWorkspacePageVM]
     P --> A[ViCoAdministrationPageVM]
 ```
 
-Die gleiche Policy regelt Hauptreiter, Verwaltungsreiter und Schreibrecht. Beim Speichern validiert sie `lutzma` als Level9 und mindestens zwei unterschiedliche Level9-Benutzer.
+Die gleiche Policy regelt die Hauptreiter und das Schreibrecht. Administration ist nur mit Level9 sichtbar. Beim Speichern validiert die Policy `lutzma` als Level9 und mindestens zwei unterschiedliche Level9-Benutzer.

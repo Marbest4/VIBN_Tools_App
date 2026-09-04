@@ -48,12 +48,12 @@ Ziel ist zunächst keine vollständige DI-Migration. Sinnvoller ist eine schritt
 | --- | --- | --- | --- | --- |
 | Project Settings | `SettingsPage` | `SettingsPageVM` | ProjectSettings, FEE-Verbindung/-Objekte, WorkstationDirectory, CredentialConfiguration, Versionsinfo | immer sichtbar |
 | Kanbanize Karten | `KanbanizeCardPage` | `KanbanizeCardPageVM`, `VibnWorkplaceSynchronizationVM` | KanbanizeCardApiService, VibnWorkplaceSynchronizationService | Level 8 |
-| ViCo | `ViCoWorkspacePage` | `ViCoWorkspacePageVM` | zentraler Rollen-Store | immer sichtbar |
+| ViCo | `ViCoWorkspacePage` | untergeordnete ViewModels | PC-/Projektsuche und Projekte/Favoriten | immer sichtbar |
 | ViCo → PC-/Projektsuche | `ViCoSearchPage` | `ViCoSearchPageVM` | WorkstationCatalog/Search, Kanbanize Refresh/Configuration, RDP, Session, Netzwerk, Pfadauflösung, Preferences | innerhalb ViCo |
 | ViCo → Projekte/Favoriten | `ViCoPage` | `ViCoPageVM` | ProjectCatalog/Search, Favorites, PathLauncher | innerhalb ViCo |
-| ViCo → Transfer | `ViCoCopyPage` | `ViCoCopyPageVM` | FileCopy, FolderSelection, WorkspaceContext, ProjectStructure | innerhalb ViCo |
-| ViCo → TIA Portal | `TiaPortalPage` | `TiaPortalPageVM` | NamedPipeTiaBridgeClient, TiaLibraryService, FolderSelection | innerhalb ViCo |
-| ViCo → Verwaltung | `ViCoAdministrationPage` | `ViCoAdministrationPageVM` | RoleStore, Outlook Meetings, UpdateService, PathLauncher | View ab Level 8; Änderungen intern Level 9 |
+| Transfer | `ViCoCopyPage` | `ViCoCopyPageVM` | FileCopy, FolderSelection, WorkspaceContext, ProjectStructure | immer sichtbar |
+| TIA Portal | `TiaPortalPage` | `TiaPortalPageVM` | NamedPipeTiaBridgeClient, TiaLibraryService, FolderSelection | immer sichtbar |
+| Administration | `ViCoAdministrationPage` | `ViCoAdministrationPageVM` | RoleStore, Outlook Meetings, UpdateService, PathLauncher | Level 9 |
 | CAD Wizard | `CadWizardPage` | `CadWizardPageVM` | ProjectSettings und bestehende CAD/FEE-Hilfen | Level 7 |
 | Zuli Converter | `ZuliConverterPage` | `ZuliConverterPageVM` | Excel-/ZuLi-Konvertierung | immer sichtbar |
 | Container Generation | `ContainerGenerationPage` | `ContainerGenerationPageVM` | ZuLi/Requirements-Reader, Generator, Reimport/Reconciliation, Persistenz, ActionLog | Level 7 |
@@ -68,9 +68,9 @@ Ziel ist zunächst keine vollständige DI-Migration. Sinnvoller ist eine schritt
 Abweichungen zum Zielbild:
 
 - Die linke Navigation kann nicht zwischen Symbol- und Symbol/Text-Modus wechseln.
-- Transfer, TIA und Administration sind noch in ViCo verschachtelt.
-- Administration ist schon ab Level 8 sichtbar, obwohl das Ziel Level 9 fordert.
 - Verfügbarkeitsgründe sind nicht einheitlich modelliert; häufig existieren nur `bool`-Gates oder pauschale Tooltips.
+
+Transfer, TIA und Administration wurden im ersten kleinen Umsetzungsschritt nach Phase A in die Hauptnavigation verschoben. Das redundante Workspace-Level-8-Gate wurde entfernt; Administration folgt jetzt dem zentral berechneten Level-9-Gate.
 
 ## 5. Fachmodelle und Datenflüsse
 

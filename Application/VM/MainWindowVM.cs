@@ -13,6 +13,7 @@ public sealed class MainWindowVM : MvvmBase
 {
     private bool _canUseLevel7Features;
     private bool _canUseLevel8Features;
+    private bool _canUseLevel9Features;
     private string _currentLevel = "Nicht erkannt";
 
     public FeeConnectionService Connection => Services.Connection;
@@ -35,6 +36,17 @@ public sealed class MainWindowVM : MvvmBase
         private set
         {
             _canUseLevel8Features = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Administration and other system-wide write operations.</summary>
+    public bool CanUseLevel9Features
+    {
+        get => _canUseLevel9Features;
+        private set
+        {
+            _canUseLevel9Features = value;
             OnPropertyChanged();
         }
     }
@@ -102,8 +114,8 @@ public sealed class MainWindowVM : MvvmBase
     private void ApplyRole(string level)
     {
         CurrentLevel = level;
-        var numericLevel = ViCoRolePolicy.ParseLevel(level);
-        CanUseLevel7Features = numericLevel >= 7;
-        CanUseLevel8Features = numericLevel >= 8;
+        CanUseLevel7Features = ViCoRolePolicy.HasMinimumLevel(level, 7);
+        CanUseLevel8Features = ViCoRolePolicy.HasMinimumLevel(level, 8);
+        CanUseLevel9Features = ViCoRolePolicy.HasMinimumLevel(level, 9);
     }
 }
