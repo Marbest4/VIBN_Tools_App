@@ -268,25 +268,67 @@ static void VerifyUserCredentialConfiguration()
         (name, value, target) => variables[(name, target)] = value);
 
     Assert(!service.ReadStatus().HasKanbanizeApiKey &&
-           !service.ReadStatus().HasRemoteDesktopPassword,
-        "A fresh user credential configuration must report both values as missing.");
+           !service.ReadStatus().HasRemoteDesktopPassword &&
+           !service.ReadStatus().HasFeeCredentials,
+        "A fresh user credential configuration must report all values as missing.");
 
     service.SaveKanbanizeApiKey("  test-api-key  ");
     service.SaveRemoteDesktopPassword(" test password ");
+    service.SaveFeeCredentials(" fee-user ", "fee-password");
     var configured = service.ReadStatus();
-    Assert(configured.HasKanbanizeApiKey && configured.HasRemoteDesktopPassword,
+    Assert(configured.HasKanbanizeApiKey && configured.HasRemoteDesktopPassword && configured.HasFeeCredentials,
         "Saved per-user credentials were not detected.");
     Assert(service.GetKanbanizeApiKey() == "test-api-key",
         "The API key provider did not return the current persisted value.");
+    Assert(service.GetRemoteDesktopPassword() == " test password ",
+        "The RDP password provider must preserve significant whitespace.");
+    Assert(service.GetFeeUsername() == "fee-user" && service.GetFeePassword() == "fee-password",
+        "The FEE credential provider did not preserve the configured pair.");
     Assert(variables[(UserEnvironmentCredentialConfigurationService.RemoteDesktopPasswordVariable,
             EnvironmentVariableTarget.Process)] == " test password ",
         "The RDP password must be available immediately without trimming or restarting the app.");
 
     service.DeleteKanbanizeApiKey();
     service.DeleteRemoteDesktopPassword();
+    service.DeleteFeeCredentials();
     Assert(!service.ReadStatus().HasKanbanizeApiKey &&
-           !service.ReadStatus().HasRemoteDesktopPassword,
+           !service.ReadStatus().HasRemoteDesktopPassword &&
+           !service.ReadStatus().HasFeeCredentials,
         "Deleted credentials still appear configured.");
+
+    service.SaveKanbanizeApiKey("legacy-key");
+    service.SaveRemoteDesktopPassword("legacy-password");
+    service.SaveFeeCredentials("legacy-fee-user", "legacy-fee-password");
+    var protectedStore = new MemoryUserSecretStore();
+    var protectedService = new SecureUserCredentialConfigurationService(protectedStore, service);
+    var protectedStatus = protectedService.ReadStatus();
+    Assert(protectedStatus.HasKanbanizeApiKey && protectedStatus.HasRemoteDesktopPassword && protectedStatus.HasFeeCredentials &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.KanbanizeTarget] == "legacy-key" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.RemoteDesktopTarget] == "legacy-password" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.FeeUsernameTarget] == "legacy-fee-user" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.FeePasswordTarget] == "legacy-fee-password",
+        "Legacy user environment credentials were not migrated into the protected store.");
+    Assert(service.GetKanbanizeApiKey() is null && service.GetRemoteDesktopPassword() is null &&
+           service.GetFeeUsername() is null && service.GetFeePassword() is null,
+        "Plain environment credentials must be removed after successful migration.");
+    protectedService.SaveKanbanizeApiKey("replacement-key");
+    Assert(protectedService.GetKanbanizeApiKey() == "replacement-key",
+        "The protected credential store did not replace the API key.");
+    protectedService.DeleteKanbanizeApiKey();
+    protectedService.DeleteRemoteDesktopPassword();
+    protectedService.DeleteFeeCredentials();
+    Assert(!protectedService.ReadStatus().HasKanbanizeApiKey &&
+           !protectedService.ReadStatus().HasRemoteDesktopPassword &&
+           !protectedService.ReadStatus().HasFeeCredentials,
+        "Protected credentials still appear configured after deletion.");
+
+    service.SaveKanbanizeApiKey("retained-legacy-key");
+    var unavailableStore = new MemoryUserSecretStore { FailWrites = true };
+    var fallbackService = new SecureUserCredentialConfigurationService(unavailableStore, service);
+    Assert(fallbackService.GetKanbanizeApiKey() == "retained-legacy-key" &&
+           service.GetKanbanizeApiKey() == "retained-legacy-key",
+        "A failed protected-store migration must retain and return the only legacy value.");
+    service.DeleteKanbanizeApiKey();
 
     string? dynamicApiKey = null;
     using var httpClient = new HttpClient();
@@ -1166,4 +1208,22 @@ sealed class NoOpPathLauncher : IExternalPathLauncher
     public void Open(string path)
     {
     }
+}
+
+sealed class MemoryUserSecretStore : IUserSecretStore
+{
+    public Dictionary<string, string> Values { get; } = new(StringComparer.Ordinal);
+
+    public bool FailWrites { get; init; }
+
+    public string? Read(string targetName) => Values.GetValueOrDefault(targetName);
+
+    public void Write(string targetName, string secret)
+    {
+        if (FailWrites)
+            throw new System.ComponentModel.Win32Exception(1312);
+        Values[targetName] = secret;
+    }
+
+    public void Delete(string targetName) => Values.Remove(targetName);
 }

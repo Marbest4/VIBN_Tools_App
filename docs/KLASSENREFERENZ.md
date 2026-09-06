@@ -24,7 +24,7 @@
 | `Diagnostics.cs` | neutraler Logvertrag `IApplicationLog` |
 | `Administration.cs` | Outlook-/Updateverträge für die ViCo-Verwaltung |
 | `AutoRefreshSettings.cs` | Intervallmodell, 1–1440-Minuten-Regel und persistenter Store-Vertrag |
-| `UserCredentialConfiguration.cs` | statusorientierter Vertrag zum Speichern/Löschen von API-Key und RDP-Passwort ohne Secret-Ausgabe |
+| `UserCredentialConfiguration.cs` | statusorientierter Vertrag zum Speichern/Löschen von FEE-Zugang, API-Key und RDP-Passwort ohne Secret-Ausgabe |
 
 ## ViCo-Infrastruktur (`VIBN_Tools.Infrastructure/ViCo`)
 

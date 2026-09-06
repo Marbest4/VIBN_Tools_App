@@ -15,25 +15,28 @@ Ohne Unternehmensnetz startet die Oberfläche weiterhin. Live-Daten, Kartenaktio
 
 | Wert | Ort | Zweck |
 | --- | --- | --- |
-| Kanbanize API-Schlüssel | `VIBN_VICO_KANBANIZE_API_KEY` | bevorzugter Live-Zugang für ViCo und Kartenreiter |
-| RDP-Kennwort | `VIBN_RDP_PASSWORD` | lokale Benutzervariable für den kurzlebigen `TERMSRV/<PC>`-Eintrag |
+| FEE-Benutzer/-Passwort | Windows Credential Manager: `GROB/VIBN_Tools/FeeUsername`, `GROB/VIBN_Tools/FeePassword` | Anmeldung erst unmittelbar beim FEE-Verbindungsversuch |
+| Kanbanize API-Schlüssel | Windows Credential Manager: `GROB/VIBN_Tools/KanbanizeApiKey` | geschützter Live-Zugang für ViCo und Kartenreiter |
+| RDP-Kennwort | Windows Credential Manager: `GROB/VIBN_Tools/RemoteDesktopPassword` | geschützte Quelle für den kurzlebigen `TERMSRV/<PC>`-Eintrag |
 | Rollen-Datei | `VIBN_VICO_ROLES_FILE` | optionaler zentraler Pfad zu `roles.json` |
 | ViCo-Pfade | `VIBN_Tools.Infrastructure/ViCo/ViCoPathsOptions.cs` | Caches, Projekte, Versionen und Standard-Arbeitsordner |
 | TIA-Bridge | `Application/ViCoFeatureBootstrapper.cs` | Bridge-Executable, Pipe pro Prozess, lokale Versionserkennung |
 | Logging | `ApplicationLogService` / vorhandene Log-Konfiguration | sichtbares Diagnosepanel und Logdatei |
 
-API-Schlüssel und Kennwörter gehören nicht in Quellcode, Screenshots, Tickets oder das Diagnoseprotokoll. In **Project Settings → Kanbanize- und Remote-Konfiguration** können beide Werte verdeckt gespeichert, ihr Vorhandensein geprüft und sie einzeln gelöscht werden. Leere Eingabefelder überschreiben bestehende Werte nicht. Die Änderung gilt sofort; PowerShell, CMD-Datei und Anwendungsneustart sind im normalen Ablauf nicht mehr erforderlich.
+API-Schlüssel und Kennwörter gehören nicht in Quellcode, Screenshots, Tickets oder das Diagnoseprotokoll. In **Project Settings → Geschützte Zugangsdaten** können FEE-Benutzer/-Passwort, Kanbanize-Key und RDP-Passwort gespeichert, ihr Vorhandensein geprüft und sie getrennt gelöscht werden. Leere Passwort-/Key-Felder überschreiben bestehende Werte nicht. Die Änderung gilt sofort; PowerShell, CMD-Datei und Anwendungsneustart sind im normalen Ablauf nicht mehr erforderlich.
 
-Für automatisierte Rollouts bleiben die äquivalenten Befehle verfügbar:
+Die früheren Benutzer-Umgebungsvariablen werden nur noch als Migrationsquelle unterstützt. Nach erfolgreichem Schreiben in den Credential Manager löscht die Anwendung sie. Ein Alt-Rollout kann sie daher übergangsweise noch setzen:
 
 ```powershell
 [Environment]::SetEnvironmentVariable('VIBN_VICO_KANBANIZE_API_KEY', '<BUSINESSMAP-API-KEY>', 'User')
 [Environment]::SetEnvironmentVariable('VIBN_RDP_PASSWORD', '<REMOTE-PASSWORT>', 'User')
+[Environment]::SetEnvironmentVariable('VIBN_FEE_USERNAME', '<FEE-BENUTZER>', 'User')
+[Environment]::SetEnvironmentVariable('VIBN_FEE_PASSWORD', '<FEE-PASSWORT>', 'User')
 ```
 
-`Configure-VIBN-Tools.cmd` bleibt im Quellrepository ausschließlich als Kompatibilitäts-/Rollout-Assistent erhalten, wird aber nicht mehr in Portable-/Setup-Pakete kopiert. Die UI und der Assistent schreiben dieselben beiden Windows-Benutzervariablen.
+`Configure-VIBN-Tools.cmd` bleibt im Quellrepository ausschließlich als Kompatibilitäts-/Migrationsassistent erhalten und wird nicht in Portable-/Setup-Pakete kopiert. Die UI schreibt direkt in den Windows Credential Manager.
 
-Diese Variablen sind benutzerbezogen und müssen je Ziel-PC/Windows-Konto eingerichtet werden. Sie werden nicht in die EXE oder Logs geschrieben, liegen im Windows-Benutzerprofil aber nicht wie in einem dedizierten Secret Vault geschützt vor. Für eine spätere zentral administrierte Verteilung ist Windows Credential Manager oder ein Unternehmens-Secretsystem die robustere Zielarchitektur.
+Credential-Manager-Einträge sind benutzer- und rechnerbezogen und müssen je Ziel-PC/Windows-Konto eingerichtet werden. Sie werden nicht in die EXE oder Logs geschrieben und nicht über GitHub synchronisiert. Für eine zentral administrierte Verteilung ist ein freigegebenes Unternehmens-Secretsystem erforderlich.
 
 Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den API-Key im Header `apikey`. Ein abgelaufener, rotierter oder für das Board nicht berechtigter Key führt zu 401/403; eine 400-Feldvalidierung ist dagegen ein Abfragefehler. Der Refresh wiederholt nur sichere GET-Anfragen bei Netzwerk-, 408-, 429- und 5xx-Fehlern.
 
@@ -83,7 +86,7 @@ Die `USER:`-Unteraufgabe der `KONFIGURATION`-Karte hat Vorrang. Der normale Remo
 
 ### Automatische Remote-Anmeldung ist noch nicht eingerichtet
 
-Die Benutzervariable `VIBN_RDP_PASSWORD` fehlt oder ist leer. Unter **Project Settings → Kanbanize- und Remote-Konfiguration** das Passwort eingeben und speichern. Der Status wechselt auf **Konfiguriert** und der Wert gilt sofort. Der separate Dialog-Button funktioniert weiterhin ohne diese Variable.
+Der Credential-Manager-Eintrag für das RDP-Passwort fehlt oder ist leer. Unter **Project Settings → Geschützte Zugangsdaten** das Passwort eingeben und speichern. Der Status wechselt auf **Konfiguriert** und der Wert gilt sofort. Der separate Dialog-Button funktioniert weiterhin ohne gespeichertes Passwort.
 
 ### Konfigurationswerte lassen sich nicht speichern
 

@@ -10,7 +10,7 @@ Wenn `VIBN_Tools_Setup.exe` bereits vorliegt:
 2. Setup mit einem Benutzer ausführen, der Software installieren darf.
 3. Installationsordner bestätigen und optional die Desktopverknüpfung auswählen.
 4. `VIBN_Tools.exe` beziehungsweise die Desktopverknüpfung starten.
-5. In **Project Settings → Kanbanize- und Remote-Konfiguration** API-Key und RDP-Kennwort verdeckt eingeben. Die Statusanzeige bestätigt die Konfiguration; eine CMD-Datei oder ein Neustart ist nicht erforderlich.
+5. In **Project Settings → Geschützte Zugangsdaten** FEE-Benutzer/-Passwort, API-Key und RDP-Kennwort eingeben. Die Statusanzeige bestätigt die Konfiguration; eine CMD-Datei oder ein Neustart ist nicht erforderlich.
 
 Visual Studio und eine separate .NET-Installation werden nicht benötigt. Für TIA-Funktionen müssen eine passende TIA-/Openness-Version, .NET Framework 4.8 und die Siemens-Openness-Benutzergruppe vorhanden sein. FEE-Funktionen benötigen die freigegebene FEE-Laufzeit beziehungsweise die zugehörigen betrieblichen Dienste und Lizenzen.
 

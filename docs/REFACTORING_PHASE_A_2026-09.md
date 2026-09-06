@@ -125,9 +125,9 @@ Die Arbeitsplatz-Synchronisation ist idempotent und vergleicht Kalendertage ohne
 
 ### 5.6 Zugangsdaten
 
-Project Settings verwendet bereits verdeckte `PasswordBox`-Eingaben mit Two-Way-Behavior. API-Key und RDP-Passwort werden als Windows-Benutzerumgebungsvariablen gespeichert und zur Laufzeit aktualisiert. Damit müssen sie pro Benutzer/Rechner nicht bei jedem Start eingegeben werden, aber sie sind kein dedizierter Secret Vault und werden nicht automatisch zwischen Rechnern synchronisiert.
+Project Settings verwendet verdeckte `PasswordBox`-Eingaben mit Two-Way-Behavior. FEE-Benutzer/-Passwort, API-Key und RDP-Passwort werden als generische Einträge im lokalen Windows Credential Manager gespeichert und zur Laufzeit aktualisiert. Die feste FEE-Anmeldung `admin/admin` ist entfernt. Alte Benutzerumgebungsvariablen werden nach erfolgreicher Migration gelöscht. Die Werte müssen pro Benutzer/Rechner nicht bei jedem Start eingegeben werden, werden aber bewusst nicht automatisch zwischen Rechnern synchronisiert.
 
-Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hinter dem bestehenden `IUserCredentialConfigurationService`. Für mehrere Rechner ist weiterhin eine einmalige Einrichtung je Windows-Profil oder eine zentral verwaltete, organisationskonforme Secret-Verteilung erforderlich. Eine öffentliche oder repositorybasierte Speicherung ist ausgeschlossen.
+Für mehrere Rechner ist weiterhin eine einmalige Einrichtung je Windows-Profil oder eine zentral verwaltete, organisationskonforme Secret-Verteilung erforderlich. Eine öffentliche oder repositorybasierte Speicherung ist ausgeschlossen.
 
 ## 6. Zielarchitektur in kleinen Schritten
 
@@ -155,7 +155,7 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 | FEE-Rückabbildung ohne Provenienz | Datenverlust oder falsche Container | Altmodelle nur mit Confidence/Diagnose, neue Modelle mit stabilen IDs |
 | Kanbanize-Titel als implizites Datenmodell | falsche Konflikte/Duplikate | Titelgrammatik und Rollen als explizite Parser-/Policy-Tests |
 | UI-Farben allein als Status | schlecht zugänglich und missverständlich | zusätzlich Text, Icon, Tooltip und Filter; Farbkontrast testen |
-| Umgebungsvariablen für Secrets | lokal auslesbarer als Vault | Credential-Store-Adapter; keine Logs, Exporte oder Repositorywerte |
+| Credential Manager ist lokal, nicht rechnerübergreifend | erneute Einrichtung pro Profil/Rechner | Unternehmens-Secretsystem für zentrale Verteilung; keine Logs, Exporte oder Repositorywerte |
 | Live-Schreibzugriffe auf FEE/TIA/Kanbanize | externe Seiteneffekte | Preview, selektive Bestätigung, Backup/Idempotenz und getrennte Live-Abnahme |
 
 ## 8. Geklärte Fachregeln und verbleibende externe Blocker

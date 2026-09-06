@@ -169,7 +169,7 @@
 
             <GroupBox Margin="10">
                 <GroupBox.Header>
-                    <TextBlock Style="{StaticResource H3Style}" Text="Kanbanize- und Remote-Konfiguration" />
+                    <TextBlock Style="{StaticResource H3Style}" Text="Geschützte Zugangsdaten (Windows Credential Manager)" />
                 </GroupBox.Header>
                 <Grid Margin="10">
                     <Grid.ColumnDefinitions>
@@ -183,29 +183,45 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Kanbanize API-Key" />
-                    <PasswordBox Grid.Row="0" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                    <TextBlock Grid.Row="0" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="FEE-Benutzer" />
+                    <TextBox Grid.Row="0" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                             Text="{Binding FeeUsernameInput, UpdateSourceTrigger=PropertyChanged}"
+                             ToolTip="Benutzername für die FEE-Verbindung; wird zusammen mit dem Passwort geschützt gespeichert." />
+                    <TextBlock Grid.Row="0" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
+                               FontWeight="SemiBold" Text="{Binding FeeCredentialsStatus}" />
+                    <Button Grid.Row="0" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
+                            Command="{Binding DeleteFeeCredentials}" />
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="FEE-Passwort" />
+                    <PasswordBox Grid.Row="1" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                                 shared:PasswordBoxBindingBehavior.Password="{Binding FeePasswordInput, Mode=TwoWay}"
+                                 ToolTip="Passwort für die FEE-Verbindung; ein leeres Feld verändert vorhandene FEE-Zugangsdaten nicht." />
+
+                    <TextBlock Grid.Row="2" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Kanbanize API-Key" />
+                    <PasswordBox Grid.Row="2" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
                                  shared:PasswordBoxBindingBehavior.Password="{Binding KanbanizeApiKeyInput, Mode=TwoWay}"
                                  ToolTip="Neuen API-Key eingeben; ein leeres Feld verändert einen vorhandenen Wert nicht." />
-                    <TextBlock Grid.Row="0" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
+                    <TextBlock Grid.Row="2" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
                                FontWeight="SemiBold" Text="{Binding KanbanizeApiKeyStatus}" />
-                    <Button Grid.Row="0" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
+                    <Button Grid.Row="2" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
                             Command="{Binding DeleteKanbanizeApiKey}" />
 
-                    <TextBlock Grid.Row="1" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Remote-Passwort" />
-                    <PasswordBox Grid.Row="1" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Margin="0,5,10,5" VerticalAlignment="Center" Text="Remote-Passwort" />
+                    <PasswordBox Grid.Row="3" Grid.Column="1" MinHeight="34" Margin="0,3,10,3" Padding="7,4"
                                  shared:PasswordBoxBindingBehavior.Password="{Binding RemoteDesktopPasswordInput, Mode=TwoWay}"
                                  ToolTip="Passwort für die automatische RDP-Anmeldung; es wird nicht im Protokoll angezeigt." />
-                    <TextBlock Grid.Row="1" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
+                    <TextBlock Grid.Row="3" Grid.Column="2" Margin="0,5,10,5" VerticalAlignment="Center"
                                FontWeight="SemiBold" Text="{Binding RemoteDesktopPasswordStatus}" />
-                    <Button Grid.Row="1" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
+                    <Button Grid.Row="3" Grid.Column="3" MinWidth="90" Margin="0,3" Content="Löschen"
                             Command="{Binding DeleteRemoteDesktopPassword}" />
 
-                    <Button Grid.Row="2" Grid.Column="1" HorizontalAlignment="Left" MinWidth="160" Margin="0,8,10,3"
+                    <Button Grid.Row="4" Grid.Column="1" HorizontalAlignment="Left" MinWidth="160" Margin="0,8,10,3"
                             Content="Eingaben speichern" Command="{Binding SaveIntegrationCredentials}" />
-                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,7,0,0"
+                    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,7,0,0"
                                Foreground="#FF555555" Text="{Binding CredentialStatus}" TextWrapping="Wrap" />
                 </Grid>
             </GroupBox>

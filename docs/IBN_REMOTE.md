@@ -31,21 +31,11 @@ Die Datei ist `win-x64`, self-contained und single-file. Auf dem Ziel-PC sind we
 
 ## Benutzerkonfiguration
 
-Im ausklappbaren Bereich **Zugangsdaten** können Kanbanize API-Key und Remote-Desktop-Passwort verdeckt eingegeben, gespeichert und einzeln gelöscht werden. Die Oberfläche zeigt nur **Konfiguriert** beziehungsweise **Nicht konfiguriert**, nie den gespeicherten Wert. Ein neu gespeicherter API-Key löst direkt eine Aktualisierung aus; ein Neustart ist nicht erforderlich.
+Im ausklappbaren Bereich **Zugangsdaten** können Kanbanize API-Key und Remote-Desktop-Passwort verdeckt eingegeben, geschützt im Windows Credential Manager gespeichert und einzeln gelöscht werden. Die Oberfläche zeigt nur **Konfiguriert** beziehungsweise **Nicht konfiguriert**, nie den gespeicherten Wert. Ein neu gespeicherter API-Key löst direkt eine Aktualisierung aus; ein Neustart ist nicht erforderlich.
 
-Die Werte gelten pro Windows-Benutzer und müssen deshalb auf jedem Ziel-PC beziehungsweise für jedes verwendete Windows-Konto einmal eingetragen werden. Die frühere CMD-/PowerShell-Ersteinrichtung ist für den normalen Betrieb nicht mehr nötig. Für administrierte oder automatisierte Rollouts bleiben diese äquivalenten Befehle möglich:
+Die Werte gelten pro Windows-Benutzer und Rechner und müssen deshalb auf jedem Ziel-PC beziehungsweise für jedes verwendete Windows-Konto einmal eingetragen werden. Die frühere CMD-/PowerShell-Ersteinrichtung ist für den normalen Betrieb nicht mehr nötig. Bestehende Werte in den früheren Benutzervariablen werden beim ersten erfolgreichen Zugriff in den Credential Manager migriert und anschließend aus der Umgebung gelöscht. Für administrierte Rollouts ist ein organisationskonformes Secretsystem statt eines Repository- oder Skriptwerts erforderlich.
 
-```powershell
-[Environment]::SetEnvironmentVariable('VIBN_VICO_KANBANIZE_API_KEY', '<API-KEY>', 'User')
-```
-
-Ohne Key liest der Client den gemeinsamen ViCo-Cache schreibgeschützt. Für die automatische RDP-Anmeldung wird wie im Haupttool benötigt:
-
-```powershell
-[Environment]::SetEnvironmentVariable('VIBN_RDP_PASSWORD', '<RDP-PASSWORT>', 'User')
-```
-
-Der Dialog-Button funktioniert ohne hinterlegtes Passwort. Kennwort und API-Key werden nicht in die EXE kompiliert oder protokolliert. Technische Grenze: Windows-Benutzervariablen werden im Benutzerprofil gespeichert und sind kein Hochsicherheitstresor; Benutzer oder Prozesse mit Zugriff auf dieses Profil können sie lesen. Der eigentliche `TERMSRV/<PC>`-Eintrag bleibt nur für den RDP-Start bestehen und wird nach 20 Sekunden entfernt. Logs liegen unter `%LOCALAPPDATA%\GROB\VIBN_Tools_IBN\Logs`.
+Ohne Key liest der Client den gemeinsamen ViCo-Cache schreibgeschützt. Der Dialog-Button funktioniert ohne hinterlegtes RDP-Passwort. Kennwort und API-Key werden nicht in die EXE kompiliert oder protokolliert. Der eigentliche `TERMSRV/<PC>`-Eintrag bleibt nur für den RDP-Start bestehen und wird nach 20 Sekunden entfernt; die VIBN-Tools-Einträge im Credential Manager bleiben bis zum expliziten Löschen erhalten. Logs liegen unter `%LOCALAPPDATA%\GROB\VIBN_Tools_IBN\Logs`.
 
 ## Technische Grenze
 

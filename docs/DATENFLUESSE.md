@@ -58,7 +58,7 @@ sequenceDiagram
     end
 ```
 
-Die alternative Schaltfläche „RDP mit Anmeldedaten“ ruft denselben RDP-Adapter mit `prompt for credentials:i:1` ohne temporären Eintrag auf. Project Settings beziehungsweise die IBN-Konfiguration schreibt oder löscht `VIBN_RDP_PASSWORD` für den aktuellen Windows-Benutzer, ohne eine Shell zu starten. Der normale Start liest diesen Wert, erzeugt `TERMSRV/<PC>` unmittelbar vor `mstsc` und löscht den Eintrag nach 20 Sekunden. Das Kennwort landet nie im `.rdp`-Profil, Cache oder Log.
+Die alternative Schaltfläche „RDP mit Anmeldedaten“ ruft denselben RDP-Adapter mit `prompt for credentials:i:1` ohne temporären Eintrag auf. Project Settings beziehungsweise die IBN-Konfiguration schreibt oder löscht das RDP-Passwort im lokalen Windows Credential Manager des aktuellen Benutzers. Der normale Start liest diesen Wert über den zentralen Credential-Service, erzeugt `TERMSRV/<PC>` unmittelbar vor `mstsc` und löscht den temporären RDP-Eintrag nach 20 Sekunden; der dauerhafte VIBN-Tools-Eintrag bleibt bestehen. Das Kennwort landet nie im `.rdp`-Profil, Cache oder Log.
 
 ## Kanbanize VIBN → Arbeitsplätze
 

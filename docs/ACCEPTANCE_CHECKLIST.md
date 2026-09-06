@@ -27,7 +27,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Project Settings zeigt verwendete SDK- und lokal installierte FEE-Version; eine künstlich abweichende Version wird rot hervorgehoben.
 - [ ] Von mehreren lokalen Versionsordnern zählt nur ein Ordner mit `Bin\FS.SDK.dll`; höhere unvollständige Ordner werden ignoriert.
 - [ ] Bei mehreren vollständigen SDKs listet `Prepare-Development.cmd` alle Versionen absteigend; Enter wählt die neueste und eine Nummer wählt nach VS-Neustart exakt den angegebenen Ordner.
-- [ ] Project Settings zeigt API-Key/RDP-Passwort jeweils als konfiguriert/nicht konfiguriert; Speichern gilt ohne Neustart und beide Löschen-Buttons entfernen nur den eigenen Wert.
+- [ ] Project Settings zeigt FEE-Zugang, API-Key und RDP-Passwort jeweils als konfiguriert/nicht konfiguriert; Speichern gilt ohne Neustart und die Löschen-Buttons entfernen nur die eigene Gruppe.
+- [ ] Im normalen interaktiven Windows-Profil erscheinen die Ziele `GROB/VIBN_Tools/FeeUsername`, `GROB/VIBN_Tools/FeePassword`, `GROB/VIBN_Tools/KanbanizeApiKey` und `GROB/VIBN_Tools/RemoteDesktopPassword` im Credential Manager; App-Neustart liest sie, Löschen entfernt sie. Der Codex-Dienstkontext konnte diesen Live-Test wegen Windows-Fehler 1312 (keine Anmeldesitzung) nicht ausführen.
 - [ ] ViCo-Countdown startet mit dem gespeicherten Intervall neu, pausiert ohne API-Key und führt bei Ablauf genau einen Kanbanize-Abruf aus.
 - [ ] Hauptfenster bleibt auf 1366 × 768 bedienbar; Project Settings und ViCo zeigen bei Bedarf Scrollleisten ohne die DataGrid-Virtualisierung zu verlieren.
 - [ ] IBN startet kompakt mit ausschließlich PC/Online/Projekte; Details, RDP und Zugangsdaten bleiben über die Expander auf 480 × 340 erreichbar.

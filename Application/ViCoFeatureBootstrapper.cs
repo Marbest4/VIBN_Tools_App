@@ -19,7 +19,7 @@ public static class ViCoFeatureBootstrapper
         new(SharedOptions.ServerCacheRoot);
     private static readonly IViCoUserRoleStore SharedUserRoleStore = CreateUserRoleStore();
     private static readonly IUserCredentialConfigurationService SharedCredentialConfiguration =
-        new UserEnvironmentCredentialConfigurationService();
+        new SecureUserCredentialConfigurationService();
 
     public static IWorkstationDirectory WorkstationDirectory { get; } =
         new WorkstationDirectory(SharedWorkstationCatalog);
@@ -94,7 +94,7 @@ public static class ViCoFeatureBootstrapper
         var options = ViCoPathsOptions.CreateDefault();
         var remoteDesktop = new WindowsRemoteDesktopService(
             options.WorkingDirectory,
-            new WindowsTemporaryRemoteCredentialStore());
+            new WindowsTemporaryRemoteCredentialStore(SharedCredentialConfiguration.GetRemoteDesktopPassword));
         return new ViCoSearchPageVM(
             SharedWorkstationCatalog,
             new ViCoWorkstationSearch(),

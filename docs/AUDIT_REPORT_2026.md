@@ -29,11 +29,11 @@ Validierter Zustand:
 | A-06 | Zweite Solution verwies außerhalb des Repositories | Hoch | Falscher Build-Einstieg | Niedrig | Hoch | Entfernt |
 | A-07 | Service-Locator `Services` koppelt ältere ViewModels an globale Zustände | Hoch | Isolierte Unit-Tests schwierig | Hoch | Hoch | Geplanter Folgeschritt |
 | A-08 | Einige allgemeine `catch (Exception)` an Legacy-Grenzen | Mittel | Ursachen können zu grob behandelt werden | Mittel | Mittel | Bericht/gezielte Migration |
-| A-09 | Benutzer-Secrets liegen in Benutzer-Umgebungsvariablen | Hoch | Für lokale Prozesse auslesbar | Mittel | Hoch | Sicherheits-Folgeschritt: Credential Manager/DPAPI |
+| A-09 | Benutzer-Secrets lagen in Benutzer-Umgebungsvariablen | Hoch | Für lokale Prozesse auslesbar | Mittel | Hoch | Behoben: Windows Credential Manager mit getesteter Migration; Windows-Profil-Abnahme offen |
 | A-10 | Event-Abonnements langlebiger ViewModels haben keinen einheitlichen Lifecycle | Mittel | Speicherbindung nach Viewwechsel möglich | Mittel | Mittel | `IDisposable`/Activation-Pattern empfohlen |
 | A-11 | Nur Smoke-/Policy-Tests, geringe Abdeckung der FEE-Legacylogik | Hoch | SDK-Regressionsrisiko | Hoch | Hoch | Testpyramide erweitern |
 | A-12 | Live-TIA-Verifikation benötigt reale TIA-Projekte und Openness-Rechte | Hoch | Mock-Test deckt Siemens-Runtime nicht ab | Mittel | Hoch | Live-Abnahmecheckliste |
-| A-13 | Project Settings verwendet weiterhin die bestehenden festen FEE-Anmeldedaten `admin/admin` | Hoch | Zugangsdaten im Quelltext, keine Rotation | Mittel | Hoch | Bewusst nicht in diesem Funktionsfix geändert; Sicherheits-Folgeschritt |
+| A-13 | Project Settings verwendete feste FEE-Anmeldedaten `admin/admin` | Hoch | Zugangsdaten im Quelltext, keine Rotation | Mittel | Hoch | Behoben: FEE-Benutzer/-Passwort aus Windows Credential Manager; einmalige Neueinrichtung erforderlich |
 
 ## 3. Architekturprüfung
 
@@ -83,9 +83,9 @@ Noch zu messen: reale TIA-Großprojekte, Container2FEE gegen produktive SDK-Asse
 
 ## 6. Sicherheitsbericht
 
-Im Repository wurde kein produktiver Kanbanize-API-Key und kein RDP-Passwort gefunden. Die aktuelle Ersteinrichtung legt diese Werte als Benutzer-Umgebungsvariablen ab. Das verhindert Quellcode-Secrets, ist aber kein sicherer Secretspeicher. Die bestehende FEE-Verbindung in `SettingsPageVM` verwendet dagegen noch `admin/admin`; diese Altlast wurde im aktuellen Funktionsfix nicht verändert. Empfohlen ist als separater Sicherheitsschritt:
+Im Repository wurde kein produktiver Kanbanize-API-Key, RDP-Passwort oder FEE-Passwort gefunden. Die produktive Ersteinrichtung legt diese Werte sowie den FEE-Benutzernamen als generische Einträge im Windows Credential Manager des aktuellen Profils ab. Alte Benutzer-Umgebungsvariablen werden erst nach einem erfolgreichen Credential-Manager-Schreibzugriff gelöscht. Weitere Sicherheitsschritte:
 
-1. Windows Credential Manager oder DPAPI-geschützte Datei pro Benutzer.
+1. FEE-, RDP- und Kanbanize-Zugang regelmäßig nach Unternehmensvorgabe rotieren.
 2. Protokoll-Redaction für Header, Tokens und Kennwörter.
 3. Signierung von Setup und Binärdateien.
 4. Least-Privilege-Kanbanize-Key und dokumentierte Rotation.
@@ -100,7 +100,7 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 1. Reale TIA-Abnahme mit PN/PN Coupler, dezentraler IO und GSD-Geräten aus V15–V22.
 2. Produktives FEE-SDK in einem privaten, versionierten NuGet-Feed bereitstellen.
 3. Setup signieren und über eine definierte Updatequelle verteilen.
-4. Secret-Speicherung auf Credential Manager/DPAPI migrieren.
+4. Windows-Profil-Abnahme für Speichern, Neustart, Löschen und Legacy-Migration durchführen.
 5. Legacy-Service-Locator strangweise durch Konstruktorinjektion ersetzen.
 6. Die vorhandenen synthetischen Container2FEE-Plan-/Sidecar- und PN/PN-Hardwaretests um freigegebene produktive Golden-Master-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
