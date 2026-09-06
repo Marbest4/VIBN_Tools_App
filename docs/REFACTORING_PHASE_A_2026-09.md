@@ -91,7 +91,7 @@ Der aktuelle Importfluss besitzt bereits wichtige Stabilitätsbausteine:
 
 Offene Kernpunkte:
 
-- Der Vergleich zweier fertiger ContainerFiles mit selektiver Übernahme existiert nicht.
+- Der Vergleich zweier fertiger ContainerFiles verwendet inzwischen dieselbe semantische Reconciliation wie der Reimport. Hinzugefügt, entfernt, Quelldaten- und Zuordnungsänderungen werden feldgenau angezeigt und einzeln übernommen; die geladenen Dateien bleiben unverändert. Automatische Add/Remove/Source/Slot-Tests sind vorhanden.
 - Die Slot-Multiplizität ist jetzt zentral und case-insensitive geregelt: `PLC_OUT_` und sonstige Slots dürfen nicht mehrfach belegt werden. Jede `PLC_IN_`-Mehrfachbelegung bleibt zulässig. Einzel-Slotmodelle werden beim FEE-Export über je ein `FeeSimpleMove` pro Signal verlustfrei auf den gemeinsamen Eingang geführt; bereits listenbasierte Grob-Container behalten ihren bewährten Move-Ablauf. Policy, XML-Parsing und Signalzählung sind automatisch getestet; die tatsächlichen SDK-Kanten benötigen weiterhin eine FEE-Live-Abnahme.
 - Erzeugung und FEE-Abbildung verteilen Typwissen über Switches, Factories, Slot-Reflection und einen separaten Metadatenkatalog.
 

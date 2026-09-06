@@ -200,6 +200,8 @@ Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File
 5. Bei erneut importierten Daten den **Reimport-Vergleich** prüfen, einzelne Änderungen übernehmen oder verwerfen.
 6. Erst danach die Generierung starten und Status/Zuordnungen kontrollieren.
 
+Mit **ContainerFiles vergleichen** wird zuerst das bisherige und danach das neu erzeugte ContainerFile gewählt. Voraussetzung ist die dazu passende geladene Requirements-XML, damit Slots und Typen korrekt validiert werden. Der Vergleich verwendet denselben feldgenauen Dialog wie der Reimport und erkennt neue, entfernte und geänderte Signale sowie Container-/Typ-/Slotänderungen. Die Dateien selbst bleiben unverändert; erst **Auswahl anwenden** ersetzt den sichtbaren Arbeitsstand durch das selektiv überlagerte Ergebnis. **Vorschau verwerfen** lässt den Arbeitsstand unangetastet.
+
 `Strg+Z` macht die letzte bearbeitbare Aktion rückgängig, `Strg+Y` bzw. `Strg+Umschalt+Z` wiederholt sie.
 
 Die Referenzdateien `Interface5.xlsx` und `Interface7.xlsx` sind als automatischer Importtest Bestandteil der Solution. Ein Fehler zu `SixLabors.Fonts.FontMetrics.TryGetGlyphMetrics` deutet auf einen gemischten alten Ausgabe-/Installationsordner hin; Anwendung vollständig neu bauen beziehungsweise das neue Setup vollständig installieren.

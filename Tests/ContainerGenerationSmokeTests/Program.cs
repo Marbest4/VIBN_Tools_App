@@ -5,6 +5,8 @@ using VIBN_Tools.ContainerGeneration.BusinessLogic;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ZuLiData;
 using VIBN_Tools.ContainerGeneration.Models;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData;
+using VIBN_Tools.ContainerGeneration.BusinessLogic.RequirementsXml;
+using VIBN_Tools.ContainerGeneration.Utils;
 using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.ContainerToFee.GrobStandard;
 
@@ -37,6 +39,7 @@ internal static class Program
         ValidateWorkspacePersistenceAndAutoSaveSettings();
         ValidateSlotMultiplicityPolicy();
         ValidatePlcInputFanInParsing();
+        ValidateContainerFileComparison();
 
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
@@ -177,6 +180,97 @@ internal static class Program
             if (File.Exists(path))
                 File.Delete(path);
         }
+    }
+
+    private static void ValidateContainerFileComparison()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-container-compare-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var baselinePath = Path.Combine(directory, "baseline.xml");
+        var candidatePath = Path.Combine(directory, "candidate.xml");
+        try
+        {
+            File.WriteAllText(baselinePath, BuildContainerFileXml("%I0.0", "PLC_IN_Old", includeRemoved: true, includeAdded: false));
+            File.WriteAllText(candidatePath, BuildContainerFileXml("%I0.7", "PLC_IN_New", includeRemoved: false, includeAdded: true));
+
+            var baseline = ContainerFileWorkspaceReader.Read(baselinePath);
+            var candidate = ContainerFileWorkspaceReader.Read(candidatePath);
+            if (baseline.Containers.Count != 1 || baseline.UnassignedSignals.Count != 1)
+                throw new InvalidOperationException("ContainerFile reader did not separate the unknown container.");
+
+            var candidateContainers = candidate.Containers.ToList();
+            var candidateUnassigned = candidate.UnassignedSignals.ToList();
+            var filtered = new List<ContainerEntry>();
+            var summary = GenerationWorkspaceReconciler.Reconcile(
+                GenerationWorkspaceReconciler.Capture(
+                    baseline.Containers,
+                    baseline.UnassignedSignals,
+                    []),
+                candidateContainers,
+                candidateUnassigned,
+                filtered,
+                new ComparisonRequirements());
+
+            var kinds = summary.Differences.Select(item => item.Kind).ToHashSet();
+            if (!kinds.Contains(ReimportChangeKind.SourceChanged) ||
+                !kinds.Contains(ReimportChangeKind.RuleSuggestionChanged) ||
+                !kinds.Contains(ReimportChangeKind.NewFromSource) ||
+                !kinds.Contains(ReimportChangeKind.RemovedFromSource))
+            {
+                throw new InvalidOperationException("ContainerFile comparison missed add/remove/source/slot changes.");
+            }
+
+            foreach (var difference in summary.Differences)
+                difference.IsAccepted = difference.Kind is not ReimportChangeKind.RemovedFromSource;
+            GenerationWorkspaceReconciler.ApplyDecisions(
+                summary,
+                candidateContainers,
+                candidateUnassigned,
+                filtered);
+
+            var entries = candidateContainers.SelectMany(item => item.DataList).ToArray();
+            var changed = entries.Single(item => item.ID == "A");
+            if (changed.Address != "%I0.7" || changed.Slot != "PLC_IN_New" ||
+                entries.All(item => item.ID != "B") || entries.All(item => item.ID != "C"))
+            {
+                throw new InvalidOperationException("Selective ContainerFile comparison decisions were not applied.");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static string BuildContainerFileXml(
+        string address,
+        string slot,
+        bool includeRemoved,
+        bool includeAdded) => $"""
+            <CAAMergeResult><ContainerList>
+              <Container id="1"><Component>Sensor_1</Component><Type>Sensor</Type><DataList>
+                <Entry><ID>A</ID><Address>{address}</Address><DataType>Bool</DataType><Signal>Ready</Signal><Slot>{slot}</Slot><Note /></Entry>
+                {(includeRemoved ? "<Entry><ID>B</ID><Address>%I0.1</Address><DataType>Bool</DataType><Signal>Old</Signal><Slot>PLC_IN_Old</Slot><Note /></Entry>" : string.Empty)}
+                {(includeAdded ? "<Entry><ID>C</ID><Address>%I0.2</Address><DataType>Bool</DataType><Signal>New</Signal><Slot>PLC_IN_New</Slot><Note /></Entry>" : string.Empty)}
+              </DataList></Container>
+              <Container id="unknown"><Component>unknown</Component><Type>unknown</Type><DataList>
+                <Entry><ID>U</ID><Address>%I9.0</Address><DataType>Bool</DataType><Signal>Unknown</Signal><Slot /><Note /></Entry>
+              </DataList></Container>
+            </ContainerList></CAAMergeResult>
+            """;
+
+    private sealed class ComparisonRequirements : IRequirementsXml
+    {
+        public string XmlSchema => string.Empty;
+        public XDocument Document { get; } = new();
+        public bool IsInitialized => true;
+        public Result<XDocument> ReadFromFile(string filePath) => Result<XDocument>.Failure("Not supported in test.");
+        public Task<Result<XDocument>> ReadFromFileAsync(string filePath) => Task.FromResult(ReadFromFile(filePath));
+        public int? GetMinSignals(string componentName) => null;
+        public int? GetMaxSignals(string componentName) => null;
+        public List<string> GetSlotNames(string componentName) => ["PLC_IN_Old", "PLC_IN_New"];
+        public List<string> GetComponentTypes() => ["Sensor"];
     }
 
     private static async Task ValidateImportAndGenerationAsync(string file)

@@ -45,6 +45,7 @@ namespace VIBN_Tools.Application.VM
         public ICommand GenerateContainers => GetCommandBindingAsync(Generate_Containers);
         public ICommand ValidateWorkspace => GetCommandBinding(Validate_Workspace);
         public ICommand ExportContainers => GetCommandBinding(Export_Containers);
+        public ICommand CompareContainerFiles => GetCommandBinding(Compare_ContainerFiles);
 
         public ICommand LoadData => GetCommandBinding(Load_Data);
 
@@ -333,6 +334,7 @@ namespace VIBN_Tools.Application.VM
         private List<ContainerEntry>? _pendingGeneratedUnassigned;
         private List<ContainerEntry>? _pendingGeneratedFiltered;
         private ReimportSummary? _pendingReimportSummary;
+        private bool _pendingComparisonIsContainerFile;
 
         public ObservableCollection<ReimportDifference> PendingReimportChanges { get; } = [];
         public ObservableCollection<WorkspaceActivityLogEntry> ActivityLog { get; } = [];
@@ -980,6 +982,83 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
+        private void Compare_ContainerFiles(object parameter)
+        {
+            if (!RequirementsFile.IsInitialized)
+            {
+                StatusText = "Vor dem ContainerFile-Vergleich muss die zugehörige Requirements-XML geladen sein.";
+                return;
+            }
+
+            var filter = "Container XML (*.xml)|*.xml";
+            var baseDialog = new OpenFileDialog
+            {
+                Title = "Bisheriges ContainerFile auswählen",
+                Filter = filter,
+                RestoreDirectory = true
+            };
+            if (baseDialog.ShowDialog() != true)
+                return;
+
+            var candidateDialog = new OpenFileDialog
+            {
+                Title = "Neues ContainerFile auswählen",
+                Filter = filter,
+                RestoreDirectory = true
+            };
+            if (candidateDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var baseline = ContainerFileWorkspaceReader.Read(baseDialog.FileName);
+                var candidate = ContainerFileWorkspaceReader.Read(candidateDialog.FileName);
+                var baselineContainers = baseline.Containers.ToList();
+                var baselineUnassigned = baseline.UnassignedSignals.ToList();
+                var candidateContainers = candidate.Containers.ToList();
+                var candidateUnassigned = candidate.UnassignedSignals.ToList();
+                var candidateFiltered = new List<ContainerEntry>();
+                var snapshot = GenerationWorkspaceReconciler.Capture(
+                    baselineContainers,
+                    baselineUnassigned,
+                    []);
+                var summary = GenerationWorkspaceReconciler.Reconcile(
+                    snapshot,
+                    candidateContainers,
+                    candidateUnassigned,
+                    candidateFiltered,
+                    RequirementsFile);
+
+                ClearPendingReimportResult();
+                _pendingGeneratedContainers = candidateContainers;
+                _pendingGeneratedUnassigned = candidateUnassigned;
+                _pendingGeneratedFiltered = candidateFiltered;
+                _pendingReimportSummary = summary;
+                _pendingComparisonIsContainerFile = true;
+                foreach (var difference in summary.Differences)
+                {
+                    PendingReimportChanges.Add(difference);
+                    difference.PropertyChanged += PendingReimportChange_PropertyChanged;
+                }
+
+                OnPropertyChanged(nameof(HasPendingReimportChanges));
+                OnPropertyChanged(nameof(ShowReimportNotice));
+                OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+                ReimportNotice =
+                    $"ContainerFile-Vergleich: {Path.GetFileName(baseDialog.FileName)} → " +
+                    $"{Path.GetFileName(candidateDialog.FileName)}; {summary.Differences.Count} Unterschiede erkannt.";
+                StatusText = summary.Differences.Count == 0
+                    ? "Die beiden ContainerFiles sind semantisch gleich."
+                    : "ContainerFile-Vorschau erstellt. Jede Änderung kann einzeln übernommen oder verworfen werden.";
+                AddActivity("Container-Vergleich", "A/B-Vorschau erstellt", ReimportNotice);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+            {
+                Logger.Error(ex, "ContainerFile comparison failed.");
+                StatusText = $"ContainerFile-Vergleich fehlgeschlagen: {ex.Message}";
+            }
+        }
+
         private void Validate_Workspace(object parameter)
         {
             var summary = CreateValidationSummary();
@@ -1206,7 +1285,8 @@ namespace VIBN_Tools.Application.VM
                 return;
             }
 
-            CaptureUndo("Reimport-Auswahl anwenden");
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
+            CaptureUndo($"{comparisonLabel}-Auswahl anwenden");
             var decisions = PendingReimportChanges.ToList();
             var accepted = PendingReimportChanges.Count(change => change.IsAccepted);
             var rejected = PendingReimportChanges.Count - accepted;
@@ -1245,7 +1325,7 @@ namespace VIBN_Tools.Application.VM
             foreach (var decision in decisions)
             {
                 AddActivity(
-                    "Reimport",
+                    comparisonLabel,
                     decision.IsAccepted
                         ? $"{decision.Category} übernommen"
                         : $"{decision.Category}: bisherigen Stand beibehalten",
@@ -1253,17 +1333,17 @@ namespace VIBN_Tools.Application.VM
                     $"Auswirkung: {decision.DecisionEffect}.");
             }
             AddActivity(
-                "Reimport",
+                comparisonLabel,
                 "Auswahl angewendet",
                 $"{accepted} Änderungen übernommen; {rejected} Änderungen nicht übernommen. " +
                 $"{ContainerList.Count} Container und {AssignedSignals} zugeordnete Signale im resultierenden Arbeitsstand.");
 
             ReimportNotice =
-                $"Arbeitsstand wurde am {DateTime.Now:dd.MM.yyyy HH:mm} durch den Reimport geändert: " +
+                $"Arbeitsstand wurde am {DateTime.Now:dd.MM.yyyy HH:mm} durch {comparisonLabel} geändert: " +
                 $"{newSignals} neue und {changedSignals} in der Quelle geänderte Signale erkannt; " +
                 $"{accepted} Änderungen übernommen, {rejected} Änderungen nicht übernommen.";
             StatusText =
-                $"Reimport übernommen: {newSignals} neue, {changedSignals} geänderte Signale; " +
+                $"{comparisonLabel} übernommen: {newSignals} neue, {changedSignals} geänderte Signale; " +
                 $"{accepted} Änderungen angenommen, " +
                 $"{rejected} Änderungen verworfen beziehungsweise bisheriger Stand beibehalten.";
         }
@@ -1271,13 +1351,14 @@ namespace VIBN_Tools.Application.VM
         private void Cancel_ReimportSelection(object parameter)
         {
             var differenceCount = PendingReimportChanges.Count;
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
             ClearPendingReimportResult();
             WasGenerated = false;
             ReimportNotice =
-                $"Reimport-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
+                $"{comparisonLabel}-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
                 "der Arbeitsstand wurde nicht verändert.";
             AddActivity(
-                "Reimport",
+                comparisonLabel,
                 "Vorschau verworfen",
                 $"{differenceCount} erkannte Unterschiede; keine Änderung am Arbeitsstand.");
             StatusText =
@@ -1304,6 +1385,7 @@ namespace VIBN_Tools.Application.VM
             _pendingGeneratedUnassigned = null;
             _pendingGeneratedFiltered = null;
             _pendingReimportSummary = null;
+            _pendingComparisonIsContainerFile = false;
             PendingReimportChanges.Clear();
             OnPropertyChanged(nameof(HasPendingReimportChanges));
             OnPropertyChanged(nameof(ShowReimportNotice));
