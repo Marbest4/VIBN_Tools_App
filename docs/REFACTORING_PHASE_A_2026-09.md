@@ -40,7 +40,7 @@ Die Trennung von Core, Adaptern und TIA-Bridge ist eine tragfähige Grundlage. I
 1. `App.xaml.cs` initialisiert die statische Service-Fassade und protokolliert unbehandelte Dispatcher-Fehler.
 2. `GlobalClasses/Services.cs` erstellt `CoreApi`, `FeeConnectionService`, `FeeObjectService` und `ProjectSettings`. Fehlt die FEE-Laufzeit, bleibt die Anwendung startbar und sperrt FEE-Funktionen.
 3. `MainWindow.xaml.cs` erzeugt `MainWindowVM` direkt. Ein DI-Container wird nicht verwendet.
-4. `Application/ViCoFeatureBootstrapper.cs` ist eine manuelle Composition Root für ViCo, Kanbanize, TIA und Special Devices. Einige Instanzen werden geteilt, andere pro View erzeugt.
+4. `Application/ViCoFeatureBootstrapper.cs` ist eine manuelle Composition Root für ViCo, Kanbanize, TIA und SpecialDevices2FEE. Einige Instanzen werden geteilt, andere pro View erzeugt.
 5. TIA läuft aus Stabilitätsgründen über eine eigene .NET-Framework-Bridge je TIA-View. Das ist beizubehalten.
 
 Ziel ist zunächst keine vollständige DI-Migration. Sinnvoller ist eine schrittweise Composition-Root-Bereinigung: gemeinsame Fähigkeiten als Interfaces, eindeutige Lebensdauern und keine neuen direkten statischen Zugriffe in ViewModels.
@@ -62,7 +62,7 @@ Ziel ist zunächst keine vollständige DI-Migration. Sinnvoller ist eine schritt
 | Container Generation | `ContainerGenerationPage` | `ContainerGenerationPageVM` | ZuLi/Requirements-Reader, Generator, Reimport/Reconciliation, Persistenz, ActionLog | Level 7 |
 | Container2Fee | `ContainerToFeePage` | `ContainerToFeePageVM` | Container-Reader, FEE-Factories/-Wrapper | Level 7, Ausführung zusätzlich FEE-Gate |
 | Container2FEE Visual | `ContainerToFeeVisualPage` | `ContainerToFeeVisualPageVM` | Planning, Discovery, Sidecar, Binder, Executor | Level 7, Ausführung zusätzlich FEE-Gate |
-| Special Devices | `SpecialDevicePage` | `SpecialDevicePageVM` | eigene TIA-Bridge, HardwareMappingStore, FEE-Import | sichtbar; FEE-Aktion gegated |
+| SpecialDevices2FEE | `SpecialDevicePage` | `SpecialDevicePageVM` | eigene TIA-Bridge, HardwareMappingStore, FEE-Import | sichtbar; FEE-Aktion gegated |
 | Model Validation | `ModelValidationPage` | `ModelValidationPageVM` | statische FEE-Services/Wrapper | nur mit FEE-Verbindung bedienbar |
 | Model Control | `ModelControlPage` | `ModelControlPageVM` | statische FEE-Services/Wrapper | nur mit FEE-Verbindung bedienbar |
 | Interface Operation | `InterfaceOperationPage` | `InterfaceOperationPageVM` | FEE-Interfaces und Verbindungslogik | sichtbar; einzelne Aktionen gegated |
@@ -107,13 +107,13 @@ Empfehlung: zuerst ein gemeinsames semantisches Mapping-Modell und eine Mapping-
 
 ### 5.3 TIA
 
-`VIBN_Tools.Tia.Contracts` transportiert Prozess-, Projekt-, PLC-, Bibliotheks- und Hardwareinformationen. `TiaHardwareModuleInfo` enthält bereits Geräteindex, Slot/Subslot, Geräte-/Modulname, Typen, Hersteller-/Bestelldaten, Netzwerkdaten und Ein-/Ausgangsadressen. Tiefe, Elternknoten, konkrete TIA-Objektklasse, Hardware-ID sowie Kandidaten-/Zuordnungsdiagnose fehlen.
+`VIBN_Tools.Tia.Contracts` transportiert Prozess-, Projekt-, PLC-, Bibliotheks-, Achsen- und Hardwareinformationen. `TiaHardwareModuleInfo` enthält Geräteindex, Traversierungsindex, Tiefe, Elternknoten, konkrete TIA-Objektklasse, Hardware-ID, Slot/Subslot, Geräte-/Modulname, Typen, Hersteller-/Bestelldaten, Netzwerkdaten und Ein-/Ausgangsadressen. Die UI zeigt zusätzlich den konservativ ermittelten Zuordnungskandidaten.
 
-Die Achsenkonfiguration ist aktuell ein einzelner mutierender Ablauf: Achsen werden gesucht und sofort alle konfiguriert. Es gibt noch keinen read-only Schritt „Achsen lesen“, keine stabile Auswahlidentität und keine Auswahl Alle/Keine. Die Namensheuristik X/Y/Z für linear/rotatorisch ist fachlich riskant und darf nicht ohne Live-Abnahme erweitert werden.
+Achsen werden jetzt separat und schreibgeschützt gelesen, über Gruppenpfad plus Namen stabil identifiziert und einzeln beziehungsweise über Alle/Keine ausgewählt. Das mutierende Kommando erhält nur diese IDs und liefert pro gefundenem Parameter Erfolg oder Fehler an UI und Log zurück. Die Namensheuristik X/Y/Z für linear/rotatorisch bleibt fachlich riskant und darf nicht ohne Live-Abnahme erweitert werden.
 
 `Save` speichert das angehängte TIA-Projekt. Bibliotheksimport/-export arbeitet mit VICOBIB-Blöcken und Datentypen, aber die UI erklärt Wirkung, Voraussetzungen und Speicherverhalten nicht ausreichend.
 
-### 5.4 Special Devices
+### 5.4 SpecialDevices2FEE
 
 Der Hardware-Reader traversiert die TIA-Hierarchie und projiziert derzeit überwiegend adressführende Blätter. Die automatische Namenswahl enthält bereits Heuristiken zwischen Geräte-, PROFINET- und Modulnamen. Vor weiteren Änderungen ist die geforderte Diagnoseansicht nötig, damit Geräteindex, Hierarchie und echte Openness-Typen an realen Projekten sichtbar werden.
 
@@ -137,7 +137,7 @@ Zieloption: Windows Credential Manager oder DPAPI-geschützter lokaler Store hin
 4. **ViCo/Kanbanize:** Core-Modelle erweitern, dann ViewModels und UI. Live-Schreibzugriffe erst nach Preview- und Contract-Tests.
 5. **Container-Domäne:** Slot-Policy, semantischer Containervergleich und Golden Master vor weiterer Zerlegung des großen ViewModels.
 6. **Container2FEE:** kanonisches Mapping-Modell, deterministische Signalauflösung, präzise Planvalidierung, anschließend UI-Vereinfachung.
-7. **TIA/Special Devices:** Protokoll zuerst um read-only Diagnose und Achsenliste erweitern; Schreibkommandos separat und selektiv.
+7. **TIA/SpecialDevices2FEE:** read-only Diagnose und Achsenliste beibehalten; Schreibkommandos bleiben separat und selektiv.
 8. **KI-Regelvorschläge:** versioniertes Ereignisschema und deterministische Aggregation vor ML-Modellen; niemals automatische XML-Änderung ohne Vorschau, Backup und Auswahl.
 9. **FEE2Container:** Reverse-Extractor auf demselben Mapping-Modell, Provenienz für neue Modelle, Unsicherheitsdiagnose für Altmodelle, semantische Round-Trip-Tests.
 

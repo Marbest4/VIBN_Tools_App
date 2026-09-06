@@ -19,7 +19,7 @@
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="0,0,0,12">
-            <TextBlock FontSize="24" FontWeight="SemiBold" Text="Special Devices" />
+            <TextBlock FontSize="24" FontWeight="SemiBold" Text="SpecialDevices2FEE" />
             <TextBlock Margin="0,4,0,0" Foreground="#FF666666" Text="Manuelle Geräte und TIA-Hardware werden auf einer Seite vorbereitet. Erst die Warteschlange erzeugt Geräte in FEE." TextWrapping="Wrap" />
         </StackPanel>
 
@@ -111,6 +111,14 @@
                     </DataGrid.GroupStyle>
                     <DataGrid.Columns>
                         <DataGridCheckBoxColumn Header="Übernehmen" Binding="{Binding Include}" Width="86" />
+                        <DataGridTextColumn Header="#" Binding="{Binding TraversalIndex, Mode=OneWay}" IsReadOnly="True" Width="42" />
+                        <DataGridTextColumn Header="Tiefe" Binding="{Binding HierarchyDepth, Mode=OneWay}" IsReadOnly="True" Width="50" />
+                        <DataGridTextColumn Header="Modul" Binding="{Binding ModuleName, Mode=OneWay}" IsReadOnly="True" Width="160" />
+                        <DataGridTextColumn Header="Parent" Binding="{Binding ParentName, Mode=OneWay}" IsReadOnly="True" Width="140" />
+                        <DataGridTextColumn Header="Slot/Subslot" Binding="{Binding SlotAndSubslot, Mode=OneWay}" IsReadOnly="True" Width="90" />
+                        <DataGridTextColumn Header="Pfad" Binding="{Binding ModulePath, Mode=OneWay}" IsReadOnly="True" Width="220" />
+                        <DataGridTextColumn Header="Objektklasse" Binding="{Binding ObjectClass, Mode=OneWay}" IsReadOnly="True" Width="210" />
+                        <DataGridTextColumn Header="Hardware-ID" Binding="{Binding HardwareIdentifier, Mode=OneWay}" IsReadOnly="True" Width="110" />
                         <DataGridTextColumn Header="GSDML" Binding="{Binding GsdDisplay, Mode=OneWay}" IsReadOnly="True" Width="175" />
                         <DataGridTextColumn Header="IP-Adresse" Binding="{Binding IpAddress, Mode=OneWay}" IsReadOnly="True" Width="105" />
                         <DataGridTextColumn Header="Modultyp" Binding="{Binding ModuleTypeDisplay, Mode=OneWay}" IsReadOnly="True" Width="190" />
@@ -127,6 +135,7 @@
                         <DataGridTemplateColumn Header="Logik" Width="235">
                             <DataGridTemplateColumn.CellTemplate><DataTemplate><ComboBox MinHeight="27" ItemsSource="{Binding DataContext.HardwareLogicOptions, RelativeSource={RelativeSource AncestorType=UserControl}}" DisplayMemberPath="DisplayName" SelectedItem="{Binding SelectedLogic}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Zuordnungskandidat" Binding="{Binding SuggestedMapping, Mode=OneWay}" IsReadOnly="True" Width="235" />
                         <DataGridTextColumn Header="Status" Binding="{Binding State, Mode=OneWay}" IsReadOnly="True" Width="105" />
                     </DataGrid.Columns>
                 </DataGrid>

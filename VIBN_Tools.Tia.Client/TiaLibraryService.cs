@@ -46,7 +46,10 @@ public sealed class TiaLibraryService : ITiaLibraryService
 
         if (configureAxes)
         {
-            var axes = await _client.ConfigureAxesAsync(cancellationToken);
+            var discoveredAxes = await _client.ListAxesAsync(cancellationToken);
+            var axes = await _client.ConfigureAxesAsync(
+                discoveredAxes.Select(axis => axis.Id).ToArray(),
+                cancellationToken);
             if (axes.Count > 0)
             {
                 var axisFolder = ResolveAxisFolder(programRoot);

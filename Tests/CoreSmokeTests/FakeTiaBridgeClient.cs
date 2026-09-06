@@ -34,6 +34,13 @@ internal sealed class FakeTiaBridgeClient : ITiaBridgeClient
 
     public List<TiaHardwareModuleInfo> HardwareModules { get; } = new();
 
+    public List<TiaAxisInfo> AxisItems { get; } =
+    [
+        new TiaAxisInfo { Id = "Technology/AxisX", Name = "AxisX", TechnologyType = "PositioningAxis", GroupPath = "Technology" }
+    ];
+
+    public IReadOnlyCollection<string> ConfiguredAxisIds { get; private set; } = Array.Empty<string>();
+
     public Task<IReadOnlyList<TiaHardwareModuleInfo>> ListHardwareAsync(
         CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<TiaHardwareModuleInfo>>(HardwareModules);
@@ -80,11 +87,17 @@ internal sealed class FakeTiaBridgeClient : ITiaBridgeClient
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<TiaAxisInfo>>(new[]
-        {
-            new TiaAxisInfo { Name = "AxisX", TechnologyType = "PositioningAxis" }
-        });
+    public Task<IReadOnlyList<TiaAxisInfo>> ListAxesAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<TiaAxisInfo>>(AxisItems);
+
+    public Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(
+        IReadOnlyCollection<string> axisIds,
+        CancellationToken cancellationToken = default)
+    {
+        ConfiguredAxisIds = axisIds.ToArray();
+        return Task.FromResult<IReadOnlyList<TiaAxisInfo>>(
+            AxisItems.Where(axis => axisIds.Contains(axis.Id, StringComparer.OrdinalIgnoreCase)).ToArray());
+    }
 
     public Task SaveAsync(CancellationToken cancellationToken = default)
     {

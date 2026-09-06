@@ -77,7 +77,7 @@ flowchart TD
 
 Die Formel ist Start = Quell-Deadline − 14 Tage, Ende = Deadline derselben Quellkarte + 56 Tage. Eine fehlende Quell-Deadline oder mehrere passende Zielkarten sind Konflikte ohne Schreiboperation.
 
-## TIA-Hardware und Special Devices
+## TIA-Hardware und SpecialDevices2FEE
 
 ```mermaid
 flowchart LR

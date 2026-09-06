@@ -15,7 +15,7 @@ Die Solution verbindet die bestehende VIBN-Tools-Oberfläche mit ViCo, Kanbanize
 | TIA Portal | PLC-, Bibliotheks- und Achsenfunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
 | Administration | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
 | Kanbanize | sichere VIBN-Übernahme und eigene Karten | `VibnWorkplaceSynchronizationService`, `KanbanizeCardApiService` |
-| Special Devices | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| SpecialDevices2FEE | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
 | Container2FEE Visual | zusätzlicher XML-Plan, Sidecar und typgeprüftes Drag-and-drop bei unverändertem Executor | `ContainerToFeeVisual/*`, `ContainerToFeeVisualPageVM` |
 | IBN Remote | getrennte schreibgeschützte Arbeitsplatz-/RDP-Einzeldatei ohne Volltool und Hersteller-SDKs | `VIBN_Tools.IbnRemote`, `VIBN_Tools.IbnRemote.Infrastructure` |
 | bestehende VIBN-Reiter | CAD, Zuli, Container, Modell und Schnittstellen | bestehende ViewModels und FEE-Services |

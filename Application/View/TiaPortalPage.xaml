@@ -92,21 +92,31 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <Button Grid.Row="0"
-                            MinWidth="170"
-                            Margin="0,0,0,8"
-                            HorizontalAlignment="Left"
-                            Content="Achsen konfigurieren"
-                            Command="{Binding ConfigureAxesCommand}" />
+                    <WrapPanel Grid.Row="0" Margin="0,0,0,8" Orientation="Horizontal">
+                        <Button MinWidth="135"
+                                Content="Achsen nur lesen"
+                                ToolTip="Liest die Achsenliste, ohne das TIA-Projekt zu verändern."
+                                Command="{Binding LoadAxesCommand}" />
+                        <Button MinWidth="170"
+                                Margin="8,0,0,0"
+                                Content="Auswahl konfigurieren"
+                                ToolTip="Setzt ausschließlich bei den ausgewählten Achsen die dokumentierten Simulationsparameter."
+                                Command="{Binding ConfigureAxesCommand}" />
+                        <Button MinWidth="65" Margin="8,0,0,0" Content="Alle" Command="{Binding SelectAllAxesCommand}" />
+                        <Button MinWidth="65" Margin="8,0,0,0" Content="Keine" Command="{Binding SelectNoAxesCommand}" />
+                    </WrapPanel>
 
                     <DataGrid Grid.Row="1"
                               ItemsSource="{Binding Axes}"
                               AutoGenerateColumns="False"
-                              IsReadOnly="True"
+                              IsReadOnly="False"
                               EnableRowVirtualization="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Achse" Binding="{Binding Name, Mode=OneWay}" Width="*" />
-                            <DataGridTextColumn Header="Typ" Binding="{Binding TechnologyType, Mode=OneWay}" Width="160" />
+                            <DataGridCheckBoxColumn Header="Ändern" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="65" />
+                            <DataGridTextColumn Header="Achse" Binding="{Binding Name, Mode=OneWay}" Width="140" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Gruppe" Binding="{Binding GroupPath, Mode=OneWay}" Width="*" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Typ" Binding="{Binding TechnologyType, Mode=OneWay}" Width="140" IsReadOnly="True" />
+                            <DataGridTextColumn Header="Ergebnis" Binding="{Binding Result, Mode=OneWay}" Width="190" IsReadOnly="True" />
                         </DataGrid.Columns>
                     </DataGrid>
 
@@ -115,6 +125,7 @@
                             Margin="0,8,0,0"
                             HorizontalAlignment="Right"
                             Content="Projekt speichern"
+                            ToolTip="Speichert das aktuell geöffnete TIA-Projekt. Ohne diesen Schritt bleiben Änderungen möglicherweise nur in der geöffneten Sitzung."
                             Command="{Binding SaveCommand}" />
                 </Grid>
             </GroupBox>
@@ -137,12 +148,13 @@
 
                     <TextBlock Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" Text="Importordner" />
                     <TextBox Grid.Row="0" Grid.Column="1" Margin="8,4" Text="{Binding LibraryPath}" />
-                    <Button Grid.Row="0" Grid.Column="2" MinWidth="110" Content="Durchsuchen" Command="{Binding BrowseImportCommand}" />
+                    <Button Grid.Row="0" Grid.Column="2" MinWidth="110" Content="Durchsuchen" ToolTip="Ordner mit den Unterordnern _Programm und _Datatype auswählen." Command="{Binding BrowseImportCommand}" />
 
                     <CheckBox Grid.Row="1"
                               Grid.Column="1"
                               Margin="8,8"
                               Content="Achsen konfigurieren und AxisDB/AxisFC erzeugen"
+                              ToolTip="Konfiguriert beim Import alle gefundenen Achsen und erzeugt viCo_Axes_DB sowie viCo_AxisConnect_FC. Für eine Auswahl zuerst die Projektübersicht verwenden."
                               IsChecked="{Binding ConfigureAxesDuringImport}" />
                     <Button Grid.Row="1"
                             Grid.Column="2"

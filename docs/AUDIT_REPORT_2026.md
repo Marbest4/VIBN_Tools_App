@@ -6,7 +6,7 @@ Stand: 28. August 2026. Prüfobjekt ist die vollständige Solution `VIBN_Tools_A
 
 Die Anwendung ist eine funktionsreiche WPF-Desktop-Suite mit gewachsenen Legacy-Anteilen und bereits gut abgetrennten ViCo-, Kanbanize- und TIA-Komponenten. Die wichtigste technische Stärke ist die Prozessisolation der Siemens-TIA-Openness-Anbindung. Das größte Buildrisiko war die nicht reproduzierbare Bindung an eine konkrete fe.screen-sim-Version. Dieses Risiko ist reduziert: Paketversionen sind explizit fixiert, der FEE-SDK-Pfad wird automatisch ermittelt und Build sowie Veröffentlichung prüfen die SDK-Vollständigkeit.
 
-Die TIA-Hardwareauslesung berücksichtigt nun Root-Geräte, Geräteordner, verschachtelte Geräteordner und die Systemgruppe für nicht gruppierte dezentrale Geräte. Sie liefert Gerät, Gerätetyp, Hersteller, Bestellnummer, Firmware, GSD-Metadaten, PROFINET-Name, IP-Adresse, Slot, Subslot, Modulpfad und getrennte Ein-/Ausgangsbereiche. Die doppelte Hardwareansicht unter ViCo/TIA Portal wurde entfernt; die Zuordnung befindet sich ausschließlich unter Special Devices.
+Die TIA-Hardwareauslesung berücksichtigt nun Root-Geräte, Geräteordner, verschachtelte Geräteordner und die Systemgruppe für nicht gruppierte dezentrale Geräte. Sie liefert Gerät, Gerätetyp, Hersteller, Bestellnummer, Firmware, GSD-Metadaten, PROFINET-Name, IP-Adresse, Slot, Subslot, Modulpfad, Hierarchiediagnose und getrennte Ein-/Ausgangsbereiche. Die doppelte Hardwareansicht unter ViCo/TIA Portal wurde entfernt; die Zuordnung befindet sich ausschließlich unter SpecialDevices2FEE.
 
 Validierter Zustand:
 
@@ -22,7 +22,7 @@ Validierter Zustand:
 | ID | Befund | Priorität | Risiko | Aufwand | Nutzen | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | A-01 | FEE-DLL-Pfade waren auf `5.0.9.44419` fest verdrahtet | Kritisch | Build/Start auf anderen PCs scheitert | Mittel | Sehr hoch | Behoben |
-| A-02 | Hardwarebaum wurde abgeflacht; Slot/Subslot, GSD und Netzwerkdienste fehlten | Kritisch | Falsche Special Devices und E/A-Adressen | Hoch | Sehr hoch | Implementiert und synthetisch geprüft; Live-Abnahme offen |
+| A-02 | Hardwarebaum wurde abgeflacht; Slot/Subslot, GSD und Netzwerkdienste fehlten | Kritisch | Falsche SpecialDevices2FEE-Zuordnungen und E/A-Adressen | Hoch | Sehr hoch | Implementiert und synthetisch geprüft; Live-Abnahme offen |
 | A-03 | `ContainerGenerationPageVM` bündelt 2.387 Zeilen | Hoch | Regressionen, geringe Testbarkeit | Hoch | Hoch | ZuLi-/Generator-Smoke-Test vorhanden; vollständigen Requirements-/Ausgabe-Golden-Master vor Aufteilung ergänzen |
 | A-04 | Paketversionen waren nicht reproduzierbar fixiert | Hoch | Versionsdrift/transitive Konflikte | Niedrig | Hoch | Explizit fixiert; zentrale Verwaltung erst nach VS-Vereinheitlichung |
 | A-05 | Zwei veraltete, vom Build ausgeschlossene Sensorimplementierungen | Mittel | Verwirrung und falsche Erweiterungspunkte | Niedrig | Mittel | Entfernt |

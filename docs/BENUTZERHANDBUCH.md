@@ -21,7 +21,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | Container Generation | Container aus Interface- und Requirements-Dateien prüfen und generieren | Level7 |
 | Container2Fee | Container XML mit FEE-Simulationsobjekten verbinden | Level7 |
 | Container2FEE Visual | zusätzliche Planansicht mit Drag-and-drop; nutzt denselben Generator | Level7 |
-| Special Devices | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
+| SpecialDevices2FEE | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
 | Model Validation | Modell-/FEE-Daten prüfen | alle |
 | Model Control | Roboter, Achsen, Objekte und Simulation steuern | alle |
 | Interface Operation | Schnittstellen und Signale laden, verbinden und bearbeiten | alle |
@@ -34,7 +34,7 @@ Die Berechtigungen sind im Detail in der [Rollenverwaltung](ROLLENVERWALTUNG.md)
 1. In **Project Settings** den gewünschten Online-PC filtern, auswählen und die FEE-Verbindung aufbauen.
 2. In **ViCo → PC-/Projektsuche** den Arbeitsplatz oder das Projekt suchen und Kanbanize-Daten aktualisieren, falls notwendig.
 3. Falls eine Karte benötigt wird, im Hauptreiter **Kanbanize Karten** zuerst die Vorschau ausführen und erst danach bewusst synchronisieren.
-4. Für TIA-nahe Schritte den Hauptreiter **TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **Special Devices** verwenden.
+4. Für TIA-nahe Schritte den Hauptreiter **TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **SpecialDevices2FEE** verwenden.
 5. Änderungen, Fehler und externe Zugriffe am unteren Rand im Diagnoseprotokoll nachvollziehen.
 
 ## Project Settings
@@ -117,12 +117,15 @@ Der eigene Hauptreiter **Transfer** kopiert ausgewählte Dateien/Ordner mit begr
 
 1. lokale TIA-Version wählen;
 2. **Verbinden** drücken und die gefundene PLC auswählen;
-3. optional Programmbereiche, Datentypen oder Achsen laden;
-4. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
+3. optional Programmbereiche oder Datentypen laden; **Achsen nur lesen** ermittelt Achsen ausdrücklich ohne Projektänderung;
+4. Achsen einzeln oder über **Alle**/**Keine** auswählen und erst dann **Auswahl konfigurieren** verwenden;
+5. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
+
+Die Achsenkonfiguration setzt bei den ausgewählten Achsen folgende Parameter und protokolliert jeden tatsächlich gefundenen Schreibzugriff mit Wert und Ergebnis: `_Properties.MotionType`, `Modulo.Enable`, `Actor.DataAdaption`, `Sensor[1].DataAdaption`, `Sensor[1].MountingMode`, `Simulation.Mode`, `Sensor[1].Type`, `TorqueLimiting.PositionBasedMonitorings`, `FollowingError.EnableMonitoring` und `PositionControl.EnableDSC`. Die bisherige Namensheuristik behandelt X/Y/Z als linear und alle anderen Namen als rotatorisch; dies muss am realen Projekt fachlich geprüft werden. **Projekt speichern** persistiert Änderungen im geöffneten TIA-Projekt und ist von der Konfiguration getrennt.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
 
-Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **Special Devices**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
+Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **SpecialDevices2FEE**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
 ## Administration
 
@@ -156,7 +159,7 @@ Im zweiten Unterreiter kann weiterhin freiwillig eine normale Kanbanize-Karte er
 
 Weitere Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
 
-## Special Devices
+## SpecialDevices2FEE
 
 ![TIA-Hardware wird vor dem Erzeugen in einer Warteschlange geprüft](screenshots/special-devices.png)
 
@@ -169,7 +172,7 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 1. Auf der gemeinsamen Seite zum Bereich **Hardware aus geöffnetem TIA-Projekt lesen** wechseln.
 2. TIA-Version wählen, **Mit TIA verbinden** und PLC auswählen.
 3. **Hardware auslesen** drücken.
-4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp in einem blauen Gruppenkopf sowie GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
+4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp im Gruppenkopf sowie Traversierungsindex, Hierarchietiefe, Modul, Parent, Slot/Subslot, Pfad, konkrete Openness-Objektklasse, Hardware-ID, GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik, Zuordnungskandidat und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
 5. Erforderlichenfalls Logik, Präfix und Byteadressen korrigieren. Das vorgeschlagene Präfix stammt vom Gerätenamen (Fallback: PROFINET-/Modulname), nicht mehr vom einzelnen Modulnamen.
 6. **Zuordnung speichern** legt die geprüften Werte lokal ab und stellt sie beim nächsten Auslesen wieder her.
 7. Gewünschte Zeilen markieren und **Ausgewählte Geräte in Warteschlange übernehmen** drücken.
@@ -232,6 +235,6 @@ Für Inbetriebnehmer steht `VIBN_Tools_IBN.exe` bereit. Die kompakte Standardans
 
 ## Diagnose und Fehlerbehebung
 
-Das Log-Fenster am unteren Fensterrand sammelt Informationen, Warnungen und Fehler aus Project Settings, ViCo, Kanbanize, TIA und Special Devices. Bei einer Rückfrage bitte Zeitpunkt, Bereich, Statusmeldung und – wenn zulässig – die Fehlerdetails aus dem Protokoll angeben. Keine Kennwörter oder API-Schlüssel in Tickets, Screenshots oder Logs aufnehmen.
+Das Log-Fenster am unteren Fensterrand sammelt Informationen, Warnungen und Fehler aus Project Settings, ViCo, Kanbanize, TIA und SpecialDevices2FEE. Bei einer Rückfrage bitte Zeitpunkt, Bereich, Statusmeldung und – wenn zulässig – die Fehlerdetails aus dem Protokoll angeben. Keine Kennwörter oder API-Schlüssel in Tickets, Screenshots oder Logs aufnehmen.
 
 Die detaillierte Fehlerliste ist in [KONFIGURATION_UND_BETRIEB.md](KONFIGURATION_UND_BETRIEB.md) enthalten. Die Screenshots dieses Handbuchs verwenden ausschließlich synthetische Testdaten.

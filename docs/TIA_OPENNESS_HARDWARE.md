@@ -24,6 +24,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 `TiaHardwareModuleInfo` enthält:
 
 - DeviceName, DeviceType
+- TraversalIndex, HierarchyDepth, ParentName, ObjectClass, HardwareIdentifier
 - Manufacturer, OrderNumber, FirmwareVersion
 - GsdName, GsdType
 - ProfinetName, IpAddress, NetworkRole
@@ -31,7 +32,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 - ModuleName, ModulePath, ModuleType, TypeIdentifier
 - InputStartByte/InputLengthBits/InputLength und OutputStartByte/OutputLengthBits/OutputLength
 
-Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter Special Devices werden adressierbare beziehungsweise eindeutig einer Logik zuordenbare Module als Kandidaten angezeigt. Zeilen mit demselben Gerätenamen werden in einer aufklappbaren Gerätegruppe zusammengefasst. Sichtbar bleiben nur GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik und Status. E-/A-Startadressen sind weiterhin editierbar.
+Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter SpecialDevices2FEE werden adressierbare beziehungsweise eindeutig einer Logik zuordenbare Module als Kandidaten angezeigt. Zeilen mit demselben Gerätenamen werden in einer aufklappbaren Gerätegruppe zusammengefasst. Die Diagnosefelder Index, Tiefe, Parent, Pfad, Objektklasse und Hardware-ID bleiben neben GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik, Zuordnungskandidat und Status sichtbar. E-/A-Startadressen sind weiterhin editierbar.
 
 ## Gespeicherte Logikzuordnung
 

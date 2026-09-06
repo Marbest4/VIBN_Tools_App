@@ -1,6 +1,6 @@
 # Anforderungsmatrix Refactoring 2026
 
-Stand: 4. September 2026  
+Stand: 6. September 2026
 Status: **vorhanden**, **teilweise**, **offen**, **fachlich blockiert** oder **Live-Abnahme offen**.
 
 Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme. Ein erfolgreicher Build ist kein Nachweis für korrektes Verhalten in FEE, TIA oder Kanbanize.
@@ -29,10 +29,10 @@ Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme
 | Offline-Aktionen granular | offen; derzeit gemeinsames grobes Gate | `ViCoSearchPageVM`, UI | RDP/Prompt/PC-Ordner separat sperren; serverbasierte Pfade weiter nutzbar, genaue Gründe | Core-VM-Tests offline/online/kein Pfad |
 | Pfade/Links auswählbar und kopierbar | offen | ViCo Views | read-only selektierbare Controls und Kopieraktion | UI-Smoke, manueller Copy/Paste-Test |
 | Nur relevante Kanbanize-Infos | offen | Workstation-Projektion/Details-UI | strukturierte Feldauswahl statt Textfilter in der View | Adapter-Fixture und Snapshot-Test |
-| TIA Achsen nur lesen | offen | TIA Contracts/Client/Bridge, `TiaPortalPageVM` | neues read-only Kommando mit stabiler Achsenidentität | Fake-Bridge-Contract-Test, TIA-Live-Abnahme |
-| TIA Achsen Alle/Keine + selektiv konfigurieren | offen | gleiche Bereiche und UI | Auswahlmodell; Mutation nur für Auswahl | Unit-/Contract-Tests; reale Achsenwerte vor/nach dokumentieren |
-| TIA tatsächliche Änderungen dokumentieren | teilweise im Code, nicht verständlich in UI/Doku | `TiaOpennessSession`, Benutzerhandbuch | Parameterliste, Voraussetzungen und Ergebnisprotokoll | Doku-Review und Live-Protokoll |
-| TIA Save/Libraries erklären | teilweise | `TiaPortalPage.xaml`, `TiaPortalPageVM`, Doku | Tooltips/Infobox für Projekt-Save, VICOBIB-Ordner, Blocks/Types laden | UI-Test und manueller TIA-Ablauf |
+| TIA Achsen nur lesen | vorhanden, Live-Abnahme offen | TIA Contracts/Client/Bridge, `TiaPortalPageVM` | eigenes `technology.list-axes` mit stabiler Gruppenpfad-/Namensidentität; keine Mutation | Fake-Bridge-/Selection-Test und WPF-Smoke; TIA-Live-Abnahme offen |
+| TIA Achsen Alle/Keine + selektiv konfigurieren | vorhanden, Live-Abnahme offen | gleiche Bereiche und UI | Auswahlmodell; Bridge erhält ausschließlich ausgewählte IDs | Selection-/Library-Contract-Test; reale Achsenwerte vor/nach weiter offen |
+| TIA tatsächliche Änderungen dokumentieren | vorhanden, Live-Abnahme offen | `TiaOpennessSession`, Benutzerhandbuch | zehn Zielparameter dokumentiert; Rückgabe und Log pro tatsächlich gefundenem Parameter mit Wert/Erfolg/Fehler | automatischer Ergebnisprojektionstest; reales Vorher/Nachher-Protokoll offen |
+| TIA Save/Libraries erklären | vorhanden, manuelle Abnahme offen | `TiaPortalPage.xaml`, `TiaPortalPageVM`, Doku | Tooltips erklären Projekt-Save, Importstruktur, AxisDB/AxisFC und selektiven Alternativweg | WPF-Smoke; manueller TIA-Ablauf offen |
 | ContainerFile A/B vergleichen | vorhanden | `ContainerFileWorkspaceReader`, `GenerationWorkspaceReconciler`, Generator-VM/UI | bestehende Reimport-Domäne für semantischen Vergleich, feldgenaue Vorschau und selektive Übernahme wiederverwendet | automatischer Add/Remove/Source/Slot-/Auswahltest und WPF-Smoke; fachlicher Golden Master weiterhin offen |
 | PLC_OUT nie doppelt | vorhanden, FEE-Live-Abnahme offen | `ContainerSlotMultiplicityPolicy`, `ContainerData.Validate`, `ContainerBaseClass` | zentrale, case-insensitive Regel blockiert doppelte Ausgänge vor dem ersten FEE-Schreibzugriff mit Slot und Anzahl | automatischer Policy- und XML-Parser-Test; reale FEE-Abnahme bleibt offen |
 | PLC_IN definierte Mehrfachbelegung | vorhanden, FEE-Live-Abnahme offen | `ContainerSlotMultiplicityPolicy`, `ContainerBaseClass`, Factories, `FeeSimpleMove` | jede Mehrfachbelegung zulassen; bei Einzel-Slotmodellen je Signal ein eigenes Move erzeugen und gemeinsam verschalten; vorhandene Listen-Slotmodelle bleiben kompatibel | automatischer Policy-/Parsertest für Einzel- und Listen-Slots; vollständige SDK-Kanten live abnehmen |
@@ -46,8 +46,8 @@ Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme
 | Kein Interface auswählbar | vorhanden | Visual Plan/VM/UI | sichtbare Option „Keins“; automatische Suche bleibt über alle Interfaces aktiv | Sidecar-/UI-Smoke |
 | Präzise Disabled Reasons | teilweise | Visual VM/UI | FEE, Plan, Interface, Ziel, Sidecar getrennt erklären | Policy-Tests aller Kombinationen |
 | Missing SimObjects nur regelgerecht warnen/blockieren | teilweise | PlanValidator/Executor | Warnung bei erzeugbar/ausgewählt; Blocker nur wenn erforderlich und nicht erzeugbar/gewählt | Validierungsmatrix |
-| Special Devices umbenennen | offen | MainWindow, Doku | `SpecialDevices2FEE` konsistent | UI-Smoke und Textsuche |
-| TIA-Hardwarediagnose vor Namensregel | offen | TIA DTO/Reader, SpecialDevice VM/UI | Index, Tiefe, Name, Parent, Typ, Objektklasse, Pfad, Hardware-ID und Zuordnungskandidaten anzeigen | synthetischer Baumtest plus reales Projekt |
+| SpecialDevices2FEE benennen | vorhanden | MainWindow, VM-Logkategorie, Doku | sichtbare Bezeichnung `SpecialDevices2FEE`; interne etablierte Typ-/Namespace-Namen bleiben kompatibel | UI-Smoke und Textsuche |
+| TIA-Hardwarediagnose vor Namensregel | vorhanden, Live-Abnahme offen | TIA DTO/Reader, SpecialDevice VM/UI | Index, Tiefe, Name, Parent, Typ, Objektklasse, Pfad, Hardware-ID und Zuordnungskandidaten sichtbar | synthetischer Baumtest erweitert; reales Projekt offen |
 | AI-Reiter Regelvorschläge | offen | AI View/VM, neue Core-Domäne/Persistenz | eigener Subtab mit Filter, Status, Accept/Reject | Aggregations-, Persistenz- und UI-Tests |
 | Strukturierte manuelle Änderungen | teilweise; Slot/Add/Remove-JSONL | `ActionLogger`, Generatoränderungen | versioniertes Schema mit stabiler Signal-/Projekt-/Input-Identität und Property before/after | Schema-/Migrationstest, kein personenbezogener Inhalt |
 | Aktionslog-Pfad öffnen | teilweise; Trainingsordner vorhanden | AI UI/VM, PathLauncher | expliziter Logpfad, auswähl-/kopierbar und öffnen | Pfad-/Launcher-Test |
@@ -55,7 +55,7 @@ Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme
 | Sichere Regelübernahme in XML | offen | Requirements Writer, Backup/Patch-Preview | manuell ausgewählte Vorschläge, Backup, atomarer Write, Diff-Vorschau | Tempfile-Tests inkl. Fehler/Rollback; reale Kopie, nie Original ohne Bestätigung |
 | FEE2Container | Scope geklärt, Implementierung offen | neue Reverse-Domäne, FEE Discovery, Container Writer/UI | Root-Auswahl, kanonischer Extractor, Provenienz für künftig von Container2FEE erzeugte Modelle, Validierung, Preview, Export; kein garantierter Altmodell-Round-Trip | semantische Round-Trips und FEE-Live-Abnahme |
 | FEE2SpecialDevices | offen; eigener Reiter empfohlen | gemeinsamer Reverse-Extractor plus eigene Hardwaredomäne/UI | eigener Hauptreiter, gemeinsame Root-/Discovery-Dienste | Hardware-Fixtures, semantischer Exporttest, Live-Abnahme |
-| Dokumentation je Änderung | teilweise vorhanden | `docs/*` | Matrix und Status bei jedem Commit aktualisieren | Review: keine Funktion ohne Status/Limit |
+| Dokumentation je Änderung | fortlaufend vorhanden | `docs/*` | Matrix, Handbuch, TIA-Hardwaredoku und Status werden je Funktionscommit aktualisiert | Review: keine Funktion ohne Status/Limit |
 | Tests/CI | gute lokale Smokes, kein vollständiger externer CI-Nachweis | `Tests/*`, Buildskripte, ggf. `.github/workflows` | Tests je Policy; Windows-Agent mit internen Abhängigkeiten; Live-Checkliste getrennt | Release-Build 0/0, alle Smokes, Live-Ergebnisse nicht vortäuschen |
 
 ## Geplante Commit-Reihenfolge

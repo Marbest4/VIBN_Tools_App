@@ -8,7 +8,7 @@ VIBN Tools verwendet Rollen ausschließlich zur Steuerung der Tool-Berechtigunge
 
 | Bereich | erforderliche Rolle |
 | --- | --- |
-| normale VIBN-Reiter, Project Settings, ViCo, Zuli Converter, Special Devices, Model Validation, Model Control, Interface Operation | alle Benutzer |
+| normale VIBN-Reiter, Project Settings, ViCo, Zuli Converter, SpecialDevices2FEE, Model Validation, Model Control, Interface Operation | alle Benutzer |
 | CAD Wizard, Container Generation, Container2Fee | Level7 oder höher |
 | Kanbanize Karten, AI-Test | Level8 oder höher |
 | Administration anzeigen und verwenden | Level9 |

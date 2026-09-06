@@ -37,7 +37,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     private string? _selectedTiaVersion;
     private TiaPlcInfo? _selectedTiaPlc;
     private int _selectedDeviceIndex = -1;
-    private string _statusText = "Special Devices sind bereit.";
+    private string _statusText = "SpecialDevices2FEE ist bereit.";
 
     public SpecialDevicePageVM(
         ITiaBridgeClient tiaClient,
@@ -355,7 +355,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         catch (Exception exception)
         {
             StatusText = "Manuelles Special Device konnte nicht vorbereitet werden.";
-            _log.Error("Special Devices", StatusText, exception);
+            _log.Error("SpecialDevices2FEE", StatusText, exception);
         }
     }
 
@@ -520,7 +520,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             ? $"{added} TIA-Hardwareelement(e) wurden in die Warteschlange übernommen."
             : $"{added} Gerät(e) übernommen; {errors.Count} Zuordnung(en) prüfen: {string.Join(" ", errors.Take(3))}";
         if (errors.Count > 0)
-            _log.Warning("Special Devices", StatusText);
+            _log.Warning("SpecialDevices2FEE", StatusText);
     }
 
     private void DeleteSelectedDevice()
@@ -542,7 +542,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         if (!Connection.CanUseFeeFeatures)
         {
             StatusText = FeeConnectionService.MissingConnectionMessage;
-            _log.Warning("Special Devices", StatusText);
+            _log.Warning("SpecialDevices2FEE", StatusText);
             return;
         }
 
@@ -569,7 +569,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 catch (Exception exception)
                 {
                     failures.Add($"{device.DevicePrefix}: {exception.Message}");
-                    _log.Error("Special Devices", $"Gerät {device.DevicePrefix} konnte nicht erzeugt werden.", exception);
+                    _log.Error("SpecialDevices2FEE", $"Gerät {device.DevicePrefix} konnte nicht erzeugt werden.", exception);
                 }
 
                 // A failed attempt can already have created partial FEE

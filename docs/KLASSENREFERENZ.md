@@ -91,11 +91,11 @@
 | `ExistingSimObjectLinkAdapter.cs` | ausschließlich vorhandene SimObjects mit vorhandenen gleichnamigen LogicObjects verbinden; keine Erzeugung |
 | `ContainerToFeeVisualPageVM.cs` / `.xaml` | Commands, Filter, Drag-and-drop und dreigeteilte Darstellung |
 
-## Special Devices und bestehende VIBN-Bereiche
+## SpecialDevices2FEE und bestehende VIBN-Bereiche
 
 | Bereich | Einstiegspunkt |
 | --- | --- |
-| TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `Application/TiaHardwareMappingStore.cs`, `SpecialDevices/DeviceFactory.cs` |
+| TIA-Hardware nach SpecialDevices2FEE | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `Application/TiaHardwareMappingStore.cs`, `SpecialDevices/DeviceFactory.cs` |
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
 | Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |

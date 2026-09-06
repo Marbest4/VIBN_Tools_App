@@ -71,8 +71,11 @@ public sealed class TiaCommandDispatcher
                 _session.CreateDataTypeFolder(Read<TiaFolderPayload>(request));
                 return TiaDispatchResult.Empty();
 
+            case TiaCommands.ListAxes:
+                return TiaDispatchResult.From(_session.ListAxes());
+
             case TiaCommands.ConfigureAxes:
-                return TiaDispatchResult.From(_session.ConfigureAxes());
+                return TiaDispatchResult.From(_session.ConfigureAxes(Read<TiaAxisConfigurationPayload>(request)));
 
             case TiaCommands.Save:
                 _session.Save();

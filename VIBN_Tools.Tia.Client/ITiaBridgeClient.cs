@@ -43,7 +43,13 @@ public interface ITiaBridgeClient : IAsyncDisposable
 
     Task CreateDataTypeFolderAsync(string parentPath, string name, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(CancellationToken cancellationToken = default);
+    /// <summary>Reads axes without changing the TIA project.</summary>
+    Task<IReadOnlyList<TiaAxisInfo>> ListAxesAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>Configures only the axes identified by their stable IDs.</summary>
+    Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(
+        IReadOnlyCollection<string> axisIds,
+        CancellationToken cancellationToken = default);
 
     Task SaveAsync(CancellationToken cancellationToken = default);
 }

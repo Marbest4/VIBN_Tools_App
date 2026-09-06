@@ -80,6 +80,16 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public TiaHardwareModuleInfo Module { get; }
 
+    public int TraversalIndex => Module.TraversalIndex;
+
+    public int HierarchyDepth => Module.HierarchyDepth;
+
+    public string ParentName => Module.ParentName;
+
+    public string ObjectClass => Module.ObjectClass;
+
+    public string HardwareIdentifier => Module.HardwareIdentifier;
+
     /// <summary>
     /// Stable across TIA reads as long as the physical device/module identity
     /// is unchanged. Byte offsets are deliberately not part of the key so a
@@ -126,6 +136,8 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public int Subslot => Module.Subslot;
 
+    public string SlotAndSubslot => $"{FormatIndex(Slot)}/{FormatIndex(Subslot)}";
+
     public string DeviceName => Module.DeviceName;
 
     public string DeviceType => Module.DeviceType;
@@ -157,6 +169,8 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
             : Module.TypeIdentifier;
 
     public string TypeIdentifier => Module.TypeIdentifier;
+
+    public string SuggestedMapping => SelectedLogic?.DisplayName ?? "Keine eindeutige Zuordnung";
 
     public string FirmwareVersion => Module.FirmwareVersion;
 
@@ -231,6 +245,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
             _isConfigurationSaved = false;
             OnPropertyChanged();
             OnPropertyChanged(nameof(RequiresRobotType));
+            OnPropertyChanged(nameof(SuggestedMapping));
             OnPropertyChanged(nameof(State));
         }
     }
@@ -305,6 +320,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         OnPropertyChanged(nameof(SelectedLogic));
         OnPropertyChanged(nameof(SelectedRobotType));
         OnPropertyChanged(nameof(RequiresRobotType));
+        OnPropertyChanged(nameof(SuggestedMapping));
         OnPropertyChanged(nameof(State));
         return true;
     }
@@ -391,4 +407,6 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         var end = length > 0 ? start.Value + length - 1 : start.Value;
         return end > start.Value ? $"{start.Value}–{end}" : start.Value.ToString();
     }
+
+    private static string FormatIndex(int value) => value < 0 ? "—" : value.ToString();
 }

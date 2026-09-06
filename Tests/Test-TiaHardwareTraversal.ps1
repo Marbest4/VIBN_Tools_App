@@ -72,6 +72,7 @@ public sealed class FakeTiaDevice
         IpAddress = string.Empty;
         PnDeviceName = string.Empty;
         FirmwareVersion = string.Empty;
+        HardwareIdentifier = string.Empty;
         DeviceItems = new List<object>();
         Items = new List<object>();
     }
@@ -82,6 +83,7 @@ public sealed class FakeTiaDevice
     public string IpAddress { get; set; }
     public string PnDeviceName { get; set; }
     public string FirmwareVersion { get; set; }
+    public string HardwareIdentifier { get; set; }
     public List<object> DeviceItems { get; private set; }
     public List<object> Items { get; private set; }
 }
@@ -96,6 +98,7 @@ public sealed class FakeTiaItem
         IpAddress = string.Empty;
         PnDeviceName = string.Empty;
         FirmwareVersion = string.Empty;
+        HardwareIdentifier = string.Empty;
         DeviceItems = new List<object>();
         Addresses = new List<object>();
     }
@@ -106,6 +109,7 @@ public sealed class FakeTiaItem
     public string IpAddress { get; set; }
     public string PnDeviceName { get; set; }
     public string FirmwareVersion { get; set; }
+    public string HardwareIdentifier { get; set; }
     public int PositionNumber { get; set; }
     public List<object> DeviceItems { get; private set; }
     public List<object> Addresses { get; private set; }
@@ -183,6 +187,7 @@ function New-PnPnDevice() {
     $safeTwelveSix.Name = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
     $safeTwelveSix.TypeName = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
     $safeTwelveSix.PositionNumber = 1
+    $safeTwelveSix.HardwareIdentifier = 'HW-6201'
     $inputOne = [FakeTiaAddress]::new()
     $inputOne.IoType = 'Input'
     $inputOne.StartAddress = 62
@@ -198,6 +203,7 @@ function New-PnPnDevice() {
     $safeSixTwelve.Name = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
     $safeSixTwelve.TypeName = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
     $safeSixTwelve.PositionNumber = 2
+    $safeSixTwelve.HardwareIdentifier = 'HW-7402'
     $inputTwo = [FakeTiaAddress]::new()
     $inputTwo.IoType = 'Input'
     $inputTwo.StartAddress = 74
@@ -283,6 +289,11 @@ if ($pnPnRows.Count -ne 2) {
 
 $firstSafe = $pnPnRows[0]
 if ($firstSafe.DeviceType -ne 'PN/PN Coupler X2' -or
+    $firstSafe.TraversalIndex -lt 1 -or $firstSafe.HierarchyDepth -ne 2 -or
+    $firstSafe.ParentName -ne 'PN/PN Coupler Interface' -or
+    $firstSafe.ObjectClass -notmatch 'FakeTiaItem' -or
+    $firstSafe.HardwareIdentifier -ne 'HW-6201' -or
+    $firstSafe.ModulePath -ne 'PN-PN-Coupler_1/PN/PN Coupler Interface/PROFIsafe IN/OUT 12 Byte / 6 Byte' -or
     $firstSafe.IpAddress -ne '192.168.0.3' -or
     $firstSafe.ProfinetName -ne 'pn-pn-coupler-x2' -or
     $firstSafe.FirmwareVersion -ne 'V3.0' -or
@@ -291,7 +302,7 @@ if ($firstSafe.DeviceType -ne 'PN/PN Coupler X2' -or
     $firstSafe.InputLength -ne 12 -or $firstSafe.InputEndByte -ne 73 -or
     $firstSafe.OutputStartByte -ne 62 -or $firstSafe.OutputLengthBits -ne 48 -or
     $firstSafe.OutputLength -ne 6 -or $firstSafe.OutputEndByte -ne 67) {
-    throw 'Erster PROFIsafe-Bereich wurde nicht als E 62–73 / A 62–67 ausgewertet.'
+    throw "Erster PROFIsafe-Bereich falsch: Index=$($firstSafe.TraversalIndex), Tiefe=$($firstSafe.HierarchyDepth), Parent='$($firstSafe.ParentName)', Klasse='$($firstSafe.ObjectClass)', HW='$($firstSafe.HardwareIdentifier)', Pfad='$($firstSafe.ModulePath)', E=$($firstSafe.InputStartByte)/$($firstSafe.InputLengthBits), A=$($firstSafe.OutputStartByte)/$($firstSafe.OutputLengthBits)."
 }
 
 $secondSafe = $pnPnRows[1]

@@ -52,6 +52,8 @@ try
     await VerifyAdministrationIdentityAsync();
     Console.WriteLine("Running TIA library workflow smoke test...");
     await VerifyTiaLibraryWorkflowAsync(temporaryRoot);
+    Console.WriteLine("Running TIA axis selection and result smoke test...");
+    VerifyTiaAxisSelectionModel();
     Console.WriteLine("Running typed TIA pipe protocol smoke test...");
     await VerifyTypedTiaPipeProtocolAsync();
     Console.WriteLine("All ViCo core smoke tests passed.");
@@ -776,6 +778,8 @@ static async Task VerifyTiaLibraryWorkflowAsync(string temporaryRoot)
     await service.ImportAsync(library, configureAxes: true, "V18");
 
     Assert(client.Saved, "TIA library import should save the project.");
+    Assert(client.ConfiguredAxisIds.SequenceEqual(new[] { "Technology/AxisX" }),
+        "TIA library import should explicitly configure all axes discovered by the read-only command.");
     Assert(client.ImportedBlocks.Count == 4, "TIA block and generated axis imports are incomplete.");
     Assert(client.ImportedBlocks[^1].File.EndsWith("FB_IDB.xml", StringComparison.OrdinalIgnoreCase),
         "TIA instance DB should be imported last.");
@@ -788,6 +792,37 @@ static async Task VerifyTiaLibraryWorkflowAsync(string temporaryRoot)
         "TIA block export structure is incorrect.");
     Assert(File.Exists(Path.Combine(exportPath, "_Datatype", "VICOBIB", "Type.xml")),
         "TIA data type export structure is incorrect.");
+}
+
+static void VerifyTiaAxisSelectionModel()
+{
+    var row = new VIBN_Tools.Application.VM.TiaAxisSelectionRowVM(new TiaAxisInfo
+    {
+        Id = "Technology/Motion/AxisX",
+        Name = "AxisX",
+        TechnologyType = "PositioningAxis",
+        GroupPath = "Technology/Motion"
+    });
+
+    Assert(row.IsSelected && row.Result == "Nur gelesen",
+        "A discovered axis should be selected by default and clearly marked as read-only.");
+    row.IsSelected = false;
+    Assert(!row.IsSelected, "An axis must be individually deselectable before configuration.");
+
+    row.ApplyConfigurationResult(new TiaAxisInfo
+    {
+        Id = row.Id,
+        Name = row.Name,
+        TechnologyType = row.TechnologyType,
+        GroupPath = row.GroupPath,
+        ParameterResults =
+        [
+            new TiaAxisParameterResult { Name = "Simulation.Mode", Value = "1", Success = true },
+            new TiaAxisParameterResult { Name = "PositionControl.EnableDSC", Value = "0", Success = false, Error = "read-only" }
+        ]
+    });
+    Assert(row.Result == "1 gesetzt, 1 fehlgeschlagen",
+        "Axis configuration should expose exact success/failure counts in the UI model.");
 }
 
 static async Task VerifyTypedTiaPipeProtocolAsync()
@@ -806,7 +841,7 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
         using var reader = new StreamReader(server, leaveOpen: true);
         using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
 
-        for (var requestIndex = 0; requestIndex < 3; requestIndex++)
+        for (var requestIndex = 0; requestIndex < 5; requestIndex++)
         {
             var requestLine = await reader.ReadLineAsync();
             var request = JsonSerializer.Deserialize<TiaRequestEnvelope>(requestLine!);
@@ -814,9 +849,17 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
             {
                 0 => TiaCommands.Ping,
                 1 => TiaCommands.ListHardware,
+                2 => TiaCommands.ListAxes,
+                3 => TiaCommands.ConfigureAxes,
                 _ => TiaCommands.Close
             };
             Assert(request?.Command == expectedCommand, $"Typed TIA pipe command '{expectedCommand}' was not received.");
+            if (requestIndex == 3)
+            {
+                var configuration = JsonSerializer.Deserialize<TiaAxisConfigurationPayload>(request!.PayloadJson);
+                Assert(configuration?.AxisIds.SequenceEqual(new[] { "Technology/Motion/AxisX" }) == true,
+                    "The selected stable axis IDs must survive the typed pipe request.");
+            }
 
             var response = new TiaResponseEnvelope
             {
@@ -850,6 +893,30 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
                             OutputLength = 6
                         }
                     }),
+                    2 => JsonSerializer.Serialize(new[]
+                    {
+                        new TiaAxisInfo
+                        {
+                            Id = "Technology/Motion/AxisX",
+                            Name = "AxisX",
+                            GroupPath = "Technology/Motion",
+                            TechnologyType = "PositioningAxis"
+                        }
+                    }),
+                    3 => JsonSerializer.Serialize(new[]
+                    {
+                        new TiaAxisInfo
+                        {
+                            Id = "Technology/Motion/AxisX",
+                            Name = "AxisX",
+                            GroupPath = "Technology/Motion",
+                            TechnologyType = "PositioningAxis",
+                            ParameterResults =
+                            [
+                                new TiaAxisParameterResult { Name = "Simulation.Mode", Value = "1", Success = true }
+                            ]
+                        }
+                    }),
                     _ => JsonSerializer.Serialize((object?)null)
                 }
             };
@@ -878,6 +945,12 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
                hardware[0].FirmwareVersion == "V1.0" &&
                hardware[0].InputAddressRange == "8–19" && hardware[0].OutputAddressRange == "12–17",
             "TIA hardware configuration must survive the typed pipe boundary.");
+        var axes = await client.ListAxesAsync();
+        Assert(axes.Count == 1 && axes[0].Id == "Technology/Motion/AxisX",
+            "The read-only TIA axis list must survive the typed pipe boundary.");
+        var configuredAxes = await client.ConfigureAxesAsync(new[] { axes[0].Id });
+        Assert(configuredAxes.Count == 1 && configuredAxes[0].ParameterResults.Single().Success,
+            "Selective TIA axis configuration results must survive the typed pipe boundary.");
     }
     finally
     {

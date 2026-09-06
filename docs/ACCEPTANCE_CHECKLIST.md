@@ -55,10 +55,10 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Bestehende generierte Karte ändert nur Startfeld und Deadline, nicht Titel/Position/Beschreibung.
 - [ ] Eigene Karte kann unabhängig erstellt werden.
 
-## TIA und Special Devices
+## TIA und SpecialDevices2FEE
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
-- [ ] Die einzige Hardwareansicht unter Special Devices gruppiert gleiche Gerätenamen und zeigt GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Diagnosepfad, Objektklasse, Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
 - [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
 - [ ] Geräteüberschrift zeigt realen Gerätenamen und -typ; IP, PROFINET-Name und Firmware werden vom Geräte-/Interfaceknoten auf beide adressführenden Module übernommen.
