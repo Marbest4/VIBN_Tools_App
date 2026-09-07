@@ -49,6 +49,8 @@
                 <DataGridTextColumn Header="GUID" Binding="{Binding Guid}" Width="2*" />
                 <DataGridTextColumn Header="Container" Binding="{Binding ContainerCount}" Width="*" />
                 <DataGridTextColumn Header="Signale" Binding="{Binding SignalCount}" Width="*" />
+                <DataGridTextColumn Header="Aktuell gelesen" Binding="{Binding UpdatedSignalCount}" Width="*" />
+                <DataGridTextColumn Header="Fehlend" Binding="{Binding MissingSignalCount}" Width="*" />
                 <DataGridTextColumn Header="Quellfingerprint" Binding="{Binding Provenance.SourceFingerprint}" Width="2*" />
             </DataGrid.Columns>
         </DataGrid>

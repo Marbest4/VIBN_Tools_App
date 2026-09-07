@@ -8,7 +8,9 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 public sealed record Fee2ContainerRoot(
     Guid Guid,
     string Name,
-    FeeContainerProvenanceSnapshot Provenance)
+    FeeContainerProvenanceSnapshot Provenance,
+    int UpdatedSignalCount,
+    int MissingSignalCount)
 {
     public int ContainerCount => Provenance.ContainerCount;
     public int SignalCount => Provenance.SignalCount;
@@ -38,6 +40,15 @@ public sealed class Fee2ContainerService
         var ignored = 0;
         var guidValues = await Services.ApiInstance.Object
             .GetSceneObjectGuidsOfTypeAsync(nameof(BasicFrame));
+        var currentVariables = (await Services.ApiInstance.Interface.GetAllVariablesAsync())
+            .Select(variable => new FeeContainerVariableState(
+                variable.VariableGuid,
+                variable.Tag ?? string.Empty,
+                variable.Address ?? string.Empty,
+                variable.Path ?? string.Empty,
+                variable.Type.ToString(),
+                variable.Comment ?? string.Empty))
+            .ToArray();
 
         foreach (var guidText in guidValues)
         {
@@ -75,7 +86,21 @@ public sealed class Fee2ContainerService
                     continue;
                 }
 
-                roots.Add(new Fee2ContainerRoot(guid, name, provenance!));
+                var projection = FeeContainerVariableProjector.Apply(provenance!, currentVariables);
+                if (projection.MissingVariableGuids.Count > 0)
+                {
+                    issues.Add(new Fee2ContainerDiscoveryIssue(
+                        guid,
+                        name,
+                        $"{projection.MissingVariableGuids.Count} in der Provenienz referenzierte " +
+                        "FEE-Variablen fehlen; für diese Einträge bleibt der Generierungsstand erhalten."));
+                }
+                roots.Add(new Fee2ContainerRoot(
+                    guid,
+                    name,
+                    projection.Snapshot,
+                    projection.UpdatedEntries,
+                    projection.MissingVariableGuids.Count));
             }
             catch (Exception exception)
             {

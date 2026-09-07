@@ -104,10 +104,31 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                     .Select(node => node.Id)
                     .ToHashSet(StringComparer.Ordinal);
                 var sourceDocument = XDocument.Load(plan.SourceXmlPath, LoadOptions.None);
+                var signalSources = selectedBindings.ToDictionary(
+                    item => item.PlanNode.Id,
+                    item => (IReadOnlyList<FeeContainerSignalSource>)item.RuntimeContainer
+                        .EnumerateAssignedSignals()
+                        .Select(signal => new FeeContainerSignalSource(
+                            signal.Comment ?? string.Empty,
+                            signal.Tag ?? string.Empty,
+                            string.IsNullOrWhiteSpace(signal.Path) ? signal.Address ?? string.Empty : signal.Path,
+                            signal.IOTypeString ?? string.Empty,
+                            signal.Guid))
+                        .ToArray(),
+                    StringComparer.Ordinal);
                 var provenance = FeeContainerProvenanceCodec.Create(
                     sourceDocument,
                     includedContainerIds,
-                    plan.SourceFingerprint);
+                    plan.SourceFingerprint,
+                    signalSources);
+                var expectedBindings = signalSources.Values.Sum(signals => signals.Count);
+                if (provenance.SignalBindings.Count != expectedBindings)
+                {
+                    return Failure(
+                        "Die Container-Einträge konnten nicht eindeutig den aufgelösten FEE-Signalen zugeordnet werden. " +
+                        "Die Generierung wurde vor dem BasicFrame abgebrochen.",
+                        "PROVENANCE_SIGNAL_BINDING_INCOMPLETE");
+                }
                 var basicFrame = new FeeBasicFrame
                 {
                     Name = $"Auto Generated (at {timestamp})",

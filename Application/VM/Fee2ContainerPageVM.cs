@@ -103,6 +103,8 @@ public sealed class Fee2ContainerPageVM : MvvmBase
     public string SelectionSummary => SelectedRoot is null
         ? "Kein Root ausgewählt."
         : $"{SelectedRoot.ContainerCount} Container, {SelectedRoot.SignalCount} Signale; " +
+          $"{SelectedRoot.UpdatedSignalCount} aus aktuellem FEE gelesen, " +
+          $"{SelectedRoot.MissingSignalCount} fehlend; " +
           $"Quellfingerprint {Shorten(SelectedRoot.Provenance.SourceFingerprint)}";
 
     private async Task RefreshAsync()

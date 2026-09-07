@@ -230,7 +230,7 @@ Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbinde
 
 ### FEE2Container
 
-Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und zeigt nur Roots mit gültiger, versionierter Container2FEE-Provenienz. Wählen Sie einen Root und exportieren Sie dessen ContainerFile. Ältere und manuell erstellte Modelle werden nicht heuristisch rekonstruiert; beschädigte Metadaten erscheinen als konkrete Diagnose. Details und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
+Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und zeigt nur Roots mit gültiger, versionierter Container2FEE-Provenienz. Wählen Sie einen Root und exportieren Sie dessen ContainerFile. Signalname, Adresse/Pfad, Datentyp und Signal-ID werden dabei über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen; fehlende Variablen werden gemeldet. Ältere und manuell erstellte Modelle werden nicht heuristisch rekonstruiert; beschädigte Metadaten erscheinen als konkrete Diagnose. Details, Slot-Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
 
 ### Model Validation, Model Control und Interface Operation
 

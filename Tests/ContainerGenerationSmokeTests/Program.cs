@@ -279,27 +279,51 @@ internal static class Program
                 .Single(node => node.Kind == VisualNodeKind.Container && node.Name == "FanInCylinder")
                 .Id;
             var source = XDocument.Load(sourcePath);
+            var variableA = Guid.NewGuid();
+            var variableB = Guid.NewGuid();
             var encoded = FeeContainerProvenanceCodec.Create(
                 source,
                 new HashSet<string>(StringComparer.Ordinal) { selectedId },
-                loaded.Plan.SourceFingerprint);
+                loaded.Plan.SourceFingerprint,
+                new Dictionary<string, IReadOnlyList<FeeContainerSignalSource>>(StringComparer.Ordinal)
+                {
+                    [selectedId] =
+                    [
+                        new("A", "HomeA", "%I0.0", "Bool", variableA),
+                        new("B", "HomeB", "%I0.1", "Bool", variableB),
+                    ]
+                });
             if (!FeeContainerProvenanceCodec.TryRead(encoded.Tags, out var decoded, out var error) ||
                 decoded is null)
             {
                 throw new InvalidOperationException($"Provenance could not be decoded: {error}");
             }
             if (decoded.ContainerCount != 1 || decoded.SignalCount != 2 ||
+                decoded.SignalBindings.Count != 2 ||
                 decoded.SourceFingerprint != loaded.Plan.SourceFingerprint)
             {
                 throw new InvalidOperationException("Provenance selection or counters changed during round-trip.");
             }
 
-            FeeContainerProvenanceCodec.SaveAtomically(decoded, exportedPath);
+            var projection = FeeContainerVariableProjector.Apply(
+                decoded,
+                [
+                    new(variableA, "HomeA_Renamed", "%I7.0", string.Empty, "Bool", "A-NEW"),
+                    new(variableB, "HomeB", string.Empty, "GVL_IO.HomeB", "Bool", "B"),
+                ]);
+            if (projection.UpdatedEntries != 2 || projection.MissingVariableGuids.Count != 0)
+                throw new InvalidOperationException("Current FEE variable values were not projected completely.");
+
+            FeeContainerProvenanceCodec.SaveAtomically(projection.Snapshot, exportedPath);
             var (containers, unknownSignals) = ContainerToFeeService.ReadInContainerXmlData(exportedPath);
             var cylinder = (GrobCylinder_Container)containers.Single();
             if (unknownSignals.Count != 0 ||
                 cylinder.ComponentName != "FanInCylinder" ||
-                cylinder.Signals_InHomePos.Count != 2)
+                cylinder.Signals_InHomePos.Count != 2 ||
+                cylinder.Signals_InHomePos[0].Tag != "HomeA_Renamed" ||
+                cylinder.Signals_InHomePos[0].Address != "%I7.0" ||
+                cylinder.Signals_InHomePos[0].Comment != "A-NEW" ||
+                cylinder.Signals_InHomePos[1].Path != "GVL_IO.HomeB")
             {
                 throw new InvalidOperationException(
                     "Container → provenance → Container lost the selected container or PLC_IN fan-in.");
