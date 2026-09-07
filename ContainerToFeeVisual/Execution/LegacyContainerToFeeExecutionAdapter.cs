@@ -2,6 +2,7 @@ using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.Settings;
+using System.Xml.Linq;
 using static VIBN_Tools.GlobalClasses.Interfaces;
 
 namespace VIBN_Tools.ContainerToFeeVisual;
@@ -95,9 +96,22 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
 
             if (selectedContainers.Length > 0)
             {
+                var includedContainerIds = plan.Nodes
+                    .Where(node => node.Kind == VisualNodeKind.Container)
+                    .Where(node =>
+                        plan.IsGenerationSelected(node.Id) ||
+                        !ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+                    .Select(node => node.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                var sourceDocument = XDocument.Load(plan.SourceXmlPath, LoadOptions.None);
+                var provenance = FeeContainerProvenanceCodec.Create(
+                    sourceDocument,
+                    includedContainerIds,
+                    plan.SourceFingerprint);
                 var basicFrame = new FeeBasicFrame
                 {
                     Name = $"Auto Generated (at {timestamp})",
+                    PersistentTags = provenance.Tags,
                 };
                 await basicFrame.CreateAsync();
                 await basicFrame.SendAndWaitAsync();
@@ -126,7 +140,8 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 $"Visuelle Generierung abgeschlossen: {selectedContainers.Length} Container " +
                 $"({signalPlan.ExistingBindings.Count} vorhandene, " +
                 $"{signalPlan.MissingSignals.Count} neu zu erzeugende Signale), " +
-                $"{binding.UnknownSignals.Count} unbekannte Signale.");
+                $"{binding.UnknownSignals.Count} unbekannte Signale. " +
+                "Der erzeugte BasicFrame enthält Container2FEE-Provenienz für FEE2Container.");
             return new VisualExecutionResult(
                 true,
                 $"Generierung abgeschlossen: {selectedContainers.Length} Container wurden verarbeitet; " +

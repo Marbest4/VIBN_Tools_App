@@ -9,6 +9,7 @@ using VIBN_Tools.ContainerGeneration.BusinessLogic.RequirementsXml;
 using VIBN_Tools.ContainerGeneration.Utils;
 using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.ContainerToFee.GrobStandard;
+using VIBN_Tools.ContainerToFeeVisual;
 
 namespace VIBN_Tools.ContainerGeneration.SmokeTests;
 
@@ -40,6 +41,7 @@ internal static class Program
         ValidateSlotMultiplicityPolicy();
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
+        await ValidateFee2ContainerProvenanceRoundTripAsync();
 
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
@@ -235,6 +237,78 @@ internal static class Program
             {
                 throw new InvalidOperationException("Selective ContainerFile comparison decisions were not applied.");
             }
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static async Task ValidateFee2ContainerProvenanceRoundTripAsync()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-fee-roundtrip-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var sourcePath = Path.Combine(directory, "source.xml");
+        var exportedPath = Path.Combine(directory, "exported.xml");
+        try
+        {
+            File.WriteAllText(sourcePath, """
+                <ContainerFile>
+                  <Container id="1">
+                    <Component>FanInCylinder</Component><Type>Cylinder</Type><DataList>
+                      <Entry><ID>A</ID><Address>%I0.0</Address><DataType>Bool</DataType><Signal>HomeA</Signal><Slot>PLC_IN_InHomePos</Slot></Entry>
+                      <Entry><ID>B</ID><Address>%I0.1</Address><DataType>Bool</DataType><Signal>HomeB</Signal><Slot>PLC_IN_InHomePos</Slot></Entry>
+                    </DataList>
+                  </Container>
+                  <Container id="2">
+                    <Component>ExcludedSensor</Component><Type>Sensor</Type><DataList>
+                      <Entry><ID>C</ID><Address>%I0.2</Address><DataType>Bool</DataType><Signal>Detected</Signal><Slot>PLC_IN_PartPresent_Ch1</Slot></Entry>
+                    </DataList>
+                  </Container>
+                </ContainerFile>
+                """);
+
+            var planService = new ContainerToFeeVisualPlanService();
+            var loaded = await planService.LoadXmlAsync(sourcePath);
+            if (!loaded.Success || loaded.Plan is null)
+                throw new InvalidOperationException(
+                    $"Round-trip plan could not be parsed: {loaded.Message}; " +
+                    string.Join(" | ", loaded.Issues.Select(issue => $"{issue.Code}: {issue.Message}")));
+            var selectedId = loaded.Plan.Nodes
+                .Single(node => node.Kind == VisualNodeKind.Container && node.Name == "FanInCylinder")
+                .Id;
+            var source = XDocument.Load(sourcePath);
+            var encoded = FeeContainerProvenanceCodec.Create(
+                source,
+                new HashSet<string>(StringComparer.Ordinal) { selectedId },
+                loaded.Plan.SourceFingerprint);
+            if (!FeeContainerProvenanceCodec.TryRead(encoded.Tags, out var decoded, out var error) ||
+                decoded is null)
+            {
+                throw new InvalidOperationException($"Provenance could not be decoded: {error}");
+            }
+            if (decoded.ContainerCount != 1 || decoded.SignalCount != 2 ||
+                decoded.SourceFingerprint != loaded.Plan.SourceFingerprint)
+            {
+                throw new InvalidOperationException("Provenance selection or counters changed during round-trip.");
+            }
+
+            FeeContainerProvenanceCodec.SaveAtomically(decoded, exportedPath);
+            var (containers, unknownSignals) = ContainerToFeeService.ReadInContainerXmlData(exportedPath);
+            var cylinder = (GrobCylinder_Container)containers.Single();
+            if (unknownSignals.Count != 0 ||
+                cylinder.ComponentName != "FanInCylinder" ||
+                cylinder.Signals_InHomePos.Count != 2)
+            {
+                throw new InvalidOperationException(
+                    "Container → provenance → Container lost the selected container or PLC_IN fan-in.");
+            }
+
+            var damagedTags = encoded.Tags.ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
+            damagedTags[FeeContainerProvenanceCodec.HashKey] = new string('0', 64);
+            if (FeeContainerProvenanceCodec.TryRead(damagedTags, out _, out _))
+                throw new InvalidOperationException("Damaged provenance checksum was accepted.");
         }
         finally
         {

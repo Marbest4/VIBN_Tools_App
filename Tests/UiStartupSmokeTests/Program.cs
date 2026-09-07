@@ -136,6 +136,14 @@ internal static class Program
             {
                 DataContext = visualContainerViewModel
             };
+            var fee2ContainerPage = new Fee2ContainerPage();
+            var fee2ContainerViewModel = (Fee2ContainerPageVM)fee2ContainerPage.DataContext;
+            if (fee2ContainerViewModel.CanExport ||
+                string.IsNullOrWhiteSpace(fee2ContainerViewModel.ExportUnavailableReason))
+            {
+                throw new InvalidOperationException(
+                    "FEE2Container export must explain why no root can be exported.");
+            }
 
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
@@ -190,6 +198,7 @@ internal static class Program
                 kanbanizeCardPage,
                 specialDevicePage,
                 visualContainerPage,
+                fee2ContainerPage,
                 new DiagnosticsPanel()
             ];
 

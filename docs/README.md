@@ -14,6 +14,7 @@
 - [Entwicklerhandbuch](ENTWICKLERHANDBUCH.md) – Erweiterungsmuster, Abhängigkeitsrichtung und Tests.
 - [Klassenreferenz](KLASSENREFERENZ.md) – wo sich welche Logik befindet.
 - [Quellcode-Dokumentation](QUELLCODE_DOKUMENTATION.md) – Kommentarregeln und Lesereihenfolge.
+- [FEE2Container](FEE2CONTAINER.md) – Provenienzformat, Bedienung, Round-Trip und Grenzen.
 - [Datenflüsse](DATENFLUESSE.md) – PC-Daten, RDP, Konfiguration, Kanbanize, TIA und FEE.
 - [Architektur](ARCHITECTURE.md) – kurze technische Übersicht in Englisch.
 - [Umsetzungsstatus 2026](UMSETZUNGSSTATUS_2026.md) – Abgleich zwischen implementiert, automatisch geprüft und fachlich noch offen.
