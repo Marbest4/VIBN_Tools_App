@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Xml.Linq;
 using SixLabors.Fonts;
 using VIBN_Tools.ContainerGeneration.BusinessLogic;
+using VIBN_Tools.ContainerGeneration.AI;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ZuLiData;
 using VIBN_Tools.ContainerGeneration.Models;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData;
@@ -42,6 +43,7 @@ internal static class Program
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
+        ValidateRuleSuggestionWorkflow();
 
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
@@ -339,6 +341,95 @@ internal static class Program
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private static void ValidateRuleSuggestionWorkflow()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-rule-suggestions-{Guid.NewGuid():N}");
+        var reviewsPath = Path.Combine(directory, "reviews.json");
+        try
+        {
+            var logger = new ActionLogger(directory);
+            LogSlotCorrection(logger, "SIG-A", "Ready", "PLC_IN_Old", "PLC_IN_New", "source-1");
+            LogSlotCorrection(logger, "SIG-B", "Ready", "PLC_IN_Old", "PLC_IN_New", "source-2");
+            LogSlotCorrection(logger, "SIG-C", "Ready", "PLC_IN_Old", "PLC_IN_Alternative", "source-3");
+            var other = new ContainerEntry
+            {
+                SignalId = "SIG-D",
+                Signal = "Ready",
+                Slot = "PLC_IN_New",
+                Address = "%I0.0"
+            };
+            logger.LogPropertyChange(
+                "Cylinder_1", "Cylinder", other, nameof(ContainerEntry.Address),
+                "%I0.0", "%I0.7", "source-4");
+
+            var analysis = new RuleSuggestionService().Analyze(
+                Directory.GetFiles(directory, "*.jsonl"));
+            var preferred = analysis.Suggestions.Single(suggestion => suggestion.NewValue == "PLC_IN_New");
+            if (analysis.ParsedEvents != 4 || analysis.InvalidLines != 0 ||
+                analysis.Suggestions.Count != 2 || preferred.Frequency != 2 ||
+                preferred.RelevantCases != 3 || Math.Abs(preferred.Confidence - (2d / 3d)) > 0.0001)
+            {
+                throw new InvalidOperationException("Deterministic rule-suggestion confidence is incorrect.");
+            }
+
+            var store = new RuleSuggestionReviewStore(reviewsPath);
+            store.Save(new Dictionary<string, RuleSuggestionStatus>
+            {
+                [preferred.Id] = RuleSuggestionStatus.Accepted
+            });
+            var reviewed = new RuleSuggestionService().Analyze(
+                Directory.GetFiles(directory, "*.jsonl"), store.Load());
+            if (reviewed.Suggestions.Single(item => item.Id == preferred.Id).Status !=
+                RuleSuggestionStatus.Accepted)
+            {
+                throw new InvalidOperationException("Rule-suggestion review status was not persisted.");
+            }
+
+            var json = File.ReadAllText(Directory.GetFiles(directory, "*.jsonl").Single());
+            if (!json.Contains("\"SchemaVersion\":2", StringComparison.Ordinal) ||
+                !json.Contains("\"TimestampUtc\":", StringComparison.Ordinal) ||
+                !json.Contains("\"SourceKey\":", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Structured action-log schema metadata is missing.");
+            }
+
+            var legacyPath = Path.Combine(directory, "legacy.log");
+            File.WriteAllText(legacyPath, """
+                {"SignalId":"LEGACY-1","SignalText":"LegacyReady","FromContainer":"C1","FromComponentType":"Cylinder","FromSlot":"PLC_IN_A","ToContainer":"C1","ComponentType":"Cylinder","ToSlot":"PLC_IN_B","RuleSuggestion":"","MlTop1":null,"MlTop1Score":0}
+                """);
+            var legacy = new RuleSuggestionService().Analyze([legacyPath]);
+            if (legacy.ParsedEvents != 1 || legacy.Suggestions.Count != 1 ||
+                legacy.Suggestions[0].PreviousValue != "PLC_IN_A" ||
+                legacy.Suggestions[0].NewValue != "PLC_IN_B")
+            {
+                throw new InvalidOperationException("Schema-1 action logs are no longer readable.");
+            }
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void LogSlotCorrection(
+        ActionLogger logger,
+        string signalId,
+        string signal,
+        string oldSlot,
+        string newSlot,
+        string sourceKey)
+    {
+        var entry = new ContainerEntry
+        {
+            SignalId = signalId,
+            Signal = signal,
+            Slot = newSlot
+        };
+        logger.LogSlotChange(
+            "Cylinder_1", "Cylinder", entry, oldSlot, null, null, sourceKey);
     }
 
     private static string BuildContainerFileXml(

@@ -10,6 +10,7 @@ using VIBN_Tools.Application.View;
 using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
+using VIBN_Tools.ContainerGeneration.AI;
 using VIBN_Tools.ContainerToFeeVisual;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
@@ -144,6 +145,20 @@ internal static class Program
                 throw new InvalidOperationException(
                     "FEE2Container export must explain why no root can be exported.");
             }
+            var aiTrainingPage = new AITrainingTestPage();
+            var aiTrainingViewModel = (AITrainingTestPageVM)aiTrainingPage.DataContext;
+            aiTrainingViewModel.RuleSuggestions.Add(new RuleSuggestion(
+                "test-rule",
+                "Testregel für WPF-Bindings",
+                "Cylinder",
+                "Ready",
+                "Slot",
+                "PLC_IN_Old",
+                "PLC_IN_New",
+                2,
+                3,
+                2d / 3d,
+                RuleSuggestionStatus.Pending));
 
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
@@ -199,6 +214,7 @@ internal static class Program
                 specialDevicePage,
                 visualContainerPage,
                 fee2ContainerPage,
+                aiTrainingPage,
                 new DiagnosticsPanel()
             ];
 

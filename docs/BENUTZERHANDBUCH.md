@@ -22,6 +22,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | Container2Fee | Container XML mit FEE-Simulationsobjekten verbinden | Level7 |
 | Container2FEE Visual | zusätzliche Planansicht mit Drag-and-drop; nutzt denselben Generator | Level7 |
 | FEE2Container | exportiert ContainerFiles aus künftig durch Container2FEE erzeugten Roots | Level7 + FEE-Verbindung |
+| AI-Test / Regelvorschläge | analysiert protokollierte manuelle Slotkorrekturen; Review ohne automatische XML-Änderung | Level8 |
 | SpecialDevices2FEE | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
 | Model Validation | Modell-/FEE-Daten prüfen | alle |
 | Model Control | Roboter, Achsen, Objekte und Simulation steuern | alle |
@@ -231,6 +232,10 @@ Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbinde
 ### FEE2Container
 
 Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und zeigt nur Roots mit gültiger, versionierter Container2FEE-Provenienz. Wählen Sie einen Root und exportieren Sie dessen ContainerFile. Signalname, Adresse/Pfad, Datentyp und Signal-ID werden dabei über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen; fehlende Variablen werden gemeldet. Ältere und manuell erstellte Modelle werden nicht heuristisch rekonstruiert; beschädigte Metadaten erscheinen als konkrete Diagnose. Details, Slot-Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
+
+### AI-Test / Regelvorschläge
+
+Der Unterreiter **Regelvorschläge** wertet strukturierte manuelle Slotkorrekturen aus. Häufigkeit, Zahl unterschiedlicher Fälle und die daraus berechnete Konfidenz bleiben sichtbar. **Annehmen** oder **Ablehnen** speichert nur den Prüfstatus; es wird noch keine Requirements-XML verändert. Über **Aktionslogs öffnen** gelangen Sie direkt zur JSONL-Datenbasis. Details stehen in [AI_REGELVORSCHLAEGE.md](AI_REGELVORSCHLAEGE.md).
 
 ### Model Validation, Model Control und Interface Operation
 

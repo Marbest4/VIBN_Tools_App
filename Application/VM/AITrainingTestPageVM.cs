@@ -43,6 +43,12 @@ namespace VIBN_Tools.Application.VM
         public ICommand OpenTrainingFolderCommand   => GetCommandBinding(_ => OpenTrainingFolder());
         public ICommand RefreshAnalysisCommand      => GetCommandBinding(_ => RunAnalysis());
         public ICommand ImproveMultipleCommand      => GetCommandBinding(ImproveMultiple);
+        public ICommand RefreshRuleSuggestionsCommand => GetCommandBinding(_ => RefreshRuleSuggestions());
+        public ICommand AcceptRuleSuggestionCommand => GetCommandBinding(
+            parameter => SetRuleSuggestionStatus(parameter, RuleSuggestionStatus.Accepted));
+        public ICommand RejectRuleSuggestionCommand => GetCommandBinding(
+            parameter => SetRuleSuggestionStatus(parameter, RuleSuggestionStatus.Rejected));
+        public ICommand OpenActionLogFolderCommand => GetCommandBinding(_ => OpenActionLogFolder());
 
         // ===========================
         // Services
@@ -54,6 +60,8 @@ namespace VIBN_Tools.Application.VM
         private readonly TrainingDataAnalyzer  _analyzer   = new();
         private readonly ActionLogNoiseFilter  _noiseFilter = new();
         private readonly ComponentTypeNormalizer _typeNorm  = new();
+        private readonly RuleSuggestionService _ruleSuggestionService = new();
+        private readonly RuleSuggestionReviewStore _ruleSuggestionReviews = new();
 
         // ===========================
         // Settings
@@ -118,6 +126,14 @@ namespace VIBN_Tools.Application.VM
         // Trainingsdaten
         // ===========================
         public ObservableCollection<ModelEntry> ModelEntries { get; } = new();
+        public ObservableCollection<RuleSuggestion> RuleSuggestions { get; } = new();
+
+        private string _ruleSuggestionSummary = "Noch keine Änderungslogs ausgewertet.";
+        public string RuleSuggestionSummary
+        {
+            get => _ruleSuggestionSummary;
+            private set { _ruleSuggestionSummary = value; OnPropertyChanged(); }
+        }
 
         public class ModelEntry
         {
@@ -298,6 +314,60 @@ namespace VIBN_Tools.Application.VM
         public AITrainingTestPageVM()
         {
             try { RunAnalysis(); } catch { /* ignorieren */ }
+            try { RefreshRuleSuggestions(); }
+            catch (Exception exception)
+            {
+                RuleSuggestionSummary = $"Regelvorschläge konnten nicht geladen werden: {exception.Message}";
+            }
+        }
+
+        private void RefreshRuleSuggestions()
+        {
+            var analysis = _ruleSuggestionService.Analyze(
+                ModelPaths.AllActionLogs(),
+                _ruleSuggestionReviews.Load());
+            RuleSuggestions.Clear();
+            foreach (var suggestion in analysis.Suggestions)
+                RuleSuggestions.Add(suggestion);
+            RuleSuggestionSummary =
+                $"{analysis.ParsedEvents} strukturierte Aktionen, {analysis.Suggestions.Count} Vorschläge, " +
+                $"{analysis.InvalidLines} ungültige Logzeilen. " +
+                "Konfidenz = unterschiedliche unterstützende Fälle / alle relevanten Fälle.";
+        }
+
+        private void SetRuleSuggestionStatus(object parameter, RuleSuggestionStatus status)
+        {
+            if (parameter is not RuleSuggestion suggestion)
+                return;
+            var statuses = new Dictionary<string, RuleSuggestionStatus>(
+                _ruleSuggestionReviews.Load(),
+                StringComparer.Ordinal)
+            {
+                [suggestion.Id] = status
+            };
+            _ruleSuggestionReviews.Save(statuses);
+            var index = RuleSuggestions.IndexOf(suggestion);
+            if (index >= 0)
+                RuleSuggestions[index] = suggestion with { Status = status };
+            Log($"Regelvorschlag {suggestion.Id[..12]} wurde als {status} markiert. " +
+                "Die Requirements-XML wurde nicht automatisch verändert.");
+        }
+
+        private void OpenActionLogFolder()
+        {
+            try
+            {
+                Directory.CreateDirectory(ModelPaths.ActionsDir);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = ModelPaths.ActionsDir,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show($"Aktionslog-Ordner konnte nicht geöffnet werden: {exception.Message}", "Fehler");
+            }
         }
 
         // ===========================

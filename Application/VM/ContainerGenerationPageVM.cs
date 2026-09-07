@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -2278,7 +2280,11 @@ namespace VIBN_Tools.Application.VM
 
                 if (sourceContainer != null && sourceContainer != targetData)
                 {
-                    _actionLogger.LogRemoved(sourceContainer.Component, sourceContainer.Type, data);
+                    _actionLogger.LogRemoved(
+                        sourceContainer.Component,
+                        sourceContainer.Type,
+                        data,
+                        GetActionLogSourceKey());
                 }
 
                 GenerationWorkspaceEditor.MoveToContainer(
@@ -2298,7 +2304,8 @@ namespace VIBN_Tools.Application.VM
                     entry: data,
                     ruleSuggestion: data.Slot,
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
 
             }
             else if (targetRow.Item == CollectionView.NewItemPlaceholder)
@@ -2320,7 +2327,8 @@ namespace VIBN_Tools.Application.VM
                     entry: data,
                     ruleSuggestion: data.Slot,
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
 
             }
         }
@@ -2437,6 +2445,31 @@ namespace VIBN_Tools.Application.VM
                         : $"{args.PropertyName}: „{FormatActivityValue(args.PreviousValue)}“ → " +
                           $"„{FormatActivityValue(args.NewValue)}“";
                 AddActivity("Direkte Änderung", description, details);
+
+                if (sender is ContainerEntry changedEntry &&
+                    args.PropertyName != nameof(ContainerEntry.Slot))
+                {
+                    var changedOwner = ContainerList.FirstOrDefault(
+                        container => container.DataList.Contains(changedEntry));
+                    _actionLogger.LogPropertyChange(
+                        changedOwner?.Component ?? string.Empty,
+                        changedOwner?.Type ?? string.Empty,
+                        changedEntry,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
+                else if (sender is ContainerData changedContainer)
+                {
+                    _actionLogger.LogContainerPropertyChange(
+                        changedContainer.Component,
+                        changedContainer.Type,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
             }
 
             var previousSuppression = _suppressUndoCapture;
@@ -2469,6 +2502,17 @@ namespace VIBN_Tools.Application.VM
         {
             var text = value?.ToString();
             return string.IsNullOrWhiteSpace(text) ? "leer" : text.Trim();
+        }
+
+        private string GetActionLogSourceKey()
+        {
+            var identity = string.Join(
+                "\u001f",
+                Settings.PathZuli ?? string.Empty,
+                Settings.PathRequirementsXml ?? string.Empty,
+                WorkspaceDataPath ?? string.Empty);
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))
+                .ToLowerInvariant();
         }
 
         /// <summary>
@@ -2571,7 +2615,8 @@ namespace VIBN_Tools.Application.VM
                     entry: entry,
                     oldSlot: oldSlot ?? "",
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
             }
             }
             finally
