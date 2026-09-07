@@ -1,13 +1,13 @@
 # Anforderungsmatrix Refactoring 2026
 
-Stand: 6. September 2026
+Stand: 7. September 2026
 Status: **vorhanden**, **teilweise**, **offen**, **fachlich blockiert** oder **Live-Abnahme offen**.
 
 Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme. Ein erfolgreicher Build ist kein Nachweis für korrektes Verhalten in FEE, TIA oder Kanbanize.
 
 | Bereich / Anforderung | Ist-Stand | Betroffener Code | Geplanter Scope | Verifikation / Definition of Done |
 | --- | --- | --- | --- | --- |
-| Linke Navigation einklappbar | offen | `MainWindow.xaml`, `MainWindowVM` | datengetriebener Symbol/Text-Modus, Tastaturbedienung und persistierte Nutzerpräferenz | UI-Startup, Bindingtest, manuell bei kleiner/großer Auflösung |
+| Linke Navigation einklappbar | vorhanden, manuelle Auflösungsabnahme offen | `MainWindow.xaml`, `MainWindowVM`, `JsonNavigationPreferenceStore` | Textteil ein-/ausblenden, Symbole/Inhalt erhalten, Alt+N und atomar persistierte Nutzerpräferenz | Preference-Roundtrip, Build/UI-Smoke und App-Start; manuell bei kleiner/großer Auflösung offen |
 | Transfer als Hauptnavigation | vorhanden | `MainWindow.xaml`, `ViCoWorkspacePage.xaml`, Bootstrapper | bestehende View/VM umgehängt; gemeinsamer WorkspaceContext bleibt erhalten | UI-Smoke initialisiert Transfer; manueller Navigationstest bleibt Release-Abnahme |
 | TIA als Hauptnavigation | vorhanden, Live-Abnahme offen | gleiche Bereiche, `TiaPortalPage*` | View umgehängt; Bridge-Composition unverändert | UI-Smoke; Bridge-Connect/Disconnect weiter synthetisch und live abnehmen |
 | Administration als Hauptnavigation, nur Level 9 | vorhanden | `MainWindowVM`, Rollen-Policy, `MainWindow.xaml` | zentrales Level-9-Gate; redundantes Workspace-Gate entfernt | Core-Test Level8/Level9 und XAML-/UI-Smoke; reale Rollenliste abnehmen |

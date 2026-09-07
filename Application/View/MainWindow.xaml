@@ -34,7 +34,20 @@
                 <Setter Property="HeaderTemplate">
                     <Setter.Value>
                         <DataTemplate>
-                            <TextBlock MinWidth="145" Text="{Binding}" TextAlignment="Center" />
+                            <TextBlock Text="{Binding}" TextAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="MinWidth" Value="145" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter Property="MinWidth" Value="0" />
+                                                <Setter Property="MaxWidth" Value="0" />
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </DataTemplate>
                     </Setter.Value>
                 </Setter>
@@ -63,7 +76,16 @@
                 </ux:WindowBar>
 
                 <ux:AppHeader Grid.Row="1">
-                    <TextBlock Style="{StaticResource H2Style }" Text="Tools for Modeling and Virtual Commissioning" Margin="10"/>
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right"
+                                Margin="8"
+                                MinWidth="155"
+                                Content="{Binding NavigationToggleText}"
+                                Command="{Binding ToggleNavigationCommand}"
+                                ToolTip="Blendet die Texte der linken Navigation ein oder aus. Alt+N aktiviert die Schaltfläche."
+                                ToolTipService.ShowOnDisabled="True" />
+                        <TextBlock Style="{StaticResource H2Style }" Text="Tools for Modeling and Virtual Commissioning" Margin="10"/>
+                    </DockPanel>
                 </ux:AppHeader>
 
                 <ux:NavigationBar Grid.Row="2" TabStripPlacement="Left">

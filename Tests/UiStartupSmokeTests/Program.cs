@@ -37,6 +37,7 @@ internal static class Program
             if (string.Equals(feeVersionInfo.UsedSdkVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             VerifyInstalledFeeVersionRequiresSdk();
+            VerifyNavigationPreferencePersistence();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
             VerifyExistingSignalReuseDoesNotCallUpdate();
             VerifySignalResolutionPlanner();
@@ -517,6 +518,34 @@ internal static class Program
             var incompleteOnly = new FeeVersionInfoProvider([incompleteNewer]).Read();
             if (!string.Equals(incompleteOnly.InstalledFeeVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("A FEE folder without Bin/FS.SDK.dll was accepted.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyNavigationPreferencePersistence()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-navigation-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "navigation.json");
+        try
+        {
+            var store = new JsonNavigationPreferenceStore(path);
+            if (!store.LoadExpanded())
+                throw new InvalidOperationException("A new navigation preference must default to expanded.");
+            store.SaveExpanded(false);
+            var reloaded = new JsonNavigationPreferenceStore(path);
+            if (reloaded.LoadExpanded())
+                throw new InvalidOperationException("The collapsed navigation preference was not persisted.");
+
+            var viewModel = new MainWindowVM(reloaded);
+            if (viewModel.IsNavigationExpanded)
+                throw new InvalidOperationException("MainWindowVM did not load the collapsed navigation preference.");
+            viewModel.ToggleNavigationCommand.Execute(null);
+            if (!viewModel.IsNavigationExpanded || !new JsonNavigationPreferenceStore(path).LoadExpanded())
+                throw new InvalidOperationException("The navigation toggle did not persist its updated state.");
         }
         finally
         {

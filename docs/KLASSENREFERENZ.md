@@ -6,6 +6,7 @@
 | --- | --- |
 | `Application/View/MainWindow.xaml` | Hauptnavigation, zentrierte Reiterbeschriftungen und Level7-/Level8-/Level9-Sichtbarkeit |
 | `Application/VM/MainWindowVM.cs` | lädt Arbeitsplätze/Rollen beim Start und berechnet Hauptreiter-Berechtigungen |
+| `Application/NavigationPreferenceStore.cs` | speichert ausschließlich den ein-/ausgeklappten Zustand der linken Navigation atomar pro Benutzer |
 | `Application/ViCoFeatureBootstrapper.cs` | Composition Root für ViCo, Kanbanize, RDP, Rollen und TIA-Bridge |
 | `Application/ApplicationLogService.cs` | zentraler Anwendungslog für Status, Warnungen und Fehler |
 | `Application/View/DiagnosticsPanel.xaml` | sichtbares Diagnosefenster im Hauptfenster |

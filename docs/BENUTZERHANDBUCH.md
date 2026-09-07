@@ -29,6 +29,8 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 
 Die Berechtigungen sind im Detail in der [Rollenverwaltung](ROLLENVERWALTUNG.md) beschrieben.
 
+Mit **Navigation einklappen** im Kopfbereich werden die Texte der linken Navigation ausgeblendet; Symbole und ausgewählter Arbeitsbereich bleiben erhalten. **Alt+N** schaltet denselben Zustand um. Die Auswahl wird im lokalen Benutzerprofil gespeichert und beim nächsten Start wiederhergestellt.
+
 ## Empfohlener Arbeitsablauf
 
 1. In **Project Settings** den gewünschten Online-PC filtern, auswählen und die FEE-Verbindung aufbauen.

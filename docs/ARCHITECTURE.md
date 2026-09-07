@@ -21,7 +21,8 @@
 | Authorization | central `roles.json` | `lutzma` is Level9; at least two Level9 users on save |
 | TIA hardware | all project devices via Openness; selected PLC is sorted first | read-only device/module tree, GSD/network metadata, slot/subslot and byte address data before FEE creation |
 | ViCo refresh interval | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes, default 5; atomic local write |
-| Kanbanize/RDP configuration | current Windows user's environment | UI writes/deletes values; live adapters resolve the API key per request |
+| FEE/Kanbanize/RDP configuration | current Windows user's Credential Manager | UI writes/deletes generic credentials; live adapters resolve values only for the action |
+| Navigation width | `%LOCALAPPDATA%/GROB/VIBN_Tools/navigation-preferences.json` | expanded/collapsed boolean only; atomic local write |
 
 ## Reliability and performance
 
@@ -32,6 +33,7 @@
 - TIA stays outside the WPF process and bridge failures are caught at view-model boundaries.
 - WPF grids use virtualization and deferred tab templates are covered by a UI startup test.
 - The main window uses practical minimum dimensions; data grids keep their own virtualization/scrolling and detail panels scroll independently.
+- `MainWindowVM` owns the navigation-width state; only TabItem header text is collapsed, while icons, content and role visibility remain intact.
 
 ## Remote Desktop credential boundary
 
