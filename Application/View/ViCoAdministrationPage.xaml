@@ -63,7 +63,7 @@
                         </DataGrid.Columns>
                     </DataGrid>
                 </GroupBox>
-                <Grid Grid.Row="1" Margin="0,8,0,0" IsEnabled="{Binding CanManageUsers}">
+                <Grid Grid.Row="1" Margin="0,8,0,0" IsEnabled="{Binding CanManageUsers}" ToolTip="{Binding ManageUsersUnavailableReason}" ToolTipService.ShowOnDisabled="True">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -79,9 +79,9 @@
                         <TextBlock Margin="0,0,8,0" VerticalAlignment="Center" Text="Ausgewählter Benutzer:" />
                         <TextBlock MinWidth="140" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding SelectedRole.UserName}" />
                         <TextBlock Margin="16,0,8,0" VerticalAlignment="Center" Text="Neue Stufe:" />
-                        <ComboBox Width="120" MinHeight="30" IsEnabled="{Binding CanEditSelectedRole}" ItemsSource="{Binding RoleLevels}" SelectedItem="{Binding SelectedLevel}" />
-                        <Button MinWidth="120" Margin="8,0,0,0" IsEnabled="{Binding CanEditSelectedRole}" Content="Stufe speichern" Command="{Binding SaveRoleCommand}" />
-                        <Button MinWidth="140" Margin="8,0,0,0" IsEnabled="{Binding CanEditSelectedRole}" Content="Benutzer entfernen" Command="{Binding RemoveUserCommand}" />
+                        <ComboBox Width="120" MinHeight="30" IsEnabled="{Binding CanEditSelectedRole}" ItemsSource="{Binding RoleLevels}" SelectedItem="{Binding SelectedLevel}" ToolTip="{Binding EditSelectedRoleUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                        <Button MinWidth="120" Margin="8,0,0,0" IsEnabled="{Binding CanEditSelectedRole}" Content="Stufe speichern" Command="{Binding SaveRoleCommand}" ToolTip="{Binding EditSelectedRoleUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                        <Button MinWidth="140" Margin="8,0,0,0" IsEnabled="{Binding CanEditSelectedRole}" Content="Benutzer entfernen" Command="{Binding RemoveUserCommand}" ToolTip="{Binding EditSelectedRoleUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                     </WrapPanel>
                 </Grid>
             </Grid>

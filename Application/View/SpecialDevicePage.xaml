@@ -69,10 +69,10 @@
                         </DataGrid.Columns>
                     </DataGrid>
                     <WrapPanel Grid.Row="1" Margin="0,10,0,0">
-                        <Button MinWidth="155" MinHeight="38" Content="In FEE erzeugen" Command="{Binding CreateSpecialDevicesCommand}" IsEnabled="{Binding CanCreateInFee}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True" />
-                        <Button MinWidth="155" MinHeight="38" Margin="7,0,0,0" Content="FEE2-JSON laden" Command="{Binding LoadReverseSnapshotCommand}" ToolTip="Prüft einen FEE2SpecialDevices-Export und übernimmt das Gerät über den bestehenden Gerätekatalog in die Warteschlange." />
-                        <Button MinWidth="135" MinHeight="38" Margin="7,0,0,0" Content="Auswahl entfernen" Command="{Binding DeleteSelectedDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" />
-                        <Button MinWidth="115" MinHeight="38" Margin="7,0,0,0" Content="Alle entfernen" Command="{Binding DeleteAllDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" />
+                        <Button MinWidth="155" MinHeight="38" Content="In FEE erzeugen" Command="{Binding CreateSpecialDevicesCommand}" IsEnabled="{Binding CanCreateInFee}" ToolTip="{Binding CreateInFeeUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                        <Button MinWidth="155" MinHeight="38" Margin="7,0,0,0" Content="FEE2-JSON laden" Command="{Binding LoadReverseSnapshotCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" ToolTip="{Binding DeviceQueueUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                        <Button MinWidth="135" MinHeight="38" Margin="7,0,0,0" Content="Auswahl entfernen" Command="{Binding DeleteSelectedDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" ToolTip="{Binding DeviceQueueUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                        <Button MinWidth="115" MinHeight="38" Margin="7,0,0,0" Content="Alle entfernen" Command="{Binding DeleteAllDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" ToolTip="{Binding DeviceQueueUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                         <TextBlock Margin="15,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding SpecialDevices.Count, StringFormat={}Anzahl: {0}}" />
                     </WrapPanel>
                 </Grid>
@@ -85,12 +85,12 @@
                 <WrapPanel>
                     <TextBlock Margin="0,0,7,0" VerticalAlignment="Center" Text="TIA-Version:" />
                     <ComboBox Width="115" MinHeight="34" ItemsSource="{Binding InstalledTiaVersions}" SelectedItem="{Binding SelectedTiaVersion}" />
-                    <Button MinWidth="145" MinHeight="34" Margin="7,0,0,0" Content="Mit TIA verbinden" Command="{Binding ConnectTiaCommand}" IsEnabled="{Binding CanConnectTia}" />
-                    <Button MinWidth="165" MinHeight="34" Margin="7,0,0,0" Content="TIA trennen / abbrechen" Command="{Binding DisconnectTiaCommand}" IsEnabled="{Binding CanDisconnectTia}" />
+                    <Button MinWidth="145" MinHeight="34" Margin="7,0,0,0" Content="Mit TIA verbinden" Command="{Binding ConnectTiaCommand}" IsEnabled="{Binding CanConnectTia}" ToolTip="{Binding ConnectTiaUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                    <Button MinWidth="165" MinHeight="34" Margin="7,0,0,0" Content="TIA trennen / abbrechen" Command="{Binding DisconnectTiaCommand}" IsEnabled="{Binding CanDisconnectTia}" ToolTip="{Binding DisconnectTiaUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                     <TextBlock Margin="22,0,7,0" VerticalAlignment="Center" Text="PLC:" />
                     <ComboBox Width="260" MinHeight="34" ItemsSource="{Binding TiaPlcs}" DisplayMemberPath="Name" SelectedItem="{Binding SelectedTiaPlc}" />
-                    <Button MinWidth="105" MinHeight="34" Margin="7,0,0,0" Content="Auswählen" Command="{Binding SelectTiaPlcCommand}" IsEnabled="{Binding CanSelectTiaPlc}" />
-                    <Button MinWidth="155" MinHeight="34" Margin="7,0,0,0" Content="Hardware auslesen" Command="{Binding ReadTiaHardwareCommand}" IsEnabled="{Binding CanReadTiaHardware}" />
+                    <Button MinWidth="105" MinHeight="34" Margin="7,0,0,0" Content="Auswählen" Command="{Binding SelectTiaPlcCommand}" IsEnabled="{Binding CanSelectTiaPlc}" ToolTip="{Binding SelectTiaPlcUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
+                    <Button MinWidth="155" MinHeight="34" Margin="7,0,0,0" Content="Hardware auslesen" Command="{Binding ReadTiaHardwareCommand}" IsEnabled="{Binding CanReadTiaHardware}" ToolTip="{Binding ReadTiaHardwareUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                 </WrapPanel>
                 <TextBlock Grid.Row="1" Margin="0,8" Foreground="#FF666666" Text="Module sind nach Gerätename gruppiert. Logik, Präfix und E-/A-Start vor der Übernahme prüfen; gespeicherte Zuordnungen werden beim nächsten Auslesen wiederhergestellt." TextWrapping="Wrap" />
                 <DataGrid Grid.Row="2" ItemsSource="{Binding Source={StaticResource GroupedTiaHardwareRows}}" AutoGenerateColumns="False" CanUserAddRows="False" EnableRowVirtualization="True" EnableColumnVirtualization="True" VirtualizingPanel.IsVirtualizingWhenGrouping="True" RowHeight="34" ColumnHeaderHeight="36" HorizontalScrollBarVisibility="Auto">

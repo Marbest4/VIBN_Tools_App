@@ -204,6 +204,8 @@ Für die gewählte FEE-/Projektvorlage werden Joints, Sensoren und Templates erz
 
 Ohne bestätigte FEE-Verbindung sind alle FEE-schreibenden Aktionen, Container2Fee-Start, Special-Device-Erzeugung, Model Control, Model Validation sowie Interface-Merge/-Connect deaktiviert. Der Tooltip lautet **Keine Verbindung zu FEE vorhanden.** Project Settings zeigt außerdem verwendete SDK- und lokal installierte FEE-Version; eine Abweichung ist rot markiert.
 
+Auch andere deaktivierte Aktionsbuttons erklären beim Darüberfahren die erste fehlende Voraussetzung, beispielsweise fehlende Eingangsdaten, noch nicht geprüfte Kanbanize-Änderungen, eine fehlende PLC-Auswahl, Level 9 oder einen laufenden Vorgang. Abhängige Eingabefelder – etwa ein Deadline-Feld ohne aktivierte Deadline – sind keine eigenständigen Aktionen.
+
 ### Zuli Converter
 
 Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File** ausführen. Die Statusinformationen zeigen den Fortschritt und die erzeugten Inhalte.

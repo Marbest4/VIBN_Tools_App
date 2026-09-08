@@ -74,6 +74,14 @@ namespace VIBN_Tools.Application.VM
         /// </summary>
         public bool CanGenerate => Zuli.Items.Count > 0 && RequirementsFile.IsInitialized && !WasGenerated;
 
+        public string GenerateUnavailableReason => CanGenerate
+            ? "Erzeugt Container aus den geladenen Eingangsdaten."
+            : Zuli.Items.Count == 0
+                ? "Zuerst eine Interface-/ZuLi-Datei mit erkannten Signalen laden."
+                : !RequirementsFile.IsInitialized
+                    ? "Zuerst eine gültige Requirements-XML laden."
+                    : "Die Container wurden bereits erzeugt; Eingangsdaten ändern oder neu laden, bevor erneut generiert wird.";
+
 
         private bool _wasgenerated;
         public bool WasGenerated
@@ -83,6 +91,7 @@ namespace VIBN_Tools.Application.VM
             {
                 _wasgenerated = value;
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
             }
         }
 
@@ -100,6 +109,10 @@ namespace VIBN_Tools.Application.VM
         /// Validate if a loading data is possible. Causes the corresponding button to be enabled or not.
         /// </summary>
         public bool CanLoadData => RequirementsFile.IsInitialized;
+
+        public string LoadDataUnavailableReason => CanLoadData
+            ? "Lädt einen gespeicherten Bearbeitungsstand."
+            : "Zuerst die zum Bearbeitungsstand gehörende Requirements-XML laden.";
 
 
 
@@ -353,6 +366,10 @@ namespace VIBN_Tools.Application.VM
                 ? $"Wiederholen: {_redoHistory[^1].Description}"
                 : "Keine Änderung zum Wiederholen";
         public bool HasActivityLog => ActivityLog.Count > 0;
+
+        public string ClearActivityLogUnavailableReason => HasActivityLog
+            ? "Löscht die sichtbare Sitzungshistorie; das strukturierte Lernprotokoll bleibt erhalten."
+            : "In dieser Sitzung sind noch keine protokollierten Aktionen vorhanden.";
         public string ActivityLogHeader =>
             $"Aktivitätsprotokoll ({ActivityLog.Count})";
         public string PendingReimportSelectionSummary =>
@@ -515,7 +532,9 @@ namespace VIBN_Tools.Application.VM
             {
                 _requirementsFile = value ?? throw new ArgumentNullException(nameof(value));
                 OnPropertyChanged(nameof(CanLoadData));
+                OnPropertyChanged(nameof(LoadDataUnavailableReason));
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
             }
         }
 
@@ -639,6 +658,7 @@ namespace VIBN_Tools.Application.VM
             Settings.PathZuli = filePath;
             CommitSuccessfulImport(importMode, "ZuLi");
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
         private async Task Open_RequirementsXml(object parameter)
@@ -675,6 +695,7 @@ namespace VIBN_Tools.Application.VM
             }
 
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
 
@@ -736,6 +757,7 @@ namespace VIBN_Tools.Application.VM
 
             CommitSuccessfulImport(importMode, "Projekt-Einstellungen");
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
 
@@ -1590,6 +1612,7 @@ namespace VIBN_Tools.Application.VM
         private void NotifyActivityLogChanged()
         {
             OnPropertyChanged(nameof(HasActivityLog));
+            OnPropertyChanged(nameof(ClearActivityLogUnavailableReason));
             OnPropertyChanged(nameof(ActivityLogHeader));
         }
 

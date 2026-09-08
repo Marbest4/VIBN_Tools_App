@@ -86,16 +86,22 @@
                                     <MenuItem Header="Remote Desktop"
                                               Command="{Binding ContextConnectRemoteCommand}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              ToolTip="Remote Desktop erfordert einen online erreichbaren PC."
+                                              ToolTipService.ShowOnDisabled="True" />
                                     <MenuItem Header="RDP mit Anmeldedialog"
                                               Command="{Binding ContextConnectRemoteWithPromptCommand}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              ToolTip="Der RDP-Anmeldedialog erfordert einen online erreichbaren PC."
+                                              ToolTipService.ShowOnDisabled="True" />
                                     <Separator />
                                     <MenuItem Header="PC-Projektordner"
                                               Command="{Binding ContextOpenPcProjectsCommand}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              ToolTip="Der lokale PC-Projektordner erfordert einen online erreichbaren PC."
+                                              ToolTipService.ShowOnDisabled="True" />
                                     <MenuItem Header="Simulation (Server)"
                                               Command="{Binding ContextOpenSimulationCommand}"
                                               CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
@@ -193,6 +199,8 @@
                                         Content="Speichern"
                                         Command="{Binding SaveConfigurationCommand}"
                                         IsEnabled="{Binding CanEditConfiguration}"
+                                        ToolTip="{Binding EditConfigurationUnavailableReason}"
+                                        ToolTipService.ShowOnDisabled="True"
                                         Visibility="{Binding HasSelectedConfigurationCard, Converter={StaticResource BooleanToVisibilityConverter}}" />
                                 <Button DockPanel.Dock="Right"
                                         Margin="0,0,6,0"
@@ -200,6 +208,8 @@
                                         Content="Standardkarte anlegen"
                                         Command="{Binding CreateConfigurationCommand}"
                                         IsEnabled="{Binding CanCreateConfiguration}"
+                                        ToolTip="{Binding CreateConfigurationUnavailableReason}"
+                                        ToolTipService.ShowOnDisabled="True"
                                         Visibility="{Binding IsSelectedConfigurationMissing, Converter={StaticResource BooleanToVisibilityConverter}}" />
                             </DockPanel>
                             <TextBlock Margin="0,4,0,7" FontSize="12.5" Foreground="#FF666666" Text="USER, STANDORT, SW, PROJEKT-IP und SONSTIGES werden als standardisierte Unteraufgaben gespeichert. Fehlende Unteraufgaben werden beim Speichern ergänzt." TextWrapping="Wrap" />
@@ -262,9 +272,9 @@
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Monitore" />
                         <WrapPanel>
                             <CheckBox Content="1" IsChecked="{Binding UseMonitor1}" />
-                            <CheckBox Margin="12,0,0,0" Content="2" IsChecked="{Binding UseMonitor2}" IsEnabled="{Binding HasMonitor2}" />
-                            <CheckBox Margin="12,0,0,0" Content="3" IsChecked="{Binding UseMonitor3}" IsEnabled="{Binding HasMonitor3}" />
-                            <CheckBox Margin="12,0,0,0" Content="4" IsChecked="{Binding UseMonitor4}" IsEnabled="{Binding HasMonitor4}" />
+                            <CheckBox Margin="12,0,0,0" Content="2" IsChecked="{Binding UseMonitor2}" IsEnabled="{Binding HasMonitor2}" ToolTip="Dieser Monitor ist für den ausgewählten PC nicht verfügbar." ToolTipService.ShowOnDisabled="True" />
+                            <CheckBox Margin="12,0,0,0" Content="3" IsChecked="{Binding UseMonitor3}" IsEnabled="{Binding HasMonitor3}" ToolTip="Dieser Monitor ist für den ausgewählten PC nicht verfügbar." ToolTipService.ShowOnDisabled="True" />
+                            <CheckBox Margin="12,0,0,0" Content="4" IsChecked="{Binding UseMonitor4}" IsEnabled="{Binding HasMonitor4}" ToolTip="Dieser Monitor ist für den ausgewählten PC nicht verfügbar." ToolTipService.ShowOnDisabled="True" />
                         </WrapPanel>
 
                         <UniformGrid Margin="0,10,0,0" Columns="2">

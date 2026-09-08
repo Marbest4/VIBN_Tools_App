@@ -195,6 +195,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             OnPropertyChanged(nameof(IsSelectedWorkstationOffline));
             OnPropertyChanged(nameof(CanEditConfiguration));
             OnPropertyChanged(nameof(CanCreateConfiguration));
+            OnPropertyChanged(nameof(EditConfigurationUnavailableReason));
+            OnPropertyChanged(nameof(CreateConfigurationUnavailableReason));
             OnPropertyChanged(nameof(HasSelectedConfigurationCard));
             OnPropertyChanged(nameof(IsSelectedConfigurationMissing));
             Projects.Clear();
@@ -262,6 +264,24 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         !SelectedWorkstation.Model.HasConfigurationCard &&
         SelectedWorkstation.Model.KanbanizeLaneId > 0 &&
         SelectedWorkstation.Model.ConfigurationColumnId > 0;
+
+    public string EditConfigurationUnavailableReason => CanEditConfiguration
+        ? "Speichert die bearbeitbaren Felder der vorhandenen KONFIGURATION-Karte."
+        : !_configurationService.IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : SelectedWorkstation is null
+                ? "Zuerst einen Arbeitsplatz auswählen."
+                : "Für diesen Arbeitsplatz ist keine bearbeitbare KONFIGURATION-Karte vorhanden.";
+
+    public string CreateConfigurationUnavailableReason => CanCreateConfiguration
+        ? "Legt die standardisierte KONFIGURATION-Karte für den ausgewählten Arbeitsplatz an."
+        : !_configurationService.IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : SelectedWorkstation is null
+                ? "Zuerst einen Arbeitsplatz auswählen."
+                : SelectedWorkstation.Model.HasConfigurationCard
+                    ? "Für diesen Arbeitsplatz ist bereits eine KONFIGURATION-Karte vorhanden."
+                    : "Lane oder Zielspalte der Arbeitsplätze-Karte ist nicht eindeutig ermittelbar.";
 
     public bool HasSelectedConfigurationCard => SelectedWorkstation?.Model.HasConfigurationCard == true;
 
@@ -430,6 +450,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
                     _lastObservedOnlineConfiguration = isOnlineConfigured;
                     OnPropertyChanged(nameof(CanEditConfiguration));
                     OnPropertyChanged(nameof(CanCreateConfiguration));
+                    OnPropertyChanged(nameof(EditConfigurationUnavailableReason));
+                    OnPropertyChanged(nameof(CreateConfigurationUnavailableReason));
                 }
 
                 if (!isOnlineConfigured)

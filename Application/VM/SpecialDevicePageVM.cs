@@ -226,7 +226,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaVersion = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanConnectTia));
+            NotifyTiaCommandState();
         }
     }
 
@@ -239,8 +239,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaPlc = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanSelectTiaPlc));
-            OnPropertyChanged(nameof(CanReadTiaHardware));
+            NotifyTiaCommandState();
         }
     }
 
@@ -265,6 +264,32 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
     public bool CanReadTiaHardware => CanSelectTiaPlc;
 
+    public string ConnectTiaUnavailableReason => CanConnectTia
+        ? "Verbindet die Anwendung mit dem geöffneten TIA-Projekt der gewählten Version."
+        : IsBusyTia
+            ? "Ein TIA-Vorgang läuft bereits."
+            : _isDisconnectingTia
+                ? "Die bestehende TIA-Verbindung wird gerade getrennt."
+                : _isTiaAttached || _tiaClient.IsConnected
+                    ? "Die Anwendung ist bereits mit TIA verbunden."
+                    : "Zuerst eine installierte TIA-Version auswählen.";
+
+    public string DisconnectTiaUnavailableReason => CanDisconnectTia
+        ? "Bricht einen laufenden Lesevorgang ab und trennt ausschließlich die VIBN-TIA-Bridge."
+        : "Es besteht keine TIA-Verbindung und kein TIA-Vorgang läuft.";
+
+    public string SelectTiaPlcUnavailableReason => CanSelectTiaPlc
+        ? "Übernimmt die ausgewählte PLC als Quelle für die Hardwarediagnose."
+        : IsBusyTia
+            ? "Ein TIA-Vorgang läuft bereits."
+            : !_isTiaAttached
+                ? "Zuerst mit einem geöffneten TIA-Projekt verbinden."
+                : "Zuerst eine PLC auswählen.";
+
+    public string ReadTiaHardwareUnavailableReason => CanReadTiaHardware
+        ? "Liest die Hardware der ausgewählten PLC ohne das TIA-Projekt zu verändern."
+        : SelectTiaPlcUnavailableReason;
+
     public bool IsBusyCreateDevices
     {
         get => _isBusyCreateDevices;
@@ -274,12 +299,24 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanModifyDeviceQueue));
             OnPropertyChanged(nameof(CanCreateInFee));
+            OnPropertyChanged(nameof(DeviceQueueUnavailableReason));
+            OnPropertyChanged(nameof(CreateInFeeUnavailableReason));
         }
     }
 
     public bool CanModifyDeviceQueue => !IsBusyCreateDevices;
 
     public bool CanCreateInFee => CanModifyDeviceQueue && Connection?.CanUseFeeFeatures == true;
+
+    public string DeviceQueueUnavailableReason => CanModifyDeviceQueue
+        ? "Bearbeitet die Special-Device-Warteschlange."
+        : "Die Warteschlange ist während der laufenden FEE-Erzeugung gesperrt.";
+
+    public string CreateInFeeUnavailableReason => CanCreateInFee
+        ? "Erzeugt alle Geräte aus der Warteschlange in FEE."
+        : !CanModifyDeviceQueue
+            ? "Eine Special-Device-Erzeugung läuft bereits."
+            : Connection?.UnavailableReason ?? "Keine Verbindung zu FEE vorhanden.";
 
     public int SelectedDeviceIndex
     {
@@ -317,6 +354,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             nameof(FeeConnectionService.CanUseFeeFeatures))
         {
             OnPropertyChanged(nameof(CanCreateInFee));
+            OnPropertyChanged(nameof(CreateInFeeUnavailableReason));
         }
     }
 
@@ -690,6 +728,10 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         OnPropertyChanged(nameof(CanDisconnectTia));
         OnPropertyChanged(nameof(CanSelectTiaPlc));
         OnPropertyChanged(nameof(CanReadTiaHardware));
+        OnPropertyChanged(nameof(ConnectTiaUnavailableReason));
+        OnPropertyChanged(nameof(DisconnectTiaUnavailableReason));
+        OnPropertyChanged(nameof(SelectTiaPlcUnavailableReason));
+        OnPropertyChanged(nameof(ReadTiaHardwareUnavailableReason));
     }
 
     private void LoadDeviceTypesForManufacturer()

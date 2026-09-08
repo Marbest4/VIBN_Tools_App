@@ -71,9 +71,6 @@ namespace VIBN_Tools.Application.VM
         // P R O P E R T I E S   O F   V I E W - M O D E L
         //===========================================================================================================================
 
-        //List<FeeJoint> JointsList { get; set; }
-
-
         public ProjectSettings ProjectSettings { get; } = new();
 
 
@@ -85,13 +82,6 @@ namespace VIBN_Tools.Application.VM
         // C O N S T R U C T O R
         //===========================================================================================================================
 
-        //public CadWizardPageVM()
-        //{
-        //    JointsList = new List<FeeJoint>();
-        //}
-
-
-
         //===========================================================================================================================
         // M E T H O D S
         //===========================================================================================================================
@@ -100,26 +90,6 @@ namespace VIBN_Tools.Application.VM
         {
             MessageBox.Show("In progress");
             IsBusyDeactivateForcing = true;
-
-
-
-            //JointsList.Clear();
-            //JointsList = await CadWizardService.SearchCodingsAsync<FeeJoint>(FeeJoint.CadWizardFactory);
-
-            //await Parallel.ForEachAsync(JointsList, async (el, token) =>
-            //{
-            //    el.Create();
-            //    if (await el.SendAndWaitAsync())
-            //    {
-            //        await el.ReparentCadDecoToJointAsync();
-
-            //        // Create Axis Logic
-            //        await CadWizardService.VIBN_Tools.ContainerGenerationAxisLogicAsync(el, _projectSettings.SelectedTemplate);
-
-            //    }
-            //});
-
-            //await CadWizardService.ReparentObjectsToBasicFrame(JointsList, "TempGeneratedJoints");
 
             IsBusyDeactivateForcing = false;
 

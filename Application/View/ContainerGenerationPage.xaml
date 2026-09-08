@@ -206,12 +206,14 @@
                             Command="{Binding UndoLastAction}"
                             IsEnabled="{Binding CanUndo}"
                             ToolTip="{Binding UndoDescription}"
+                            ToolTipService.ShowOnDisabled="True"
                             Margin="10,0,0,0"
                             Padding="10,2"/>
                     <Button Content="↷ Wiederholen"
                             Command="{Binding RedoLastAction}"
                             IsEnabled="{Binding CanRedo}"
                             ToolTip="{Binding RedoDescription}"
+                            ToolTipService.ShowOnDisabled="True"
                             Margin="5,0,0,0"
                             Padding="10,2"/>
                 </StackPanel>
@@ -781,6 +783,8 @@
                         <Button Content="Protokoll leeren"
                                 Command="{Binding ClearActivityLog}"
                                 IsEnabled="{Binding HasActivityLog}"
+                                ToolTip="{Binding ClearActivityLogUnavailableReason}"
+                                ToolTipService.ShowOnDisabled="True"
                                 Padding="9,3"/>
                     </StackPanel>
                     <DataGrid Grid.Row="1"
@@ -824,17 +828,17 @@
 
             <!-- Generate & Export  -->
             <StackPanel Grid.Row="1" Orientation="Vertical">
-                <ux:Button Margin="5,5,5,0" Content="Generate" DebounceInterval="150" Command="{Binding GenerateContainers}" IsEnabled="{Binding CanGenerate}" IsBusy="{Binding IsBusyGenerateContainers}"/>
+                <ux:Button Margin="5,5,5,0" Content="Generate" DebounceInterval="150" Command="{Binding GenerateContainers}" IsEnabled="{Binding CanGenerate}" IsBusy="{Binding IsBusyGenerateContainers}" ToolTip="{Binding GenerateUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                 <ux:Button Margin="5,0,5,0" Content="Prüfzusammenfassung" DebounceInterval="150" Command="{Binding ValidateWorkspace}" />
                 <ux:Button Margin="5,0,5,0" Content="ContainerFiles vergleichen" DebounceInterval="150" Command="{Binding CompareContainerFiles}" IsEnabled="{Binding CanLoadData}"
-                           ToolTip="Vergleicht ein bisheriges mit einem neuen ContainerFile. Die Requirements-XML muss geladen sein; jede Änderung wird vor der Übernahme angezeigt." />
+                           ToolTip="Vergleicht ein bisheriges mit einem neuen ContainerFile. Die Requirements-XML muss geladen sein; jede Änderung wird vor der Übernahme angezeigt." ToolTipService.ShowOnDisabled="True" />
                 <ux:Button Margin="5,0,5,5" Content="Export" DebounceInterval="150" Command="{Binding ExportContainers}" />
             </StackPanel>
 
             <!--Load / Save data & unassigend entries-->
             <StackPanel Grid.Row="2" Orientation="Vertical" VerticalAlignment="Bottom">
                 <ux:Button Margin="5,5,5,0" Content="Save Data" DebounceInterval="150" Command="{Binding SaveData}" />
-                <ux:Button Margin="5,0,5,5" Content="Load Data" DebounceInterval="150" Command="{Binding LoadData}" IsEnabled="{Binding CanLoadData}"/>
+                <ux:Button Margin="5,0,5,5" Content="Load Data" DebounceInterval="150" Command="{Binding LoadData}" IsEnabled="{Binding CanLoadData}" ToolTip="{Binding LoadDataUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                 <CheckBox Margin="7,3,5,2"
                           Content="AutoSave aktiv"
                           IsChecked="{Binding Settings.AutoSaveEnabled, Mode=TwoWay}" />

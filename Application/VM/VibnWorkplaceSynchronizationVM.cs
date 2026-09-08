@@ -49,6 +49,12 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
             VibnWorkplaceSynchronizationAction.UpdateDeadline or
             VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle;
 
+    public string SelectionUnavailableReason => CanSynchronize
+        ? "Diese Änderung für die Synchronisierung markieren."
+        : string.IsNullOrWhiteSpace(Details)
+            ? "Diese Vorschauzeile enthält keine übernehmbare Änderung."
+            : Details;
+
     /// <summary>New cards start selected; every other change requires an explicit selection.</summary>
     public bool IsSelected
     {
@@ -265,10 +271,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         {
             _isBusy = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanPreview));
-            OnPropertyChanged(nameof(CanSynchronize));
-            OnPropertyChanged(nameof(CanSelectAll));
-            OnPropertyChanged(nameof(CanDeselectAll));
+            NotifyAvailabilityChanged();
         }
     }
 
@@ -286,6 +289,36 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
 
     public bool CanDeselectAll =>
         !IsBusy && PreviewItems.Any(item => item.CanSynchronize && item.IsSelected);
+
+    public string PreviewUnavailableReason => CanPreview
+        ? "Prüft die Zuordnung und zeigt alle geplanten Änderungen an."
+        : !IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : IsBusy
+                ? "Kanbanize-Daten werden gerade verarbeitet."
+                : "Quellboard, Zielboard, Ziel-Lane und Zielspalte vollständig auswählen.";
+
+    public string SynchronizeUnavailableReason => CanSynchronize
+        ? "Übernimmt ausschließlich die markierten Änderungen aus der aktuellen Vorschau."
+        : IsBusy
+            ? "Kanbanize-Daten werden gerade verarbeitet."
+            : _preview is null || _previewSettings != CreateSettings()
+                ? "Zuerst die aktuelle Auswahl mit ‚Prüfen‘ auswerten."
+                : !_preview.HasChanges
+                    ? "Die Vorschau enthält keine übernehmbaren Änderungen."
+                    : "Mindestens eine übernehmbare Änderung markieren.";
+
+    public string SelectAllUnavailableReason => CanSelectAll
+        ? "Markiert alle übernehmbaren Änderungen."
+        : IsBusy
+            ? "Kanbanize-Daten werden gerade verarbeitet."
+            : "Es gibt keine weitere übernehmbare Änderung zum Markieren.";
+
+    public string DeselectAllUnavailableReason => CanDeselectAll
+        ? "Entfernt die Markierung aller übernehmbaren Änderungen."
+        : IsBusy
+            ? "Kanbanize-Daten werden gerade verarbeitet."
+            : "Es ist keine übernehmbare Änderung markiert.";
 
     public int CreateCount => _preview?.CreateCount ?? 0;
 
@@ -516,9 +549,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         OnPropertyChanged(nameof(UnchangedCount));
         OnPropertyChanged(nameof(ConflictCount));
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
-        OnPropertyChanged(nameof(CanSynchronize));
-        OnPropertyChanged(nameof(CanSelectAll));
-        OnPropertyChanged(nameof(CanDeselectAll));
+        NotifyAvailabilityChanged();
     }
 
     private void InvalidatePreview()
@@ -532,10 +563,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         OnPropertyChanged(nameof(UnchangedCount));
         OnPropertyChanged(nameof(ConflictCount));
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
-        OnPropertyChanged(nameof(CanPreview));
-        OnPropertyChanged(nameof(CanSynchronize));
-        OnPropertyChanged(nameof(CanSelectAll));
-        OnPropertyChanged(nameof(CanDeselectAll));
+        NotifyAvailabilityChanged();
     }
 
     private void SelectAll()
@@ -572,9 +600,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
 
     private void UpdateSelectionState()
     {
-        OnPropertyChanged(nameof(CanSynchronize));
-        OnPropertyChanged(nameof(CanSelectAll));
-        OnPropertyChanged(nameof(CanDeselectAll));
+        NotifyAvailabilityChanged();
         var selectedCount = PreviewItems.Count(item => item.CanSynchronize && item.IsSelected);
         StatusText = selectedCount == 0
             ? "Die gewünschten Änderungen in der Vorschau markieren."
@@ -588,6 +614,18 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         boards.FirstOrDefault(board => board.Id == preferredId) ??
         boards.FirstOrDefault(board =>
             (board.Name + " " + board.Description).Contains(nameFragment, StringComparison.OrdinalIgnoreCase));
+
+    private void NotifyAvailabilityChanged()
+    {
+        OnPropertyChanged(nameof(CanPreview));
+        OnPropertyChanged(nameof(CanSynchronize));
+        OnPropertyChanged(nameof(CanSelectAll));
+        OnPropertyChanged(nameof(CanDeselectAll));
+        OnPropertyChanged(nameof(PreviewUnavailableReason));
+        OnPropertyChanged(nameof(SynchronizeUnavailableReason));
+        OnPropertyChanged(nameof(SelectAllUnavailableReason));
+        OnPropertyChanged(nameof(DeselectAllUnavailableReason));
+    }
 
     private static string DescribePreview(VibnWorkplaceSynchronizationPreview preview) =>
         $"Prüfung: {preview.CreateCount} neu, {preview.DeadlineUpdateCount} Zeitplan(e), " +

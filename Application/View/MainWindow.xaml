@@ -17,14 +17,9 @@
         UseLayoutRounding="True"
         WindowStyle="None" AllowsTransparency="True">
 
-    <!--<Window.DataContext>
-        <vm:MainWindowVM/>
-    </Window.DataContext>-->
-
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!--<ResourceDictionary  Source="pack://application:,,,/Grob.UX;component/Styles/ScrollBarStyles.xaml"/>-->
                 <ResourceDictionary Source="pack://application:,,,/Grob.UX;component/Styles/General.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -170,10 +165,6 @@
                         <p:ModelValidationPage/>
                     </TabItem>
                  
-                    <!--<TabItem Header="MiniTools" ux:Icon.Kind="Wipe">
-                        <p:MiniToolsPage/>
-                    </TabItem>-->
-
                     <TabItem Header="Model Control"
                              ux:Icon.Kind="RobotWorkpiece"
                              IsEnabled="{Binding Connection.CanUseFeeFeatures}"

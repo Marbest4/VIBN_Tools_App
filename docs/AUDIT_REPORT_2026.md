@@ -105,3 +105,9 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 6. Die vorhandenen synthetischen Container2FEE-Plan-/Sidecar- und PN/PN-Hardwaretests um freigegebene produktive Golden-Master-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
 8. Den vorhandenen ZuLi-/Generator-Smoke-Test um eine freigegebene Requirements-Datei und erwartete vollständige Container-Ausgabe ergänzen; erst danach `ContainerGenerationPageVM` erneut aufteilen.
+
+## 9. Konservativer Cleanup- und Availability-Nachlauf
+
+Am 8. September 2026 wurde die Solution erneut über Projektdateien, C#-Referenzen, XAML-Bindings/Navigation, Serialisierungsmodelle und den Release-Build geprüft. Entfernt wurden ausschließlich wirkungslose auskommentierte UI-Elemente und vollständige Prototypblöcke ohne Laufzeitpfad. Dynamisch erreichbare Klassen, SDK-Adapter sowie auskommentierte Special-Device-Signalvarianten blieben erhalten: Letztere sind fachliche Katalognotizen und ohne freigegebenen Ersatz kein sicherer Löschkandidat. Es wurde keine Produktionsklasse allein aufgrund einer Textsuche entfernt.
+
+Ausführbare, zustandsabhängig deaktivierte Hauptaktionen in Navigation, ViCo, Kanbanize, Administration, SpecialDevices/TIA, ContainerGeneration sowie beiden Container2FEE-Oberflächen zeigen nun auch im deaktivierten Zustand einen konkreten Grund. Reine Formelemente wie abhängige Datums-, Adress- oder DB-Felder werden durch ihre jeweilige Auswahl gesteuert und sind nicht als eigenständige Aktionen bewertet. Der integrierte WPF-Smoke prüft weiterhin alle Views auf Initialisierungs- und Bindingfehler; die visuelle Hover-Prüfung bleibt Bestandteil der manuellen Release-Abnahme.

@@ -28,7 +28,8 @@
                         Content="Planansicht anzeigen"
                         Command="{Binding OpenPlanViewCommand}"
                         IsEnabled="{Binding CanOpenPlanView}"
-                        ToolTip="{Binding OpenPlanViewUnavailableReason}" />
+                        ToolTip="{Binding OpenPlanViewUnavailableReason}"
+                        ToolTipService.ShowOnDisabled="True" />
                 <Button MinWidth="180" MinHeight="38"
                         Content="Boards aktualisieren"
                         Command="{Binding ReloadBoardsCommand}" />
@@ -143,13 +144,17 @@
                                         MinHeight="36"
                                         Content="Alle selektieren"
                                         Command="{Binding SelectAllCommand}"
-                                        IsEnabled="{Binding CanSelectAll}" />
+                                        IsEnabled="{Binding CanSelectAll}"
+                                        ToolTip="{Binding SelectAllUnavailableReason}"
+                                        ToolTipService.ShowOnDisabled="True" />
                                 <Button MinWidth="135"
                                         MinHeight="36"
                                         Margin="8,0,0,0"
                                         Content="Alle deselektieren"
                                         Command="{Binding DeselectAllCommand}"
-                                        IsEnabled="{Binding CanDeselectAll}" />
+                                        IsEnabled="{Binding CanDeselectAll}"
+                                        ToolTip="{Binding DeselectAllUnavailableReason}"
+                                        ToolTipService.ShowOnDisabled="True" />
                             </StackPanel>
                             <Button Grid.Column="2"
                                     MinWidth="120"
@@ -157,14 +162,18 @@
                                     Margin="8,0,0,0"
                                     Content="Prüfen"
                                     Command="{Binding PreviewCommand}"
-                                    IsEnabled="{Binding CanPreview}" />
+                                    IsEnabled="{Binding CanPreview}"
+                                    ToolTip="{Binding PreviewUnavailableReason}"
+                                    ToolTipService.ShowOnDisabled="True" />
                             <Button Grid.Column="3"
                                     MinWidth="205"
                                     MinHeight="36"
                                     Margin="8,0,0,0"
                                     Content="Synchronisieren"
                                     Command="{Binding SynchronizeCommand}"
-                                    IsEnabled="{Binding CanSynchronize}" />
+                                    IsEnabled="{Binding CanSynchronize}"
+                                    ToolTip="{Binding SynchronizeUnavailableReason}"
+                                    ToolTipService.ShowOnDisabled="True" />
                         </Grid>
                     </Border>
 
@@ -186,7 +195,9 @@
                                         <CheckBox HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   IsChecked="{Binding IsSelected, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  IsEnabled="{Binding CanSynchronize, Mode=OneWay}" />
+                                                  IsEnabled="{Binding CanSynchronize, Mode=OneWay}"
+                                                  ToolTip="{Binding SelectionUnavailableReason}"
+                                                  ToolTipService.ShowOnDisabled="True" />
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
@@ -292,7 +303,7 @@
                                 <TextBlock Grid.Row="2" Grid.Column="0" VerticalAlignment="Center" Text="Details:" />
                                 <TextBox Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2" MinHeight="180" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" />
                                 <StackPanel Grid.Row="4" Grid.ColumnSpan="2" Margin="0,14,0,0" Orientation="Horizontal">
-                                    <Button MinWidth="160" MinHeight="38" Content="Karte erstellen" Command="{Binding CreateCardCommand}" IsEnabled="{Binding CanCreate}" />
+                                    <Button MinWidth="160" MinHeight="38" Content="Karte erstellen" Command="{Binding CreateCardCommand}" IsEnabled="{Binding CanCreate}" ToolTip="{Binding CreateUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                                     <TextBlock Margin="14,0,0,0" VerticalAlignment="Center" Foreground="#FF666666" Text="Priorität 1 = hoch, 4 = niedrig" />
                                 </StackPanel>
                             </Grid>

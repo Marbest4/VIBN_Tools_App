@@ -51,15 +51,15 @@
                 <ux:TextBox Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="5,10,5,10"
                         Watermark="Path to Container XML" Text="{Binding FileNameContainerXml}" IsReadOnly="True"/>
                 <UniformGrid Columns="2" Grid.Row="0" Grid.Column="2">
-                    <ux:Button Margin="5" Content="Open Container XML" Command="{Binding OpenContainerXml}" IsEnabled="{Binding EnableOpenContainerXml}" DebounceInterval="150"/>
-                    <ux:Button Margin="5" Content="Search SimObjects" Command="{Binding SearchSimObjects}" IsEnabled="{Binding CanExecuteSearchSimObjects}" DebounceInterval="150"/>
+                    <ux:Button Margin="5" Content="Open Container XML" Command="{Binding OpenContainerXml}" IsEnabled="{Binding EnableOpenContainerXml}" DebounceInterval="150" ToolTip="{Binding OpenContainerUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
+                    <ux:Button Margin="5" Content="Search SimObjects" Command="{Binding SearchSimObjects}" IsEnabled="{Binding CanExecuteSearchSimObjects}" DebounceInterval="150" ToolTip="{Binding SearchSimObjectsUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                 </UniformGrid>
             </Grid>
 
 
         </GroupBox>
 
-        <GroupBox Grid.Row="1" Grid.Column="0" Margin="10" IsEnabled="{Binding EnableFindAssignSimObjects}">
+        <GroupBox Grid.Row="1" Grid.Column="0" Margin="10" IsEnabled="{Binding EnableFindAssignSimObjects}" ToolTip="{Binding AssignmentUnavailableReason}" ToolTipService.ShowOnDisabled="True">
             <GroupBox.Header>
                 <TextBlock Style="{StaticResource H3Style}" Text="Find &amp; Assign SimObject"/>
             </GroupBox.Header>
@@ -126,7 +126,7 @@
                 <UniformGrid Columns="5" Grid.Row="3" Margin="5,5,5,5" Grid.ColumnSpan="2">
                     <ux:Button Margin="0,0,10,0" Content="Create" Command="{Binding CreateSimObject}" DebounceInterval="150"/>
                     <ux:Button Margin="0,0,10,0" Content="Select" Command="{Binding SelectSimObjects}" CommandParameter="{Binding SelectedItems, ElementName=ListBoxSelectSimObjects}" DebounceInterval="150"/>
-                    <ux:Button Margin="0,0,10,0" Content="Back" Command="{Binding GoBackToLastSelection}" DebounceInterval="150" IsEnabled="{Binding EnableGoBackToLast}"/>
+                    <ux:Button Margin="0,0,10,0" Content="Back" Command="{Binding GoBackToLastSelection}" DebounceInterval="150" IsEnabled="{Binding EnableGoBackToLast}" ToolTip="{Binding GoBackUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                     <ux:Button Margin="0,0,10,0" Content="Skip" Command="{Binding SkipSimObjectSelection}" DebounceInterval="150"/>
                     <ux:Button Margin="0,0,0,0" Content="Skip All / Cancel" Command="{Binding CancelSimObjectSelection}" DebounceInterval="150"/>
                 </UniformGrid>
@@ -163,7 +163,7 @@
                 </ItemsControl>
 
                 <ux:LoadingThreeDots Grid.Row="1" Visibility="Hidden"/>
-                <ux:Button Grid.Row="2" Margin="5" Content="Start Generation" MinWidth="300" Command="{Binding StartGeneration}" DebounceInterval="150" IsEnabled="{Binding CanExecuteGeneration}" IsBusy="{Binding IsBusyStartGeneration}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
+                <ux:Button Grid.Row="2" Margin="5" Content="Start Generation" MinWidth="300" Command="{Binding StartGeneration}" DebounceInterval="150" IsEnabled="{Binding CanExecuteGeneration}" IsBusy="{Binding IsBusyStartGeneration}" ToolTip="{Binding GenerationUnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
             </Grid>
 
 
