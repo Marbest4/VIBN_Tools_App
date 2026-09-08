@@ -11,6 +11,7 @@ using VIBN_Tools.ContainerGeneration.Utils;
 using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.ContainerToFee.GrobStandard;
 using VIBN_Tools.ContainerToFeeVisual;
+using VIBN_Tools.SpecialDevices;
 
 namespace VIBN_Tools.ContainerGeneration.SmokeTests;
 
@@ -43,12 +44,65 @@ internal static class Program
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
+        ValidateFee2SpecialDevicesProvenanceRoundTrip();
         ValidateRuleSuggestionWorkflow();
         await ValidateRequirementsRulePatchWorkflowAsync();
 
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
         return 0;
+    }
+
+    private static void ValidateFee2SpecialDevicesProvenanceRoundTrip()
+    {
+        var variableGuid = Guid.NewGuid();
+        var snapshot = new FeeSpecialDeviceSnapshot(
+            FeeSpecialDeviceProvenanceCodec.CurrentSchema,
+            "SCN01",
+            "Keyence",
+            "SR2000",
+            null,
+            100,
+            200,
+            new[]
+            {
+                new FeeSpecialDeviceSignalSnapshot(
+                    variableGuid,
+                    "SCN01_Ready",
+                    "E100.0",
+                    "Write",
+                    "Bool",
+                    "Bereit")
+            });
+        var tags = FeeSpecialDeviceProvenanceCodec.Encode(snapshot);
+        if (!FeeSpecialDeviceProvenanceCodec.TryRead(tags, out var decoded, out var error) ||
+            decoded is null || decoded.Prefix != "SCN01" ||
+            decoded.Signals.Single().VariableGuid != variableGuid)
+        {
+            throw new InvalidOperationException($"Special-device provenance round-trip failed: {error}");
+        }
+
+        var exportPath = Path.Combine(Path.GetTempPath(), $"vibn-{Guid.NewGuid():N}.specialdevice.json");
+        try
+        {
+            FeeSpecialDeviceProvenanceCodec.SaveAtomically(decoded, exportPath);
+            var exported = System.Text.Json.JsonSerializer.Deserialize<FeeSpecialDeviceSnapshot>(
+                File.ReadAllText(exportPath));
+            if (exported?.InputByte != 100 || exported.OutputByte != 200 || exported.Signals.Count != 1)
+                throw new InvalidOperationException("Special-device reverse export lost domain data.");
+        }
+        finally
+        {
+            if (File.Exists(exportPath))
+                File.Delete(exportPath);
+        }
+
+        var damaged = new Dictionary<string, string>(tags, StringComparer.Ordinal)
+        {
+            [FeeSpecialDeviceProvenanceCodec.HashKey] = new string('0', 64)
+        };
+        if (FeeSpecialDeviceProvenanceCodec.TryRead(damaged, out _, out _))
+            throw new InvalidOperationException("Damaged special-device provenance was accepted.");
     }
 
     private static void ValidateSlotMultiplicityPolicy()

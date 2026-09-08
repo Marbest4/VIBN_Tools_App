@@ -24,6 +24,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | FEE2Container | exportiert ContainerFiles aus künftig durch Container2FEE erzeugten Roots | Level7 + FEE-Verbindung |
 | AI-Test / Regelvorschläge | analysiert protokollierte Slotkorrekturen; geprüfte exakte Regeln mit Vorschau und Backup übernehmen | Level8 |
 | SpecialDevices2FEE | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
+| FEE2SpecialDevices | künftig erzeugte Special Devices über Provenienz aus FEE als JSON rücklesen | Level 7 oder höher |
 | Model Validation | Modell-/FEE-Daten prüfen | alle |
 | Model Control | Roboter, Achsen, Objekte und Simulation steuern | alle |
 | Interface Operation | Schnittstellen und Signale laden, verbinden und bearbeiten | alle |
@@ -188,6 +189,12 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 **TIA trennen / abbrechen** bricht auch einen laufenden Attach ab, schließt nur die zu dieser Seite gehörende Bridge-Session und leert PLC-/Hardwareliste. Das geöffnete TIA Portal wird nicht beendet.
 
 Die FEE-Erzeugung ist absichtlich serialisiert. Fehlgeschlagene Geräte bleiben in der Warteschlange, damit sie geprüft und erneut ausgeführt werden können.
+
+Vollständig erzeugte Geräte erhalten am Ende des erfolgreichen FEE-Schreibvorgangs eine versionierte Provenienz am BasicFrame. Teilweise oder fehlerhaft erzeugte Geräte werden nicht als gültige Reverse-Quelle markiert.
+
+## FEE2SpecialDevices
+
+Der eigene Hauptreiter liest ausschließlich diese markierten Special-Device-Roots. Nach Auswahl können Präfix, Hersteller, Gerätetyp, Startadressen sowie aktuelle und fehlende Signale geprüft und atomar als `*.specialdevice.json` exportiert werden. Ältere oder manuelle FEE-Objekte werden bewusst ignoriert, weil eine Rekonstruktion allein aus Namen fachlich unsicher wäre. Details und Grenzen stehen in [FEE2SpecialDevices](FEE2SPECIALDEVICES.md).
 
 ## Bestehende VIBN-Werkzeuge
 

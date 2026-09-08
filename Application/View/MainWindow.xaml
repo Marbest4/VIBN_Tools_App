@@ -150,6 +150,12 @@
                              Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <p:Fee2ContainerPage />
                     </TabItem>
+
+                    <TabItem Header="FEE2SpecialDevices"
+                             ux:Icon.Kind="DeviceVideoCamera"
+                             Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:Fee2SpecialDevicesPage />
+                    </TabItem>
                     
                     <TabItem Header="SpecialDevices2FEE" ux:Icon.Kind="DeviceVideoCamera">
                         <p:SpecialDevicePage/>

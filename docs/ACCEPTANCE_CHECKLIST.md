@@ -62,6 +62,9 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
 - [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Diagnosepfad, Objektklasse, Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] Nach vollständig erfolgreicher SpecialDevices2FEE-Erzeugung ist der Root in FEE2SpecialDevices sichtbar; ein absichtlich fehlgeschlagener Teilvorgang ist nicht als gültige Quelle markiert.
+- [ ] JSON-Export enthält Präfix, Hersteller, Gerätetyp, E-/A-Startbyte und alle Signal-GUIDs; eine nachträglich geänderte FEE-Variable wird über ihre GUID aktualisiert.
+- [ ] Ältere/manuelle BasicFrames werden gezählt, aber nicht heuristisch als Special Device exportiert.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
 - [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
 - [ ] Geräteüberschrift zeigt realen Gerätenamen und -typ; IP, PROFINET-Name und Firmware werden vom Geräte-/Interfaceknoten auf beide adressführenden Module übernommen.

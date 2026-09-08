@@ -93,7 +93,19 @@ namespace VIBN_Tools.SpecialDevices
             if (!await WriteDeviceParameters())
                 return false;
 
-            return await CreateDeviceSpecificAsync();
+            if (!await CreateDeviceSpecificAsync())
+                return false;
+
+            // Mark only a completely generated device. A failed or partial
+            // SDK transaction remains deliberately ineligible for reverse export.
+            var provenance = FeeSpecialDeviceProvenanceCodec.Encode(
+                FeeSpecialDeviceProvenanceCodec.Create(this));
+            await ApiInstance.Object.SetPropertyAsync(
+                DeviceBasicFrame.Guid,
+                nameof(FS.SDK.Components.TagComponent.TagEntries),
+                new Dictionary<string, string>(provenance, StringComparer.Ordinal),
+                nameof(FS.SDK.Components.TagComponent));
+            return true;
 
 
         }

@@ -161,6 +161,15 @@ internal static class Program
                 throw new InvalidOperationException(
                     "FEE2Container export must explain why no root can be exported.");
             }
+            var fee2SpecialDevicesPage = new Fee2SpecialDevicesPage();
+            var fee2SpecialDevicesViewModel =
+                (Fee2SpecialDevicesPageVM)fee2SpecialDevicesPage.DataContext;
+            if (fee2SpecialDevicesViewModel.CanExport ||
+                string.IsNullOrWhiteSpace(fee2SpecialDevicesViewModel.ExportUnavailableReason))
+            {
+                throw new InvalidOperationException(
+                    "FEE2SpecialDevices export must explain why no root can be exported.");
+            }
             var aiTrainingPage = new AITrainingTestPage();
             var aiTrainingViewModel = (AITrainingTestPageVM)aiTrainingPage.DataContext;
             aiTrainingViewModel.RuleSuggestions.Add(new RuleSuggestion(
