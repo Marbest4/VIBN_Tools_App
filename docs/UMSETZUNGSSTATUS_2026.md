@@ -1,6 +1,6 @@
 # Umsetzungsstatus des Gesamtauftrags
 
-Stand: 1. September 2026. „Automatisch geprüft“ bezeichnet lokale, externe Systeme nicht verändernde Tests. FEE-, TIA- und Kanbanize-Schreibzugriffe benötigen weiterhin eine Abnahme in der jeweiligen Produktivumgebung.
+Stand: 8. September 2026. „Automatisch geprüft“ bezeichnet lokale, externe Systeme nicht verändernde Tests. FEE-, TIA- und Kanbanize-Schreibzugriffe benötigen weiterhin eine Abnahme in der jeweiligen Produktivumgebung. Der detaillierte Stand des umfassenden Refactoring-Auftrags einschließlich Navigation, Containervergleich, Container2FEE, AI-Regelvorschlägen, FEE2Container und FEE2SpecialDevices steht in der [Anforderungsmatrix](REQUIREMENT_MATRIX_2026-09.md).
 
 ## Aktueller Änderungsumfang
 
@@ -76,6 +76,6 @@ Stand: 1. September 2026. „Automatisch geprüft“ bezeichnet lokale, externe 
 6. Auf einem Rechner mit mindestens zwei vollständigen FEE-SDK-Versionen `Prepare-Development.cmd` prüfen: Enter muss die höchste wählen, eine andere Nummer muss nach Visual-Studio-Neustart exakt deren `FS.*`-Referenzen verwenden. Danach vollständigen Release-/UI-Smoke-Test ausführen.
 7. FEE-Zugang, API-Key und RDP-Passwort in Project Settings sowie API/RDP in IBN speichern/löschen, Statuswechsel prüfen und mit Testkonten je eine FEE-Verbindung, einen Kanbanize-GET sowie automatischen RDP-Start abnehmen. Keine Realwerte in Screenshots oder Logs aufnehmen.
 
-## Noch offene Professionalisierung des Gesamtbestands
+## Verbleibende Professionalisierung und externe Abnahme
 
-Der lange Architekturauftrag ist damit nicht vollständig abgeschlossen. Insbesondere `ContainerGenerationPageVM` bleibt nach dem bewusst zurückgenommenen regressionsbehafteten Split eine große Legacy-Klasse. Eine sichere Zerlegung benötigt zusätzlich zu `Interface5.xlsx` und `Interface7.xlsx` eine freigegebene Requirements-Datei samt Golden-Master-Ausgabe. Außerdem fehlen weiterhin produktive End-to-End-Abnahmen, automatisierte Performance-Budgets und eine zentrale CI-Ausführung auf einem Windows-Agenten mit den internen Hersteller-SDKs. Diese Grenzen werden nicht als „erledigt“ ausgewiesen.
+Der lokal implementier- und automatisiert prüfbare Umfang des Architekturauftrags ist abgeschlossen. `ContainerGenerationPageVM` bleibt nach dem bewusst zurückgenommenen regressionsbehafteten Split eine große Legacy-Klasse: Eine weitere Zerlegung wäre ohne freigegebene Requirements-Datei samt vollständiger Golden-Master-Ausgabe ein unnötiges Produktionsrisiko und ist daher kein Bestandteil dieses Releases. Ebenfalls nicht als praktisch verifiziert gelten produktive FEE-/TIA-/Kanbanize-Schreibzugriffe, Performancebudgets gegen Großmodelle, Setup/Signierung auf einem sauberen Ziel-PC sowie eine zentrale CI-Ausführung auf einem Windows-Agenten mit den internen Hersteller-SDKs. Diese Punkte sind in der Release-Checkliste konkret prüfbar aufgeführt.
