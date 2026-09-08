@@ -42,6 +42,10 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
     public int RobotCount => Model.RobotCount;
     public string RobotSummary => Model.RobotSummary;
     public IReadOnlyList<string> Details => Model.Details;
+    public IReadOnlyList<string> RelevantKanbanizeDetails => Model.Details
+        .Where(detail => !detail.StartsWith("Robot:", StringComparison.OrdinalIgnoreCase) &&
+                         !detail.StartsWith("KONFIGURATION", StringComparison.OrdinalIgnoreCase))
+        .ToArray();
     public string ConfigurationSoftware => Model.WorkstationConfiguration.Software.Value;
     public string ConfigurationLocation => Model.WorkstationConfiguration.Location.Value;
     public string ConfigurationProjectIp => Model.WorkstationConfiguration.ProjectIp.Value;
@@ -55,7 +59,7 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
 
     private bool _isOnline;
 
-    /// <summary>Used by the view to suppress remote/path actions for offline PCs.</summary>
+    /// <summary>Used by the view to disable only actions that actually require the workstation.</summary>
     public bool IsOnline
     {
         get => _isOnline;

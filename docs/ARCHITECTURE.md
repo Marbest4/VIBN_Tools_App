@@ -20,7 +20,7 @@
 | Workplace card schedule | VIBN source + single VIBN template deadline | source −14 days, template +56 days |
 | Authorization | central `roles.json` | `lutzma` is Level9; at least two Level9 users on save |
 | TIA hardware | all project devices via Openness; selected PLC is sorted first | read-only device/module tree, GSD/network metadata, slot/subslot and byte address data before FEE creation |
-| ViCo refresh interval | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes, default 5; atomic local write |
+| ViCo refresh/display preferences | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes plus optional-column visibility; atomic local write |
 | FEE/Kanbanize/RDP configuration | current Windows user's Credential Manager | UI writes/deletes generic credentials; live adapters resolve values only for the action |
 | Navigation width | `%LOCALAPPDATA%/GROB/VIBN_Tools/navigation-preferences.json` | expanded/collapsed boolean only; atomic local write |
 

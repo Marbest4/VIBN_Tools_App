@@ -7,7 +7,7 @@ namespace VIBN_Tools.Infrastructure.ViCo;
 /// </summary>
 internal sealed class WorkstationBoardCache
 {
-    public int SchemaVersion { get; set; } = 1;
+    public int SchemaVersion { get; set; } = 2;
 
     public List<WorkstationLaneCacheEntry> Lanes { get; set; } = new();
 
@@ -30,6 +30,10 @@ internal sealed class WorkstationCardCacheEntry
     public string ColumnId { get; set; } = string.Empty;
 
     public string Title { get; set; } = string.Empty;
+
+    public DateTimeOffset? StartDate { get; set; }
+
+    public DateTimeOffset? Deadline { get; set; }
 
     public List<WorkstationSubtaskCacheEntry> Subtasks { get; set; } = new();
 }

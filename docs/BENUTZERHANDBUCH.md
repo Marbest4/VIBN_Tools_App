@@ -66,36 +66,35 @@ Die Unterseite **PC-/Projektsuche** besitzt ein gemeinsames Suchfeld. Es durchsu
 
 ![ViCo-Arbeitsplatzsuche mit Konfiguration und Remote-Informationen](screenshots/vico-search.png)
 
-Die Tabelle zeigt:
+Die Haupttabelle ist auf die Arbeitsplanung reduziert und zeigt in dieser Reihenfolge:
 
 | Spalte | Bedeutung |
 | --- | --- |
 | Belegung | **Frei** (grün), wenn nur Backlog/Erledigt vorliegt; **Belegt** (rot), sobald Planung oder In Arbeit vorliegt |
 | PC | dynamischer Arbeitsplatzname |
+| Online | Grün für erreichbar, Rot für offline |
 | Projekt(e) | ausschließlich Karten in Planung oder In Arbeit; Backlog und Erledigt stehen unter **Alle Kanbanize-Informationen** |
 | Software | ausschließlich der Wert der Unteraufgabe `SW:` |
-| Standort, Projekt-IP, Sonstiges | Werte aus der Karte `KONFIGURATION` und ihren Unteraufgaben |
-| RDP-Sitzung | aktiver Remote-Benutzer oder „Keine aktive Sitzung“ |
-| Letzte Anmeldung | zuletzt ermittelte Anmeldung mit Benutzer und Zeit |
 | Benutzer | bevorzugter Remote-Benutzer aus der KONFIGURATION-Karte |
-| Online | Grün für erreichbar, Rot für offline |
-| Konfiguration | **Vorhanden** (grün) oder **Konfigurationskarte fehlt!** (rot) |
+| Standort | Wert der Unteraufgabe `STANDORT:` |
+| Sonstiges, Projekt-IP | optionale Werte der `KONFIGURATION`-Karte |
 
-Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. Der ausklappbare Bereich **Alle Kanbanize-Informationen** enthält weiterhin sämtliche Lane-Karten.
+Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. **Projekt-IP und Sonstiges anzeigen** blendet die zwei Zusatzspalten ein und speichert diese Wahl pro Windows-Benutzer. RDP-Sitzung, letzte Anmeldung und Konfigurationsstatus stehen im Detailbereich. Der ausklappbare Bereich zeigt relevante Projektkarten; Robotik- und KONFIGURATION-Daten bleiben in ihren eigenen strukturierten Detailbereichen und werden dort nicht doppelt dargestellt.
 
 Unter dem Suchfeld zeigt ein Countdown den nächsten automatischen Kanbanize-Abruf. Das Intervall kann zwischen 1 und 1440 Minuten eingetragen und mit **Übernehmen** pro Windows-Benutzer gespeichert werden. Ohne konfigurierten API-Key steht der Zähler auf **pausiert**; sobald der Key in Project Settings gespeichert wurde, beginnt der Countdown ohne Neustart. **Daten aktualisieren** bleibt für eine sofortige manuelle Aktualisierung erhalten und startet den Zähler anschließend neu.
 
-Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt.
+Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung im Detailbereich auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt. Die ausgewählte Projektkarte zeigt Start und Ende ohne Uhrzeit; fehlen diese Werte in Kanbanize, erscheint **nicht angegeben**.
 
 ### Remote Desktop und Pfade
 
-Nach Auswahl eines Online-PCs stehen bis zu vier lokale Monitore sowie diese Aktionen bereit:
+Nach Auswahl eines PCs stehen bis zu vier lokale Monitore sowie diese Aktionen bereit. Dieselben Aktionen sind über einen Rechtsklick auf die Tabellenzeile verfügbar:
 
 - **Remote Desktop** verwendet den priorisierten Kanbanize-Benutzer. Unmittelbar vor dem Start wird das Kennwort aus dem lokalen Windows Credential Manager temporär für `TERMSRV/<PC>` eingetragen und dieser kurzlebige RDP-Eintrag nach 20 Sekunden entfernt.
 - **RDP mit Anmeldedaten** startet dieselbe Remote-Verbindung ohne temporären Eintrag und zeigt bewusst den Windows-Anmeldedialog.
-- **PC-Projektordner**, **Simulation**, **PLC-Projekt** und **Planung** öffnen den zugehörigen Pfad für das ausgewählte Projekt.
+- **PC-Projektordner** öffnet den Pfad auf dem Arbeitsplatz und erfordert deshalb einen Online-PC.
+- **Simulation**, **PLC-Projekt** und **Planung** öffnen Serverpfade und bleiben auch bei einem Offline-PC verfügbar, sofern der Pfad aufgelöst werden konnte.
 
-Bei einem Offline-PC sind diese Buttons nicht sichtbar. Dadurch kann keine fehlerhafte Remote- oder UNC-Aktion ausgelöst werden.
+Bei einem Offline-PC bleiben die Aktionen sichtbar: Nur RDP, RDP mit Anmeldedialog und der PC-Projektordner werden mit einem konkreten Tooltip deaktiviert. Die angezeigten Pfade stehen in einem schreibgeschützten Textfeld und können markiert sowie mit **Strg+C** kopiert werden.
 
 Das RDP-Passwort wird einmalig unter **Project Settings → Geschützte Zugangsdaten** geschützt im Windows Credential Manager des angemeldeten Benutzers gespeichert. Es steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Auf einem weiteren Rechner beziehungsweise in einem anderen Windows-Profil muss es einmalig erneut eingerichtet oder über ein freigegebenes Unternehmens-Secretsystem verteilt werden. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
 

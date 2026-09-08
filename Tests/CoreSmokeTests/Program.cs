@@ -141,7 +141,7 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
         {
             schemaVersion = 1,
             lanes = Array.Empty<object>(),
-            cards = new[]
+            cards = new object[]
             {
                 new
                 {
@@ -157,6 +157,16 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
                         new { id = 914, description = "PROJEKT-IP: 10.20.30.40" },
                         new { id = 915, description = "SONSTIGES: Wartungsfenster Freitag" }
                     }
+                },
+                new
+                {
+                    id = 902,
+                    laneId = "lane-1",
+                    columnId = "29375",
+                    title = "[GM9000/01-001] Demo",
+                    startDate = "2026-09-01T00:00:00+00:00",
+                    deadline = "2026-09-30T00:00:00+00:00",
+                    subtasks = Array.Empty<object>()
                 }
             }
         }));
@@ -180,6 +190,10 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
         "Beckhoff software information is missing.");
     Assert(workstation.RobotCount == 1 && workstation.RobotDetails[0].Name == "R01",
         "Robot name, status or deduplication failed.");
+    Assert(workstation.ProjectCardDetails.Count == 1 &&
+           workstation.ProjectCardDetails[0].StartDate?.Day == 1 &&
+           workstation.ProjectCardDetails[0].Deadline?.Day == 30,
+        "Structured project start/deadline data was not retained from the workstation cache.");
     Assert(new ViCoWorkstationSearch().Search(snapshot.Workstations, "GM9000", ViCoSearchMode.Project).Count == 1,
         "Project-oriented workstation search failed.");
 }
@@ -346,10 +360,12 @@ static async Task VerifyAutoRefreshPreferencesAsync(string temporaryRoot)
 {
     var file = Path.Combine(temporaryRoot, "preferences", "vico.json");
     var store = new JsonViCoAutoRefreshSettingsStore(file);
-    await store.SaveAsync(new ViCoAutoRefreshSettings(0));
+    await store.SaveAsync(new ViCoAutoRefreshSettings(0, true));
     var normalized = await store.LoadAsync();
     Assert(normalized.IntervalMinutes == ViCoAutoRefreshPolicy.MinimumIntervalMinutes,
         "An invalid auto-refresh interval was not normalized before persistence.");
+    Assert(normalized.ShowExtendedInformation,
+        "The optional ViCo column preference was not persisted.");
 
     await File.WriteAllTextAsync(file, "not-json");
     var recovered = await store.LoadAsync();
@@ -836,6 +852,10 @@ static async Task VerifyKanbanizeRefreshApiAsync(string temporaryRoot)
            configuration.GetProperty("subtasks").EnumerateArray().Any(subtask =>
                subtask.GetProperty("description").GetString() == "SW: TIA V20"),
         "Nested/dictionary KONFIGURATION subtasks from the direct card endpoint were not cached.");
+    var project = cards.EnumerateArray().Single(card => card.GetProperty("id").GetInt32() == 502);
+    Assert(project.GetProperty("startDate").GetDateTimeOffset().Day == 1 &&
+           project.GetProperty("deadline").GetDateTimeOffset().Day == 30,
+        "Kanbanize project dates were not retained in the structured workstation cache.");
 }
 
 static async Task VerifyAdministrationIdentityAsync()
@@ -1125,7 +1145,7 @@ sealed class KanbanizeRefreshHttpMessageHandler : HttpMessageHandler
         {
             "/api/v2/boards/1541/lanes" => "{\"data\":[{\"lane_id\":28125,\"name\":\"GM12345 Tool PC\"}]}",
             var value when value.StartsWith("/api/v2/cards?board_ids=1541", StringComparison.Ordinal) =>
-                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\"}],\"pagination\":{\"all_pages\":1}}}",
+                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\",\"start_date\":\"2026-09-01T00:00:00Z\",\"deadline\":\"2026-09-30T00:00:00Z\"}],\"pagination\":{\"all_pages\":1}}}",
             "/api/v2/cards/501/subtasks" =>
                 "{\"data\":{\"subtasks\":{\"601\":{\"subtask_id\":601,\"description\":\"STANDORT: Werk 1\"},\"602\":{\"description\":{\"text\":\"SW: TIA V20\"}}}}}",
             var value when value.StartsWith("/api/v2/cards?board_ids=846", StringComparison.Ordinal) =>

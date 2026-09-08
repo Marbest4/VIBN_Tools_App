@@ -31,7 +31,8 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                 robotNames,
                 robotColumns,
                 boardData.Configurations,
-                boardData.ConfigurationColumns),
+                boardData.ConfigurationColumns,
+                boardData.ProjectCards),
             warnings);
     }
 
@@ -88,7 +89,25 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                     group => group.Key,
                     ResolveConfigurationColumn,
                     StringComparer.OrdinalIgnoreCase);
-            return new CachedBoardData(configurations, columns);
+            var projectCards = cache.Cards
+                .Where(card => !IsConfigurationTitle(card.Title))
+                .Where(card => card.Id > 0 && card.LaneId.Length > 0)
+                .GroupBy(card => card.LaneId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyList<ViCoProjectCardInfo>)group
+                        .Select(card => new ViCoProjectCardInfo(
+                            card.Id,
+                            ProjectIdentity.CleanDisplay(card.Title),
+                            MapProjectStatus(card.ColumnId),
+                            card.StartDate,
+                            card.Deadline))
+                        .Where(card => card.Status is "Planung" or "In Arbeit")
+                        .OrderBy(card => card.StartDate ?? DateTimeOffset.MaxValue)
+                        .ThenBy(card => card.Title, StringComparer.OrdinalIgnoreCase)
+                        .ToArray(),
+                    StringComparer.OrdinalIgnoreCase);
+            return new CachedBoardData(configurations, columns, projectCards);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -109,6 +128,15 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
             return 29373;
         return columnIds.FirstOrDefault();
     }
+
+    private static string MapProjectStatus(string columnId) => columnId switch
+    {
+        "29373" or "29368" => "Backlog",
+        "29374" or "29369" => "Planung",
+        "29375" or "29370" => "In Arbeit",
+        "29376" or "29371" => "Erledigt",
+        _ => string.Empty
+    };
 
     private static IReadOnlyList<string> CombineLegacyCards(
         IReadOnlyList<string> lanes,
@@ -155,7 +183,8 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
         IReadOnlyList<string> robotNames,
         IReadOnlyList<string> robotColumns,
         IReadOnlyDictionary<string, ViCoWorkstationConfiguration> configurations,
-        IReadOnlyDictionary<string, int> configurationColumns)
+        IReadOnlyDictionary<string, int> configurationColumns,
+        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> projectCards)
     {
         var result = new List<ViCoWorkstation>();
         for (var index = 0; index < combined.Count; index++)
@@ -226,7 +255,10 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                 int.TryParse(laneId, out var numericLaneId) ? numericLaneId : 0,
                 configurationColumns.TryGetValue(laneId, out var configurationColumnId)
                     ? configurationColumnId
-                    : 0));
+                    : 0,
+                projectCards.TryGetValue(laneId, out var laneProjectCards)
+                    ? laneProjectCards
+                    : Array.Empty<ViCoProjectCardInfo>()));
         }
 
         return result;
@@ -436,11 +468,13 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
 
     private sealed record CachedBoardData(
         IReadOnlyDictionary<string, ViCoWorkstationConfiguration> Configurations,
-        IReadOnlyDictionary<string, int> ConfigurationColumns)
+        IReadOnlyDictionary<string, int> ConfigurationColumns,
+        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> ProjectCards)
     {
         public static CachedBoardData Empty { get; } = new(
             new Dictionary<string, ViCoWorkstationConfiguration>(StringComparer.OrdinalIgnoreCase),
-            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase));
+            new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, IReadOnlyList<ViCoProjectCardInfo>>(StringComparer.OrdinalIgnoreCase));
     }
 }
 

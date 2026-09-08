@@ -45,6 +45,14 @@ public sealed record AutomationSoftwareInfo(
 
 public sealed record ViCoRobotInfo(string Name, string Status, string SourceCard);
 
+/// <summary>Structured scheduling data retained from one Kanbanize project card.</summary>
+public sealed record ViCoProjectCardInfo(
+    int CardId,
+    string Title,
+    string Status,
+    DateTimeOffset? StartDate,
+    DateTimeOffset? Deadline);
+
 /// <summary>
 /// One editable field from the KONFIGURATION card. The subtask ID is retained
 /// so the UI can update exactly that subtask and no unrelated board data.
@@ -95,13 +103,17 @@ public sealed record ViCoWorkstation(
     IReadOnlyList<ViCoRobotInfo>? Robots = null,
     ViCoWorkstationConfiguration? Configuration = null,
     int KanbanizeLaneId = 0,
-    int ConfigurationColumnId = 0)
+    int ConfigurationColumnId = 0,
+    IReadOnlyList<ViCoProjectCardInfo>? ProjectCards = null)
 {
     public IReadOnlyList<AutomationSoftwareInfo> AutomationSoftware { get; } =
         Software ?? Array.Empty<AutomationSoftwareInfo>();
 
     public IReadOnlyList<ViCoRobotInfo> RobotDetails { get; } =
         Robots ?? Array.Empty<ViCoRobotInfo>();
+
+    public IReadOnlyList<ViCoProjectCardInfo> ProjectCardDetails { get; } =
+        ProjectCards ?? Array.Empty<ViCoProjectCardInfo>();
 
     public string ProjectSummary => string.Join(" | ", Projects);
 

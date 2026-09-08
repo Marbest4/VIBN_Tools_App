@@ -4,6 +4,7 @@
              xmlns:behaviors="clr-namespace:VIBN_Tools.Application.Behaviors">
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <behaviors:BindingProxy x:Key="ViewModelProxy" Data="{Binding}" />
     </UserControl.Resources>
 
     <Grid Margin="14">
@@ -48,6 +49,12 @@
                 <TextBlock Margin="5,0,8,0" VerticalAlignment="Center" Text="Minuten" />
                 <Button MinWidth="95" MinHeight="28" Padding="8,2" Content="Übernehmen"
                         Command="{Binding SaveAutoRefreshIntervalCommand}" />
+                <CheckBox Margin="18,0,0,0"
+                          VerticalAlignment="Center"
+                          Content="Projekt-IP und Sonstiges anzeigen"
+                          IsChecked="{Binding ShowExtendedInformation, Mode=TwoWay}"
+                          Command="{Binding SaveDisplayPreferencesCommand}"
+                          ToolTip="Blendet die zwei optionalen Spalten ein oder aus und speichert die Auswahl für den aktuellen Windows-Benutzer." />
             </WrapPanel>
         </Grid>
 
@@ -70,6 +77,39 @@
                       ColumnHeaderHeight="38"
                       HorizontalScrollBarVisibility="Auto"
                       FrozenColumnCount="2">
+                <DataGrid.RowStyle>
+                    <Style TargetType="DataGridRow">
+                        <Setter Property="Tag" Value="{Binding DataContext, RelativeSource={RelativeSource AncestorType={x:Type DataGrid}}}" />
+                        <Setter Property="ContextMenu">
+                            <Setter.Value>
+                                <ContextMenu DataContext="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource Self}}">
+                                    <MenuItem Header="Remote Desktop"
+                                              Command="{Binding ContextConnectRemoteCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                    <MenuItem Header="RDP mit Anmeldedialog"
+                                              Command="{Binding ContextConnectRemoteWithPromptCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                    <Separator />
+                                    <MenuItem Header="PC-Projektordner"
+                                              Command="{Binding ContextOpenPcProjectsCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.IsOnline, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                    <MenuItem Header="Simulation (Server)"
+                                              Command="{Binding ContextOpenSimulationCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                    <MenuItem Header="PLC-Projekt (Server)"
+                                              Command="{Binding ContextOpenCommissioningCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                    <MenuItem Header="Planung (Server)"
+                                              Command="{Binding ContextOpenPlanningCommand}"
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                </ContextMenu>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </DataGrid.RowStyle>
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="Belegung" Width="90">
                         <DataGridTemplateColumn.CellTemplate>
@@ -81,30 +121,6 @@
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
                     <DataGridTextColumn Header="PC" Binding="{Binding PcName, Mode=OneWay}" Width="94" />
-                    <DataGridTextColumn Header="Projekt(e)" Binding="{Binding ProjectSummary, Mode=OneWay}" Width="205" />
-                    <DataGridTemplateColumn Header="Software" Width="175">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding ConfigurationSoftware, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationSoftware, Mode=OneWay}" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Standort" Binding="{Binding ConfigurationLocation, Mode=OneWay}" Width="135" />
-                    <DataGridTextColumn Header="Projekt-IP" Binding="{Binding ConfigurationProjectIp, Mode=OneWay}" Width="130" />
-                    <DataGridTemplateColumn Header="Sonstiges" Width="170">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding ConfigurationOther, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationOther, Mode=OneWay}" />
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="RDP-Sitzung" Width="175">
-                        <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding RemoteSessionStatus, Mode=OneWay}" ToolTip="{Binding RemoteSessionDiagnostic, Mode=OneWay}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Letzte Anmeldung" Width="195">
-                        <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding LastRemoteLogon, Mode=OneWay}" ToolTip="{Binding RemoteSessionDiagnostic, Mode=OneWay}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Benutzer" Binding="{Binding UserName, Mode=OneWay}" Width="150" />
                     <DataGridTemplateColumn Header="Online" Width="82">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
@@ -114,15 +130,29 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Konfiguration" Width="185">
+                    <DataGridTextColumn Header="Projekt(e)" Binding="{Binding ProjectSummary, Mode=OneWay}" Width="205" />
+                    <DataGridTemplateColumn Header="Software" Width="175">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <Border Margin="3" Padding="5,3" Background="{Binding ConfigurationStatusBackground, Mode=OneWay}" CornerRadius="3">
-                                    <TextBlock HorizontalAlignment="Center" Text="{Binding ConfigurationStatus, Mode=OneWay}" TextWrapping="Wrap" />
-                                </Border>
+                                <TextBlock Text="{Binding ConfigurationSoftware, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationSoftware, Mode=OneWay}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Benutzer" Binding="{Binding UserName, Mode=OneWay}" Width="150" />
+                    <DataGridTextColumn Header="Standort" Binding="{Binding ConfigurationLocation, Mode=OneWay}" Width="135" />
+                    <DataGridTemplateColumn Header="Sonstiges"
+                                            Width="170"
+                                            Visibility="{Binding Data.ShowExtendedInformation, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ConfigurationOther, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationOther, Mode=OneWay}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Projekt-IP"
+                                        Binding="{Binding ConfigurationProjectIp, Mode=OneWay}"
+                                        Width="130"
+                                        Visibility="{Binding Data.ShowExtendedInformation, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -203,9 +233,32 @@
                     <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Alle Karten dieser Arbeitsplatz-Lane" />
                     <ComboBox MinHeight="36" Padding="7,4" FontSize="14" ItemsSource="{Binding Projects}" SelectedItem="{Binding SelectedProject}" />
 
-                    <TextBlock Margin="0,12,0,0" FontFamily="Consolas" FontSize="12.5" Text="{Binding PathInformation, Mode=OneWay}" TextWrapping="Wrap" />
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBlock Margin="0,0,8,0" FontWeight="SemiBold" Text="Projektstart:" />
+                        <TextBlock Grid.Column="1" Text="{Binding SelectedProjectStart, Mode=OneWay}" />
+                        <TextBlock Grid.Row="1" Margin="0,4,8,0" FontWeight="SemiBold" Text="Projektende:" />
+                        <TextBlock Grid.Row="1" Grid.Column="1" Margin="0,4,0,0" Text="{Binding SelectedProjectEnd, Mode=OneWay}" />
+                    </Grid>
 
-                    <StackPanel Visibility="{Binding CanUseSelectedWorkstationActions, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBox Margin="0,12,0,0"
+                             Padding="6"
+                             FontFamily="Consolas"
+                             FontSize="12.5"
+                             IsReadOnly="True"
+                             BorderThickness="1"
+                             Text="{Binding PathInformation, Mode=OneWay}"
+                             TextWrapping="Wrap"
+                             ToolTip="Die Pfade können markiert und mit Strg+C kopiert werden." />
+
+                    <StackPanel Visibility="{Binding HasSelectedWorkstation, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Margin="0,14,0,4" FontWeight="SemiBold" Text="Monitore" />
                         <WrapPanel>
                             <CheckBox Content="1" IsChecked="{Binding UseMonitor1}" />
@@ -215,21 +268,21 @@
                         </WrapPanel>
 
                         <UniformGrid Margin="0,10,0,0" Columns="2">
-                            <Button MinHeight="36" Margin="0,3,3,3" Content="Remote Desktop" ToolTip="Startet die hinterlegte automatische Anmeldung." Command="{Binding ConnectRemoteCommand}" />
-                            <Button MinHeight="36" Margin="3" Content="RDP mit Anmeldedaten" ToolTip="Öffnet Remote Desktop mit Windows-Anmeldedialog ohne automatische Anmeldung." Command="{Binding ConnectRemoteWithPromptCommand}" />
-                            <Button MinHeight="36" Margin="0,3,3,3" Content="PC-Projektordner" Command="{Binding OpenPcProjectsCommand}" />
-                            <Button MinHeight="36" Margin="3" Content="Simulation" Command="{Binding OpenSimulationCommand}" />
-                            <Button MinHeight="36" Margin="0,3,3,3" Content="PLC-Projekt" Command="{Binding OpenCommissioningCommand}" />
-                            <Button MinHeight="36" Margin="3" Content="Planung" Command="{Binding OpenPlanningCommand}" />
+                            <Button MinHeight="36" Margin="0,3,3,3" Content="Remote Desktop" ToolTip="{Binding RemoteActionUnavailableReason}" IsEnabled="{Binding CanUseRemoteActions}" Command="{Binding ConnectRemoteCommand}" />
+                            <Button MinHeight="36" Margin="3" Content="RDP mit Anmeldedaten" ToolTip="{Binding RemoteActionUnavailableReason}" IsEnabled="{Binding CanUseRemoteActions}" Command="{Binding ConnectRemoteWithPromptCommand}" />
+                            <Button MinHeight="36" Margin="0,3,3,3" Content="PC-Projektordner" ToolTip="{Binding PcProjectsUnavailableReason}" IsEnabled="{Binding CanOpenPcProjects}" Command="{Binding OpenPcProjectsCommand}" />
+                            <Button MinHeight="36" Margin="3" Content="Simulation" ToolTip="{Binding ServerPathActionUnavailableReason}" IsEnabled="{Binding CanOpenServerPathActions}" Command="{Binding OpenSimulationCommand}" />
+                            <Button MinHeight="36" Margin="0,3,3,3" Content="PLC-Projekt" ToolTip="{Binding ServerPathActionUnavailableReason}" IsEnabled="{Binding CanOpenServerPathActions}" Command="{Binding OpenCommissioningCommand}" />
+                            <Button MinHeight="36" Margin="3" Content="Planung" ToolTip="{Binding ServerPathActionUnavailableReason}" IsEnabled="{Binding CanOpenServerPathActions}" Command="{Binding OpenPlanningCommand}" />
                         </UniformGrid>
                     </StackPanel>
                     <TextBlock Margin="0,10,0,0"
                                Foreground="#FF8A3B3B"
                                Visibility="{Binding IsSelectedWorkstationOffline, Converter={StaticResource BooleanToVisibilityConverter}}"
-                               Text="Der PC ist offline; Remote- und Pfadaktionen stehen deshalb nicht zur Verfügung." />
+                               Text="Der PC ist offline: RDP und PC-Projektordner sind deaktiviert; erreichbare Serverpfade bleiben verfügbar." />
 
-                    <Expander Margin="0,14,0,0" Header="Alle Kanbanize-Informationen (inkl. Backlog / Abschluss)">
-                        <ItemsControl ItemsSource="{Binding SelectedWorkstation.Details, Mode=OneWay}">
+                    <Expander Margin="0,14,0,0" Header="Relevante Kanbanize-Projektkarten (inkl. Backlog / Abschluss)">
+                        <ItemsControl ItemsSource="{Binding SelectedWorkstation.RelevantKanbanizeDetails, Mode=OneWay}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <TextBlock Margin="0,2" Text="{Binding}" TextWrapping="Wrap" />

@@ -34,10 +34,12 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] IBN startet kompakt mit ausschließlich PC/Online/Projekte; Details, RDP und Zugangsdaten bleiben über die Expander auf 480 × 340 erreichbar.
 - [ ] Ohne FEE-Verbindung sind alle dokumentierten FEE-Aktionen grau, nicht ausführbar und zeigen den Tooltip „Keine Verbindung zu FEE vorhanden.“.
 - [ ] ViCo-Suche findet PC, Benutzer und Projekt mit demselben Suchfeld.
-- [ ] Spalten Belegung, Software, Standort, Projekt-IP, Sonstiges, RDP-Sitzung, letzte Anmeldung und Benutzer sind plausibel.
+- [ ] Hauptspalten stehen exakt als Belegung, PC, Online, Projekt, Software, Benutzer, Standort, Sonstiges und Projekt-IP; die letzten zwei lassen sich persistent ein-/ausblenden.
 - [ ] Nur Planung/In-Arbeit-Projekte stehen in der aktiven Projektauswahl; Backlog/Abschluss stehen im Detailbereich.
 - [ ] Frei ist grün, Belegt rot; Online ist grün, Offline rot.
-- [ ] Offline-PCs zeigen keine Remote-/Pfadbuttons.
+- [ ] Offline-PCs lassen RDP, Anmeldedialog und PC-Projektordner sichtbar aber deaktiviert; vorhandene Serverpfade für Simulation, PLC und Planung bleiben nutzbar.
+- [ ] Rechtsklick auf eine Zeile bietet dieselben Aktionen wie der Detailbereich und wählt vor Ausführung genau diese Zeile aus.
+- [ ] Projektstart/-ende erscheinen ohne Uhrzeit oder als „nicht angegeben“; die Pfadanzeige lässt sich markieren und kopieren.
 - [ ] RDP-Sitzungsrechte fehlen: Anzeige lautet „Nicht abrufbar“, nicht „offline“.
 - [ ] Automatischer Remote-Button nutzt den Kanbanize-Benutzer; der zweite Button zeigt den Windows-Anmeldedialog.
 - [ ] Eine vorhandene KONFIGURATION-Unteraufgabe lässt sich bearbeiten und zurückspeichern; keine andere Karteninformation ändert sich.

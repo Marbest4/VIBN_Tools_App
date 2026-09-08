@@ -71,7 +71,16 @@ internal static class Program
                     new ViCoConfigurationField("STANDORT", "Werk 2", 712),
                     new ViCoConfigurationField("SW", "TIA V19 / Beckhoff TwinCAT 3", 713),
                     new ViCoConfigurationField("PROJEKT-IP", "10.20.30.40", 714),
-                    new ViCoConfigurationField("SONSTIGES", "Testdaten für die Anleitung", 715)));
+                    new ViCoConfigurationField("SONSTIGES", "Testdaten für die Anleitung", 715)),
+                ProjectCards: new[]
+                {
+                    new ViCoProjectCardInfo(
+                        901,
+                        "GM1234/05-130 Demo",
+                        "In Arbeit",
+                        new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero),
+                        new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero))
+                });
             var workstationRow = new ViCoWorkstationRowVM(workstation);
             workstationRow.SetOnline(true);
             workstationRow.SetRemoteSession(new ViCoRemoteSessionInfo(
@@ -81,6 +90,11 @@ internal static class Program
                 new DateTimeOffset(2026, 8, 25, 8, 30, 0, TimeSpan.Zero)));
             searchViewModel.Results.Add(workstationRow);
             searchViewModel.SelectedWorkstation = workstationRow;
+            if (searchViewModel.SelectedProjectStart != "01.08.2026" ||
+                searchViewModel.SelectedProjectEnd != "30.09.2026")
+            {
+                throw new InvalidOperationException("ViCo project dates must be displayed without a time component.");
+            }
 
             var administrationPage = new ViCoAdministrationPage();
             var administrationViewModel = (ViCoAdministrationPageVM)administrationPage.DataContext;
