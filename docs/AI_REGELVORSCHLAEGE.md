@@ -25,5 +25,17 @@ Damit führt ein mehrfaches Klicken im selben Fall nicht künstlich zu hoher Sic
 
 Im Unterreiter **Regelvorschläge** können Vorschläge aktualisiert, angenommen oder abgelehnt werden. Der Status wird atomar in `rule_suggestion_reviews.json` gespeichert. **Annehmen verändert die Requirements-XML noch nicht.** Das verhindert, dass eine statistische Beobachtung ungeprüft produktive Regeln verändert.
 
-Noch offen ist der sichere Requirements-Writer mit konkreter XML-Vorschau, Backup, Schema-Validierung und bestätigter atomarer Übernahme. Bis dahin ist `Accepted` eine fachliche Freigabe zur späteren Umsetzung, keine bereits aktive Generatorregel.
+Mit **XML-Vorschau** wird anschließend eine AutoCreate-Datei ausgewählt. Der Writer:
 
+- übernimmt ausschließlich angenommene Slotvorschläge,
+- blockiert widersprüchliche Zielslots für dieselbe Typ-/Signal-Kombination,
+- prüft Ausgangsdatei und Vorschau gegen das eingebettete XSD,
+- verwendet `match="exact"`, damit ein kurzer Signaltext keine anderen Signale als Teiltreffer erfasst,
+- zeigt Typ, Signal sowie alten und neuen Slot vor dem Schreiben,
+- prüft unmittelbar vor dem Schreiben den SHA-256-Stand der Quelldatei erneut.
+
+**XML übernehmen** verlangt eine zweite explizite Bestätigung. Danach ersetzt `File.Replace` die unveränderte Quelldatei atomar und legt im selben Ordner eine eindeutig benannte `.vibn-backup`-Datei an. Ein zwischen Vorschau und Übernahme extern geändertes XML wird nicht überschrieben.
+
+Die exakte Regel wird als isolierte Override-Komponente geschrieben. Bestehende Definitionen des Komponententyps erhalten für genau dieses vollständige Signal eine Exclusion; die Override-Komponente ordnet es genau einem Zielslot zu. Dadurch erzeugt die bisherige Eindeutigkeitsprüfung keinen Mehrfachtreffer. Eine spätere Änderung desselben Vorschlags ersetzt den alten generierten Override statt eine konkurrierende Regel zu hinterlassen.
+
+Weiterhin offen sind fachlich generalisierte Regex-Regeln und Vorschläge für vollständig neue Komponententypen. Dafür reichen einzelne Bedienaktionen nicht als belastbare Datenbasis; solche Regeln dürfen erst nach separater Evaluation und fachlicher Freigabe entstehen.

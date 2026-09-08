@@ -527,11 +527,21 @@
                                     Command="{Binding RefreshRuleSuggestionsCommand}" />
                             <Button Content="Aktionslogs öffnen" Width="145"
                                     Command="{Binding OpenActionLogFolderCommand}" />
+                            <Button Content="XML-Vorschau" Width="125"
+                                    Command="{Binding PreviewRequirementsPatchCommand}"
+                                    ToolTip="Wählt eine AutoCreate-XML und zeigt die angenommenen exakten Slotregeln vor jeder Änderung." />
+                            <Button Content="XML übernehmen" Width="130"
+                                    Command="{Binding ApplyRequirementsPatchCommand}"
+                                    ToolTip="Nur nach aktueller Vorschau und erneuter Bestätigung; erstellt eine Sicherungsdatei." />
                         </StackPanel>
                         <TextBlock Margin="0,7,0,0" TextWrapping="Wrap"
                                    Text="{Binding RuleSuggestionSummary}" />
                         <TextBlock Margin="0,4,0,0" Foreground="#FF555555" TextWrapping="Wrap"
-                                   Text="Diese erste sichere Stufe schlägt nur exakte Typ-/Signal-/Slot-Regeln vor. Annehmen speichert ausschließlich den Prüfstatus; die Requirements-XML wird nicht automatisch verändert." />
+                                   Text="Diese erste sichere Stufe schlägt nur exakte Typ-/Signal-/Slot-Regeln vor. Annehmen markiert die Auswahl; XML-Vorschau prüft Schema und Konflikte. Erst XML übernehmen verändert nach Bestätigung die gewählte Datei und legt eine Sicherung an." />
+                        <TextBox Margin="0,7,0,0" MinHeight="58" MaxHeight="120"
+                                 IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Text="{Binding RequirementsPatchPreview, Mode=OneWay}" />
                     </StackPanel>
 
                     <DataGrid ItemsSource="{Binding RuleSuggestions}" IsReadOnly="True">

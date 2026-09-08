@@ -44,6 +44,7 @@ internal static class Program
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
         ValidateRuleSuggestionWorkflow();
+        await ValidateRequirementsRulePatchWorkflowAsync();
 
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
@@ -430,6 +431,122 @@ internal static class Program
         };
         logger.LogSlotChange(
             "Cylinder_1", "Cylinder", entry, oldSlot, null, null, sourceKey);
+    }
+
+    private static async Task ValidateRequirementsRulePatchWorkflowAsync()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-requirements-patch-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(directory);
+        var requirementsPath = Path.Combine(directory, "AutoCreate.xml");
+        try
+        {
+            File.WriteAllText(requirementsPath, """
+                <AutoCreate>
+                  <Components>
+                    <Component name="Cylinder" type="Cylinder">
+                      <Slots>
+                        <Slot name="PLC_IN_Old">
+                          <Keygroup type="required"><KeySet><Key keep="true">Ready</Key></KeySet></Keygroup>
+                        </Slot>
+                        <Slot name="PLC_IN_New">
+                          <Keygroup type="required"><KeySet><Key keep="true">Target</Key></KeySet></Keygroup>
+                        </Slot>
+                      </Slots>
+                    </Component>
+                  </Components>
+                  <FilterList />
+                </AutoCreate>
+                """);
+            var suggestion = new RuleSuggestion(
+                "0123456789abcdef",
+                "Ready correction",
+                "Cylinder",
+                "Ready",
+                "Slot",
+                "PLC_IN_Old",
+                "PLC_IN_New",
+                3,
+                3,
+                1,
+                RuleSuggestionStatus.Accepted);
+            var service = new RequirementsRulePatchService();
+            var plan = service.CreatePlan(requirementsPath, [suggestion]);
+            if (!plan.UpdatedXml.Contains("match=\"exact\"", StringComparison.Ordinal) ||
+                !plan.Preview.Contains("PLC_IN_Old' -> 'PLC_IN_New", StringComparison.Ordinal))
+            {
+                throw new InvalidOperationException("Requirements patch preview misses the exact override.");
+            }
+
+            var rejectedUnconfirmedWrite = false;
+            try
+            {
+                service.Apply(plan, explicitlyConfirmed: false);
+            }
+            catch (InvalidOperationException)
+            {
+                rejectedUnconfirmedWrite = true;
+            }
+            if (!rejectedUnconfirmedWrite)
+                throw new InvalidOperationException("An unconfirmed requirements patch was written.");
+
+            var applyResult = service.Apply(plan, explicitlyConfirmed: true);
+            if (!File.Exists(applyResult.BackupPath) || applyResult.AppliedRules != 1)
+                throw new InvalidOperationException("Requirements patch backup was not created.");
+
+            var requirements = new RequirementsXml();
+            var read = requirements.ReadFromFile(requirementsPath);
+            if (!read.IsSuccess)
+                throw new InvalidOperationException("Patched requirements no longer validate.");
+            var generator = new ContainerGenerator();
+            var generated = await generator.GenerateAsync(new ContainerGenerationRequest(
+                [new ContainerEntry { Signal = "Ready", SignalId = "exact-ready" }],
+                read.Value,
+                [new GroupingRule { TargetField = match => match.ContainerName, GroupOrder = 0 }],
+                null,
+                IgnoreCase: true,
+                UseFilterList: true));
+            var assigned = generated.Containers.SelectMany(container => container.DataList).Single();
+            if (assigned.Slot != "PLC_IN_New" || generated.UnassignedSignals.Count != 0)
+                throw new InvalidOperationException("Exact requirements override did not reroute the signal.");
+
+            var revisedSuggestion = suggestion with
+            {
+                Id = "fedcba9876543210",
+                NewValue = "PLC_IN_Alternative"
+            };
+            var revisedPlan = service.CreatePlan(requirementsPath, [revisedSuggestion]);
+            service.Apply(revisedPlan, explicitlyConfirmed: true);
+            var revisedDocument = XDocument.Load(requirementsPath);
+            var generatedOverrides = revisedDocument.Descendants("Component")
+                .Where(component => component.Attribute("name")?.Value
+                    .StartsWith("VIBN AI exact override", StringComparison.Ordinal) == true)
+                .ToArray();
+            if (generatedOverrides.Length != 1 ||
+                generatedOverrides[0].Descendants("Slot").Single().Attribute("name")?.Value !=
+                    "PLC_IN_Alternative")
+            {
+                throw new InvalidOperationException("A revised exact override left a competing stale rule behind.");
+            }
+
+            var stalePlan = service.CreatePlan(requirementsPath, [revisedSuggestion]);
+            File.AppendAllText(requirementsPath, Environment.NewLine);
+            var rejectedStaleWrite = false;
+            try
+            {
+                service.Apply(stalePlan, explicitlyConfirmed: true);
+            }
+            catch (InvalidOperationException)
+            {
+                rejectedStaleWrite = true;
+            }
+            if (!rejectedStaleWrite)
+                throw new InvalidOperationException("A stale requirements preview overwrote a changed file.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
     }
 
     private static string BuildContainerFileXml(

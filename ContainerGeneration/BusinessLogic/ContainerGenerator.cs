@@ -243,7 +243,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic
             var filterKeys = doc.Descendants("FilterList").Descendants("Key").ToList();
             var filteredList = signalList.Where(signal =>
             {
-                return !filterKeys.Any(key => MatchKeyPattern(signal.Signal, key.Value, ignoreCase));
+                return !filterKeys.Any(key => MatchKeyPattern(signal.Signal, key, ignoreCase));
             });
 
             return filteredList.ToList();
@@ -526,7 +526,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic
                     var mergedKeygroups = componentKeygroups.Concat(slotKeygroups).ToList();
 
                     // no match if keyword in exclude group found
-                    bool excludeMatch = mergedKeygroups.Any(keyGroup => keyGroup.Attribute("type")?.Value == "exclude" && keyGroup.Descendants("Key").Any(k => MatchKeyPattern(cEntry.Signal, k.Value, ignoreCase)));
+                    bool excludeMatch = mergedKeygroups.Any(keyGroup => keyGroup.Attribute("type")?.Value == "exclude" && keyGroup.Descendants("Key").Any(k => MatchKeyPattern(cEntry.Signal, k, ignoreCase)));
                     if (excludeMatch)
                     {
                         cEntry.Note = "Excluded";
@@ -619,9 +619,18 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic
         /// <param name="key">The key pattern to match against.</param>
         /// <param name="ignoreCase">Indicates whether to ignore case in the match.</param>
         /// <returns><c>true</c> if the text matches the key pattern; otherwise, <c>false</c>.</returns>
-        private bool MatchKeyPattern(string text, string key, bool ignoreCase)
+        private bool MatchKeyPattern(string text, XElement key, bool ignoreCase)
         {
-            return GetMatchingKeyRegex(key, ignoreCase).IsMatch(text);
+            var keyText = key.Value.Trim();
+            if (string.Equals(key.Attribute("match")?.Value, "exact", StringComparison.OrdinalIgnoreCase))
+            {
+                return string.Equals(
+                    text.Trim(),
+                    keyText,
+                    ignoreCase ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+            }
+
+            return GetMatchingKeyRegex(keyText, ignoreCase).IsMatch(text);
         }
 
         /// <summary>
@@ -639,8 +648,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic
             (string Value, bool Keep) keyData = (string.Empty, default);
             var key = keyset.Descendants("Key").FirstOrDefault(k =>
             {
-                var keyValue = k.Value;
-                return MatchKeyPattern(text, keyValue, ignoreCase);
+                return MatchKeyPattern(text, k, ignoreCase);
             });
 
             if (key != null)

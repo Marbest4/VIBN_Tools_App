@@ -49,6 +49,8 @@ namespace VIBN_Tools.Application.VM
         public ICommand RejectRuleSuggestionCommand => GetCommandBinding(
             parameter => SetRuleSuggestionStatus(parameter, RuleSuggestionStatus.Rejected));
         public ICommand OpenActionLogFolderCommand => GetCommandBinding(_ => OpenActionLogFolder());
+        public ICommand PreviewRequirementsPatchCommand => GetCommandBinding(_ => PreviewRequirementsPatch());
+        public ICommand ApplyRequirementsPatchCommand => GetCommandBinding(_ => ApplyRequirementsPatch());
 
         // ===========================
         // Services
@@ -62,6 +64,7 @@ namespace VIBN_Tools.Application.VM
         private readonly ComponentTypeNormalizer _typeNorm  = new();
         private readonly RuleSuggestionService _ruleSuggestionService = new();
         private readonly RuleSuggestionReviewStore _ruleSuggestionReviews = new();
+        private readonly RequirementsRulePatchService _requirementsRulePatchService = new();
 
         // ===========================
         // Settings
@@ -127,6 +130,15 @@ namespace VIBN_Tools.Application.VM
         // ===========================
         public ObservableCollection<ModelEntry> ModelEntries { get; } = new();
         public ObservableCollection<RuleSuggestion> RuleSuggestions { get; } = new();
+
+        private RequirementsRulePatchPlan? _pendingRequirementsPatch;
+        private string _requirementsPatchPreview =
+            "Noch keine Vorschau erstellt. Angenommene Vorschläge werden erst nach Dateiauswahl geprüft.";
+        public string RequirementsPatchPreview
+        {
+            get => _requirementsPatchPreview;
+            private set { _requirementsPatchPreview = value; OnPropertyChanged(); }
+        }
 
         private string _ruleSuggestionSummary = "Noch keine Änderungslogs ausgewertet.";
         public string RuleSuggestionSummary
@@ -367,6 +379,81 @@ namespace VIBN_Tools.Application.VM
             catch (Exception exception)
             {
                 MessageBox.Show($"Aktionslog-Ordner konnte nicht geöffnet werden: {exception.Message}", "Fehler");
+            }
+        }
+
+        private void PreviewRequirementsPatch()
+        {
+            var path = SystemDialog.OpenSelectFileDialog("AutoCreate Requirements XML|*.xml");
+            if (string.IsNullOrWhiteSpace(path))
+                return;
+
+            try
+            {
+                _pendingRequirementsPatch = _requirementsRulePatchService.CreatePlan(
+                    path,
+                    RuleSuggestions);
+                RequirementsPatchPreview =
+                    $"Datei: {_pendingRequirementsPatch.SourcePath}{Environment.NewLine}" +
+                    $"Regeln: {_pendingRequirementsPatch.Items.Count}{Environment.NewLine}" +
+                    _pendingRequirementsPatch.Preview;
+                Log($"Requirements-Vorschau für {_pendingRequirementsPatch.Items.Count} Regel(n) erstellt. " +
+                    "Noch wurde keine Datei verändert.");
+            }
+            catch (Exception exception)
+            {
+                _pendingRequirementsPatch = null;
+                RequirementsPatchPreview = $"Vorschau fehlgeschlagen: {exception.Message}";
+                MessageBox.Show(
+                    exception.Message,
+                    "Requirements-Vorschau",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Warning);
+            }
+        }
+
+        private void ApplyRequirementsPatch()
+        {
+            if (_pendingRequirementsPatch is null)
+            {
+                MessageBox.Show(
+                    "Bitte zuerst eine aktuelle Requirements-Vorschau erzeugen.",
+                    "Requirements übernehmen",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                return;
+            }
+
+            var confirmation = MessageBox.Show(
+                $"Die folgenden {_pendingRequirementsPatch.Items.Count} exakten Regel(n) werden übernommen:" +
+                $"{Environment.NewLine}{Environment.NewLine}{_pendingRequirementsPatch.Preview}" +
+                $"{Environment.NewLine}{Environment.NewLine}" +
+                "Die Originaldatei wird atomar ersetzt und eine .vibn-backup-Datei angelegt. Fortfahren?",
+                "Requirements-Änderungen bestätigen",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+            if (confirmation != MessageBoxResult.Yes)
+                return;
+
+            try
+            {
+                var result = _requirementsRulePatchService.Apply(
+                    _pendingRequirementsPatch,
+                    explicitlyConfirmed: true);
+                RequirementsPatchPreview =
+                    $"{result.AppliedRules} Regel(n) übernommen.{Environment.NewLine}" +
+                    $"Sicherung: {result.BackupPath}";
+                Log($"{result.AppliedRules} Requirements-Regel(n) übernommen. " +
+                    $"Sicherung: {result.BackupPath}");
+                _pendingRequirementsPatch = null;
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    exception.Message,
+                    "Requirements übernehmen",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
         }
 
