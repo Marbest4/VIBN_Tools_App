@@ -65,6 +65,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Nach vollständig erfolgreicher SpecialDevices2FEE-Erzeugung ist der Root in FEE2SpecialDevices sichtbar; ein absichtlich fehlgeschlagener Teilvorgang ist nicht als gültige Quelle markiert.
 - [ ] JSON-Export enthält Präfix, Hersteller, Gerätetyp, E-/A-Startbyte und alle Signal-GUIDs; eine nachträglich geänderte FEE-Variable wird über ihre GUID aktualisiert.
 - [ ] Ältere/manuelle BasicFrames werden gezählt, aber nicht heuristisch als Special Device exportiert.
+- [ ] Ein gültiges FEE2SpecialDevices-JSON wird über den bestehenden Gerätekatalog genau einmal in die Warteschlange übernommen; unbekannter Typ und doppelte Präfix-/Herstellerkombination werden abgewiesen.
+- [ ] Abweichende FEE-Signale erzeugen beim Queue-Import einen sichtbaren Prüfhinweis und überschreiben die katalogisierte Gerätedefinition nicht.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
 - [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
 - [ ] Geräteüberschrift zeigt realen Gerätenamen und -typ; IP, PROFINET-Name und Firmware werden vom Geräte-/Interfaceknoten auf beide adressführenden Module übernommen.

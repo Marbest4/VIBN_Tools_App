@@ -86,10 +86,17 @@ internal static class Program
         try
         {
             FeeSpecialDeviceProvenanceCodec.SaveAtomically(decoded, exportPath);
-            var exported = System.Text.Json.JsonSerializer.Deserialize<FeeSpecialDeviceSnapshot>(
-                File.ReadAllText(exportPath));
-            if (exported?.InputByte != 100 || exported.OutputByte != 200 || exported.Signals.Count != 1)
+            if (!FeeSpecialDeviceProvenanceCodec.TryLoadFile(exportPath, out var exported, out var loadError) ||
+                exported?.InputByte != 100 || exported.OutputByte != 200 || exported.Signals.Count != 1)
                 throw new InvalidOperationException("Special-device reverse export lost domain data.");
+            var import = SpecialDeviceSnapshotImporter.Create(exported);
+            if (!import.Success || import.Device?.DevicePrefix != "SCN01" ||
+                import.Device.DeviceAddresses.Input != 100 || import.Device.DeviceAddresses.Output != 200 ||
+                import.Warnings.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Special-device queue import failed or did not flag the intentionally reduced signal snapshot: {loadError} {import.Error}");
+            }
         }
         finally
         {

@@ -194,7 +194,7 @@ Vollständig erzeugte Geräte erhalten am Ende des erfolgreichen FEE-Schreibvorg
 
 ## FEE2SpecialDevices
 
-Der eigene Hauptreiter liest ausschließlich diese markierten Special-Device-Roots. Nach Auswahl können Präfix, Hersteller, Gerätetyp, Startadressen sowie aktuelle und fehlende Signale geprüft und atomar als `*.specialdevice.json` exportiert werden. Ältere oder manuelle FEE-Objekte werden bewusst ignoriert, weil eine Rekonstruktion allein aus Namen fachlich unsicher wäre. Details und Grenzen stehen in [FEE2SpecialDevices](FEE2SPECIALDEVICES.md).
+Der eigene Hauptreiter liest ausschließlich diese markierten Special-Device-Roots. Nach Auswahl können Präfix, Hersteller, Gerätetyp, Startadressen sowie aktuelle und fehlende Signale geprüft und atomar als `*.specialdevice.json` exportiert werden. **SpecialDevices2FEE → FEE2-JSON laden** prüft diese Datei und übernimmt bekannte Geräte über denselben Gerätekatalog in die vorhandene Warteschlange. Bei Signalabweichungen wird gewarnt, weil eine erneute Erzeugung weiterhin die freigegebene Katalogdefinition verwendet. Ältere oder manuelle FEE-Objekte werden bewusst ignoriert, weil eine Rekonstruktion allein aus Namen fachlich unsicher wäre. Details und Grenzen stehen in [FEE2SpecialDevices](FEE2SPECIALDEVICES.md).
 
 ## Bestehende VIBN-Werkzeuge
 

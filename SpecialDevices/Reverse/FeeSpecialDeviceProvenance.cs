@@ -159,6 +159,38 @@ public static class FeeSpecialDeviceProvenanceCodec
         }
     }
 
+    public static bool TryLoadFile(
+        string sourcePath,
+        out FeeSpecialDeviceSnapshot? snapshot,
+        out string error)
+    {
+        snapshot = null;
+        error = string.Empty;
+        try
+        {
+            snapshot = JsonSerializer.Deserialize<FeeSpecialDeviceSnapshot>(File.ReadAllBytes(sourcePath));
+            if (!IsValidSnapshot(snapshot))
+            {
+                snapshot = null;
+                return Fail("Die FEE2SpecialDevices-Datei ist unvollständig oder verwendet eine nicht unterstützte Version.", out error);
+            }
+            return true;
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            snapshot = null;
+            return Fail($"Die FEE2SpecialDevices-Datei konnte nicht gelesen werden: {exception.Message}", out error);
+        }
+    }
+
+    private static bool IsValidSnapshot(FeeSpecialDeviceSnapshot? snapshot) =>
+        snapshot is not null &&
+        snapshot.SchemaVersion == CurrentSchema &&
+        !string.IsNullOrWhiteSpace(snapshot.Prefix) &&
+        !string.IsNullOrWhiteSpace(snapshot.Manufacturer) &&
+        !string.IsNullOrWhiteSpace(snapshot.DeviceType) &&
+        snapshot.Signals is not null;
+
     private static bool Fail(string message, out string error)
     {
         error = message;

@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Microsoft.Win32;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.SpecialDevices;
@@ -62,6 +63,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         AddSelectedHardwareDevicesCommand = GetCommandBinding(AddSelectedHardwareDevices);
         DeleteSelectedDevicesCommand = GetCommandBinding(DeleteSelectedDevice);
         DeleteAllDevicesCommand = GetCommandBinding(DeleteAllDevices);
+        LoadReverseSnapshotCommand = GetCommandBinding(LoadReverseSnapshot);
         CreateSpecialDevicesCommand = GetCommandBindingAsync(CreateSpecialDevicesAsync);
         if (Connection is not null)
             Connection.PropertyChanged += OnFeeConnectionPropertyChanged;
@@ -102,6 +104,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     public ICommand DeleteAllDevicesCommand { get; }
 
     public ICommand CreateSpecialDevicesCommand { get; }
+
+    public ICommand LoadReverseSnapshotCommand { get; }
 
     public FeeConnectionService? Connection => Services.Connection;
 
@@ -535,6 +539,50 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         foreach (var row in TiaHardwareRows)
             row.IsAdded = false;
         StatusText = "Die Special-Device-Warteschlange wurde geleert.";
+    }
+
+    private void LoadReverseSnapshot()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "FEE2SpecialDevices-Export laden",
+            Filter = "VIBN Special Device (*.specialdevice.json)|*.specialdevice.json|JSON (*.json)|*.json",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        if (!FeeSpecialDeviceProvenanceCodec.TryLoadFile(dialog.FileName, out var snapshot, out var readError))
+        {
+            StatusText = readError;
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+
+        var import = SpecialDeviceSnapshotImporter.Create(snapshot!);
+        if (!import.Success || import.Device is null)
+        {
+            StatusText = $"FEE2SpecialDevices-Export wurde nicht übernommen: {import.Error}";
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+        if (SpecialDevices.Any(device =>
+                string.Equals(device.DevicePrefix, import.Device.DevicePrefix, StringComparison.OrdinalIgnoreCase) &&
+                device.DeviceManufacturer == import.Device.DeviceManufacturer))
+        {
+            StatusText = $"Gerät '{import.Device.DevicePrefix}' ist bereits in der Warteschlange.";
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+
+        SpecialDevices.Add(import.Device);
+        StatusText = import.Warnings.Count == 0
+            ? $"{import.Device.DevicePrefix} wurde aus dem FEE2SpecialDevices-Export in die Warteschlange übernommen."
+            : $"{import.Device.DevicePrefix} wurde übernommen. Prüfung erforderlich: {string.Join(" ", import.Warnings)}";
+        if (import.Warnings.Count == 0)
+            _log.Information("SpecialDevices2FEE", StatusText);
+        else
+            _log.Warning("SpecialDevices2FEE", StatusText);
     }
 
     private async Task CreateSpecialDevicesAsync()

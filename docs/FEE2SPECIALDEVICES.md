@@ -21,11 +21,13 @@ Ein fehlgeschlagener oder nur teilweise ausgeführter Schreibvorgang erhält kei
 4. Hersteller, Gerätetyp, Adressen sowie die Anzahl aktueller/fehlender Signale prüfen.
 5. **Gerät als JSON exportieren** wählen.
 
-Der Export erfolgt atomar als `*.specialdevice.json`. Das JSON ist eine versionierte, maschinenlesbare Momentaufnahme für Vergleich, Archivierung und einen späteren Importworkflow.
+Der Export erfolgt atomar als `*.specialdevice.json`. Das JSON ist eine versionierte, maschinenlesbare Momentaufnahme für Vergleich und Archivierung. Unter **SpecialDevices2FEE → FEE2-JSON laden** kann die Datei geprüft und über den bestehenden `DeviceFactory`-Katalog in die Warteschlange übernommen werden. Unbekannte Hersteller, Gerätetypen, Versionen oder fehlende Pflichtangaben werden abgewiesen. Ein bereits vorhandenes Präfix desselben Herstellers wird nicht doppelt eingereiht.
+
+Der Gerätekatalog bleibt bei einer erneuten Erzeugung die autoritative Quelle für Signale. Weichen die aus FEE exportierten Tags, Adressen, Datentypen oder Richtungen von dieser Definition ab, wird das Gerät zwar zur bewussten Prüfung eingereiht, die Oberfläche warnt aber ausdrücklich: Die manuell veränderten Signalwerte werden nicht stillschweigend als neue Generierungsregel verwendet. Der JSON-Snapshot bleibt der Soll-Ist-Nachweis.
 
 ## Grenzen
 
 - Nur künftig mit dieser Version vollständig erzeugte Geräte sind erkennbar.
 - Ältere oder manuell erstellte BasicFrames werden nicht anhand von Namen oder Logikdefinitionen geraten.
-- Der aktuelle Schritt exportiert eine überprüfbare Struktur; ein automatischer Reimport in die SpecialDevices2FEE-Warteschlange und ein semantischer Hardwarevergleich sind noch nicht freigegeben.
+- Der kontrollierte Reimport stellt Hersteller, Gerätetyp, Präfix, Robotertyp und Startadressen wieder her. Manuell abweichende Signale werden diagnostiziert, nicht ungeprüft in den Gerätekatalog geschrieben. Ein eigenständiger semantischer Hardwarevergleich ist noch nicht freigegeben.
 - Die Codec- und Exportlogik ist automatisiert getestet. Lesen nach echtem FEE-Save/Reload bleibt eine Live-Abnahme mit der installierten FEE-Laufzeit.
