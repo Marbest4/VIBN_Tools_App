@@ -7,7 +7,6 @@
         xmlns:ux="http://Grob.com/wpf.ux"
         xmlns:uxb="http://Grob.com/wpf.ux.behaviors"
         xmlns:local="clr-namespace:VIBN_Tools.Application.View"
-        xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
         xmlns:p="clr-namespace:VIBN_Tools.Application.View"
         mc:Ignorable="d"
         Title="VIBN Tools"

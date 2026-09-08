@@ -6,7 +6,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] `dotnet build VIBN_Tools_App.sln --configuration Release` hat keine Fehler.
 - [ ] `Tests/CoreSmokeTests` ist erfolgreich.
-- [ ] `Tests/ContainerGenerationSmokeTests` liest `Interface5.xlsx` und `Interface7.xlsx` und meldet `SixLabors.Fonts 1.0.1.0`.
+- [ ] `Tests/ContainerGenerationSmokeTests` liest alle sieben bereitgestellten Interface-/Container-Paare, bilanziert jedes Signal, hält die verifizierten Zuordnungs-/Slot-Untergrenzen ein und meldet `SixLabors.Fonts 1.0.1.0`.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
 - [ ] Anwendung startet ohne XamlParseException.

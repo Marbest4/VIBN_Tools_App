@@ -122,7 +122,7 @@ Nach einer Änderung immer `scripts/Publish-IbnRemote.ps1` ausführen und prüfe
 | Test | Ziel |
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
-| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly, PLC_IN/PLC_OUT-Policy und semantischer ContainerFile-A/B-Vergleich mit selektiver Übernahme |
+| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import, alle sieben bereitgestellten Interface-/Container-Referenzpaare mit Bilanz- und Regressionsgrenzen, erwartete Fonts-Assembly, PLC_IN/PLC_OUT-Policy und semantischer ContainerFile-A/B-Vergleich mit selektiver Übernahme |
 | `Tests/UiStartupSmokeTests` | integrierte WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings, visueller XML-Plan, Sidecar, Undo/Redo und Screenshot-Erzeugung |
 | `Tests/Test-TiaHardwareTraversal.ps1` | Gerätegruppen, Proxy-Deduplizierung, Local Session und exakte PN/PN-Bit-/Bytebereiche |
 | `scripts/Publish-IbnRemote.ps1` plus kurzer Starttest | minimale, selbstständige IBN-Einzeldatei ohne zusätzliche Publish-Dateien |
@@ -136,6 +136,6 @@ XML-Kommentare erklären öffentliche Modelle, Grenzen und Invarianten. Kommenta
 
 Neue Klassen sollen eine eng abgegrenzte Aufgabe haben. Wenn eine ViewModel-Datei mehrere eigenständige Präsentationsmodelle enthält, diese in getrennte Dateien auslagern – beispielsweise `ViCoWorkstationRowVM` gegenüber `ViCoSearchPageVM`.
 
-`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Die Referenzdateien sichern jetzt den Import und die Übergabe an `ContainerGenerator`; sie enthalten jedoch keine freigegebene Requirements-Datei samt erwarteter vollständiger Ausgabe. Die UI-Klasse daher erst weiter aufteilen, wenn zusätzlich dieser fachliche Golden Master vorliegt.
+`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Der Regressionstest verarbeitet jetzt alle sieben bereitgestellten Interface-/Container-Paare und bilanziert jedes Eingangssignal als zugeordnet, offen oder gefiltert. Die Referenzcontainer wurden laut XML-Metadaten allerdings mit mehreren Regelständen (`EN V15/V16`, `DE V13/V18` und unversioniert) erzeugt, während nur `DE V17` freigegeben vorliegt. Deshalb sind verifizierte Untergrenzen gegen Verschlechterungen hinterlegt, aber keine fachlich falsche byte- oder slotgenaue Gleichheit erzwungen. Eine weitere Zerlegung der UI-Klasse ist erst mit den exakten zu jedem Paar gehörenden Regelständen vertretbar.
 
 `ContainerFileWorkspaceReader` projiziert exportierte XML-Dateien direkt auf `ContainerData` und `ContainerEntry`. Der A/B-Vergleich muss anschließend `GenerationWorkspaceReconciler` verwenden; eine zweite Matching- oder Differenzhierarchie ist unzulässig. Damit gelten dieselben stabilen Signal-Schlüssel, feldgenauen Unterschiede, Review-Zustände und selektiven Entscheidungen für Reimport und fertige ContainerFiles. Die Requirements-Datei bleibt für Slotgültigkeit und Min-/Max-Prüfung verbindlich.

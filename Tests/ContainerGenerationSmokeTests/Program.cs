@@ -39,6 +39,8 @@ internal static class Program
         foreach (var file in files)
             await ValidateImportAndGenerationAsync(file);
 
+        await ValidateGoldenMasterCorpusAsync();
+
         ValidateWorkspacePersistenceAndAutoSaveSettings();
         ValidateSlotMultiplicityPolicy();
         ValidatePlcInputFanInParsing();
@@ -52,6 +54,78 @@ internal static class Program
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
         return 0;
     }
+
+    private static async Task ValidateGoldenMasterCorpusAsync()
+    {
+        // These are regression floors for the single user-approved V17 rule file.
+        // The reference exports were created with several DE/EN rule versions;
+        // therefore they are evaluation truth, not byte-identical output truth.
+        var regressionFloor = new Dictionary<int, (int Assigned, int ExactSlots)>
+        {
+            [1] = (51, 17),
+            [2] = (70, 13),
+            [3] = (66, 16),
+            [4] = (404, 0),
+            [5] = (408, 3),
+            [6] = (136, 134),
+            [7] = (102, 0)
+        };
+        var fixtureDirectory = Path.Combine(AppContext.BaseDirectory, "TestData", "GoldenMaster");
+        var requirementsPath = Path.Combine(fixtureDirectory, "DE_AutoCreate_Master_V17.xml");
+        if (!File.Exists(requirementsPath))
+            throw new FileNotFoundException("Golden-Master-Requirements fehlen.", requirementsPath);
+
+        var requirements = XDocument.Load(requirementsPath);
+        for (var index = 1; index <= 7; index++)
+        {
+            var interfacePath = Path.Combine(fixtureDirectory, $"Interface{index}.xlsx");
+            var expectedPath = Path.Combine(fixtureDirectory, $"Container{index}.xml");
+            var zuli = new ZuLiDefault();
+            var import = await zuli.ReadFromFileAsync(interfacePath);
+            if (!import.IsSuccess)
+                throw new InvalidOperationException($"Golden-Master Interface{index} konnte nicht gelesen werden: {import.ErrorMessage}");
+
+            var result = await new ContainerGenerator().GenerateAsync(new ContainerGenerationRequest(
+                import.Value,
+                requirements,
+                [
+                    new GroupingRule { TargetField = match => match.ContainerName, GroupOrder = 0 },
+                    new GroupingRule { TargetField = match => match.ComponentType, GroupOrder = 1 }
+                ],
+                null,
+                IgnoreCase: true,
+                UseFilterList: true));
+            var expected = ContainerFileWorkspaceReader.Read(expectedPath);
+            var actualAssigned = result.Containers.SelectMany(container => container.DataList).ToArray();
+            var expectedAssigned = expected.Containers.SelectMany(container => container.DataList).ToArray();
+            var exactExpected = expectedAssigned
+                .GroupBy(EntryIdentity)
+                .ToDictionary(group => group.Key, group => group.First(), StringComparer.OrdinalIgnoreCase);
+            var exactMatches = actualAssigned.Count(actual =>
+                exactExpected.TryGetValue(EntryIdentity(actual), out var expectedEntry) &&
+                string.Equals(actual.Slot, expectedEntry.Slot, StringComparison.OrdinalIgnoreCase));
+
+            Console.WriteLine(
+                $"GoldenMaster {index}: Input={import.Value.Count}, erwartet zugeordnet={expectedAssigned.Length}, " +
+                $"generiert zugeordnet={actualAssigned.Length}, Slot-Treffer={exactMatches}, " +
+                $"offen={result.UnassignedSignals.Count}, gefiltert={result.FilteredSignals.Count}.");
+            var accountedSignals = actualAssigned.Length + result.UnassignedSignals.Count + result.FilteredSignals.Count;
+            var floor = regressionFloor[index];
+            if (result.Statistics.TotalSignals != import.Value.Count ||
+                accountedSignals != import.Value.Count ||
+                actualAssigned.Length < floor.Assigned ||
+                exactMatches < floor.ExactSlots)
+            {
+                throw new InvalidOperationException(
+                    $"Golden-Master {index} unterschreitet die verifizierte Generatorbasis: " +
+                    $"Input={import.Value.Count}, bilanziert={accountedSignals}, " +
+                    $"Zuordnung={actualAssigned.Length}/{floor.Assigned}, Slot-Treffer={exactMatches}/{floor.ExactSlots}.");
+            }
+        }
+    }
+
+    private static string EntryIdentity(ContainerEntry entry) =>
+        $"{entry.ID.Trim()}|{entry.Signal.Trim()}|{entry.Address.Trim()}";
 
     private static void ValidateFee2SpecialDevicesProvenanceRoundTrip()
     {
