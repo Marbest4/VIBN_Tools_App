@@ -195,18 +195,6 @@ public static class ViCoFeatureBootstrapper
 
     private static IReadOnlyList<string> FindInstalledTiaVersions()
     {
-        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        return Enumerable.Range(15, 8)
-            .Reverse()
-            .Select(version => $"V{version}")
-            .Where(version => File.Exists(Path.Combine(
-                programFiles,
-                "Siemens",
-                "Automation",
-                $"Portal {version}",
-                "PublicAPI",
-                version,
-                "Siemens.Engineering.dll")))
-            .ToArray();
+        return new AutomationInstallationDiscovery().Discover().TiaVersions;
     }
 }

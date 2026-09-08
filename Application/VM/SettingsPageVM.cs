@@ -33,6 +33,7 @@ namespace VIBN_Tools.Application.VM
         private readonly INetworkAvailabilityService _availability;
         private readonly IApplicationLog _log;
         private readonly IUserCredentialConfigurationService _credentialConfiguration;
+        private readonly IAutomationInstallationDiscovery _automationInstallationDiscovery;
         private CancellationTokenSource? _serverFilterCancellation;
         private int _serverRefreshVersion;
 
@@ -173,6 +174,22 @@ namespace VIBN_Tools.Application.VM
         public bool HasFeeVersionMismatch { get; }
 
         public string FeeVersionStatus { get; }
+
+        public ObservableCollection<InstalledAutomationComponent> InstalledAutomationComponents { get; } = new();
+
+        private string _automationDiscoveryStatus = "Installationssuche noch nicht ausgeführt.";
+        public string AutomationDiscoveryStatus
+        {
+            get => _automationDiscoveryStatus;
+            private set
+            {
+                _automationDiscoveryStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ICommand RefreshAutomationInstallations =>
+            GetCommandBinding(RefreshAutomationInstallationInventory);
 
         private string _kanbanizeApiKeyInput = string.Empty;
         public string KanbanizeApiKeyInput
@@ -481,7 +498,8 @@ namespace VIBN_Tools.Application.VM
             INetworkAvailabilityService? availability = null,
             IApplicationLog? log = null,
             IFeeVersionInfoProvider? feeVersionInfoProvider = null,
-            IUserCredentialConfigurationService? credentialConfiguration = null)
+            IUserCredentialConfigurationService? credentialConfiguration = null,
+            IAutomationInstallationDiscovery? automationInstallationDiscovery = null)
         {
             _projectSettings = projectSettings;
             _connectionService = connectionService;
@@ -491,6 +509,8 @@ namespace VIBN_Tools.Application.VM
             _log = log ?? NullApplicationLog.Instance;
             _credentialConfiguration = credentialConfiguration ??
                 new SecureUserCredentialConfigurationService();
+            _automationInstallationDiscovery = automationInstallationDiscovery ??
+                new AutomationInstallationDiscovery();
 
             var feeVersionInfo = (feeVersionInfoProvider ?? new FeeVersionInfoProvider()).Read();
             UsedFeeSdkVersion = feeVersionInfo.UsedSdkVersion;
@@ -502,6 +522,8 @@ namespace VIBN_Tools.Application.VM
                 $"Verwendete SDK-Version: {UsedFeeSdkVersion}; installierte FEE-Version: {InstalledFeeVersion}.");
             if (HasFeeVersionMismatch)
                 _log.Warning("Project Settings", FeeVersionStatus);
+
+            RefreshAutomationInstallationInventory();
 
             _workstations.PcNames.CollectionChanged += (_, _) => _ = RefreshOnlineServersAsync();
 
@@ -516,6 +538,29 @@ namespace VIBN_Tools.Application.VM
             LoadFeeData = false;
             RefreshCredentialStatus();
             _ = RefreshOnlineServersAsync();
+        }
+
+        private void RefreshAutomationInstallationInventory()
+        {
+            try
+            {
+                var inventory = _automationInstallationDiscovery.Discover();
+                InstalledAutomationComponents.Clear();
+                foreach (var component in inventory.Components)
+                    InstalledAutomationComponents.Add(component);
+                AutomationDiscoveryStatus = inventory.Components.Count == 0
+                    ? string.Join(" ", inventory.Diagnostics)
+                    : $"{inventory.Components.Count} lokale Komponente(n) erkannt." +
+                      (inventory.Diagnostics.Count == 0
+                          ? string.Empty
+                          : $" Hinweise: {string.Join(" ", inventory.Diagnostics)}");
+                _log.Information("Project Settings", AutomationDiscoveryStatus);
+            }
+            catch (Exception exception)
+            {
+                AutomationDiscoveryStatus = $"Installationssuche fehlgeschlagen: {exception.Message}";
+                _log.Error("Project Settings", AutomationDiscoveryStatus, exception);
+            }
         }
 
 

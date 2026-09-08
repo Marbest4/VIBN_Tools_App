@@ -25,6 +25,7 @@ internal static class Program
     private static int Main()
     {
         _ = new System.Windows.Application();
+        Services.Initialize();
         var bindingTrace = PresentationTraceSources.DataBindingSource;
         var bindingErrors = new BindingErrorTraceListener();
         bindingTrace.Switch.Level = SourceLevels.Error;
@@ -38,6 +39,7 @@ internal static class Program
             if (string.Equals(feeVersionInfo.UsedSdkVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             VerifyInstalledFeeVersionRequiresSdk();
+            VerifyAutomationInstallationDiscovery();
             VerifyNavigationPreferencePersistence();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
             VerifyExistingSignalReuseDoesNotCallUpdate();
@@ -215,6 +217,7 @@ internal static class Program
                 visualContainerPage,
                 fee2ContainerPage,
                 aiTrainingPage,
+                new SettingsPage(),
                 new DiagnosticsPanel()
             ];
 
@@ -543,6 +546,59 @@ internal static class Program
             var incompleteOnly = new FeeVersionInfoProvider([incompleteNewer]).Read();
             if (!string.Equals(incompleteOnly.InstalledFeeVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("A FEE folder without Bin/FS.SDK.dll was accepted.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyAutomationInstallationDiscovery()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-installation-discovery-{Guid.NewGuid():N}");
+        var openness = Path.Combine(
+            directory,
+            "Siemens",
+            "Automation",
+            "Portal V20",
+            "PublicAPI",
+            "V20");
+        var twinCat = Path.Combine(directory, "Beckhoff", "TwinCAT", "3.1");
+        Directory.CreateDirectory(openness);
+        Directory.CreateDirectory(twinCat);
+        try
+        {
+            File.WriteAllText(Path.Combine(openness, "Siemens.Engineering.dll"), "fixture");
+            var discovery = new AutomationInstallationDiscovery(
+                [directory],
+                () =>
+                (
+                    [
+                        new InstalledProductEvidence(
+                            "SIMATIC WinCC Unified Runtime",
+                            "20.0.1",
+                            @"C:\Program Files\Siemens\WinCC",
+                            "fixture:wincc"),
+                        new InstalledProductEvidence(
+                            "Siemens Safety Advanced V20",
+                            "20.0",
+                            @"C:\Program Files\Siemens\Safety",
+                            "fixture:safety")
+                    ],
+                    []));
+            var inventory = discovery.Discover();
+            if (!inventory.TiaVersions.SequenceEqual(["V20"]) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TiaPortal) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TiaOpenness) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.WinCc) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.SiemensExtension) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TwinCat))
+            {
+                throw new InvalidOperationException("Dynamic automation installation discovery missed fixture evidence.");
+            }
+            if (AutomationInstallationDiscovery.ClassifyInstalledProduct("Unrelated Editor") is not null)
+                throw new InvalidOperationException("An unrelated installed product was classified as automation software.");
         }
         finally
         {

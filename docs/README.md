@@ -16,6 +16,7 @@
 - [Quellcode-Dokumentation](QUELLCODE_DOKUMENTATION.md) – Kommentarregeln und Lesereihenfolge.
 - [FEE2Container](FEE2CONTAINER.md) – Provenienzformat, Bedienung, Round-Trip und Grenzen.
 - [AI-Regelvorschläge](AI_REGELVORSCHLAEGE.md) – strukturiertes Änderungslog, Konfidenz und Review-Grenzen.
+- [Lokale Automatisierungsinstallationen](INSTALLATION_DISCOVERY.md) – dynamische TIA-/Openness-, WinCC-, Siemens- und TwinCAT-Erkennung.
 - [Datenflüsse](DATENFLUESSE.md) – PC-Daten, RDP, Konfiguration, Kanbanize, TIA und FEE.
 - [Architektur](ARCHITECTURE.md) – kurze technische Übersicht in Englisch.
 - [Umsetzungsstatus 2026](UMSETZUNGSSTATUS_2026.md) – Abgleich zwischen implementiert, automatisch geprüft und fachlich noch offen.
