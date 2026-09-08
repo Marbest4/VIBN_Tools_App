@@ -48,6 +48,8 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, au
 
 **Nur SimObjects verknüpfen** erzeugt keine BasicFrames, Interfaces, Signale, Logiken oder Container. Der Befehl verwendet die in **Model Validation → Update Objects** eingelesenen `FeeLogic`-Objekte. Für jeden ausgewählten Container muss genau ein vorhandenes LogicObject mit identischem Komponentennamen existieren. Fehlende oder doppelte Logiknamen sowie nicht mehr verfügbare SimObjects brechen vor dem ersten Schreibzugriff mit einer präzisen Fehlermeldung ab. Der Vorgang ist auf `ILogicSimObjectOwner` begrenzt; reine SimObject-Container besitzen keine bestehende Logik, an die in diesem Modus verknüpft werden könnte.
 
+Dieser Link-only-Modus benötigt keine Interface-Auswahl, weil er weder Signale erzeugt noch verändert. Er wird erst aktiv, wenn ein Plan, eine FEE-Verbindung, mindestens ein ausgewählter Container und mindestens eine vorhandene Zielzuordnung vorliegen. Die Tooltips von **FEE aktualisieren**, **Start Generation** und **Nur SimObjects verknüpfen** nennen jeweils die erste konkret fehlende Voraussetzung oder den ersten blockierenden Validierungsfehler.
+
 ## Codeaufteilung
 
 | Bereich | Verantwortung |

@@ -545,6 +545,16 @@ internal static class Program
             {
                 throw new InvalidOperationException("Visual all/none creation selection is inconsistent.");
             }
+            service.SetGenerationSelected(container.Id, true);
+            var blocked = service.Validate();
+            if (!blocked.Issues.Any(issue => issue.Code == "SIM_OBJECT_TARGET_UNASSIGNED"))
+                throw new InvalidOperationException("A selected, unassigned target with creation disabled must block generation.");
+            service.SetCreationRequested(container.Id, true);
+            var creatable = service.Validate();
+            if (creatable.Issues.Any(issue => issue.Code == "SIM_OBJECT_TARGET_UNASSIGNED"))
+                throw new InvalidOperationException("A selected target with automatic creation enabled must not block generation.");
+            service.SetGenerationSelected(container.Id, false);
+            service.SetCreationRequested(container.Id, false);
             var selectedInterface = new VisualFeeInterface(
                 Guid.NewGuid().ToString("D"),
                 "Existing PLC Interface",

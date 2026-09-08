@@ -71,10 +71,10 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             () => HasPlan && AvailableFeeObjects.Count > 0 && !IsBusy);
         StartGenerationCommand = new VisualAsyncCommand(
             StartGenerationAsync,
-            () => HasPlan && Connection.CanUseFeeFeatures && !IsBusy && !HasValidationErrors);
+            () => CanStartGeneration);
         LinkOnlyCommand = new VisualAsyncCommand(
             LinkOnlyAsync,
-            () => HasPlan && Connection.CanUseFeeFeatures && !IsBusy && !HasValidationErrors);
+            () => CanLinkOnly);
         SelectAllCommand = new VisualRelayCommand(
             () => SetAllGenerationSelected(true),
             () => HasPlan && !IsBusy);
@@ -171,9 +171,44 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
     public bool IsFeeObjectDiscoveryAvailable => Connection.CanUseFeeFeatures && HasPlan && !IsBusy;
 
+    public bool CanStartGeneration => HasPlan && Connection.CanUseFeeFeatures && !IsBusy &&
+                                      !HasValidationErrors && SelectedContainerCount > 0;
+
+    public bool CanLinkOnly => HasPlan && Connection.CanUseFeeFeatures && !IsBusy &&
+                               !HasValidationErrors && SelectedAssignmentCount > 0;
+
+    public int SelectedAssignmentCount
+    {
+        get
+        {
+            var plan = _planService.CurrentPlan;
+            if (plan is null)
+                return 0;
+            var selectedContainerIds = plan.Nodes
+                .Where(node => node.Kind == VisualNodeKind.Container && plan.IsGenerationSelected(node.Id))
+                .Select(node => node.Id)
+                .ToHashSet(StringComparer.Ordinal);
+            return plan.Assignments.Count(assignment =>
+                plan.FindTarget(assignment.TargetId) is { } target &&
+                selectedContainerIds.Contains(target.ContainerId));
+        }
+    }
+
     public string FeeUnavailableReason => Connection.CanUseFeeFeatures
         ? string.Empty
         : FeeConnectionService.MissingConnectionMessage;
+
+    public string RefreshFeeObjectsUnavailableReason => IsBusy
+        ? "Ein Container2FEE-Vorgang läuft bereits."
+        : !HasPlan
+            ? "Zuerst eine Container-XML oder einen gespeicherten Plan laden."
+            : !Connection.CanUseFeeFeatures
+                ? Connection.UnavailableReason
+                : string.Empty;
+
+    public string StartGenerationUnavailableReason => GetExecutionUnavailableReason(linkOnly: false);
+
+    public string LinkOnlyUnavailableReason => GetExecutionUnavailableReason(linkOnly: true);
 
     public string SourceXmlPath
     {
@@ -205,6 +240,11 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             _isBusy = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(IsFeeObjectDiscoveryAvailable));
+            OnPropertyChanged(nameof(CanStartGeneration));
+            OnPropertyChanged(nameof(CanLinkOnly));
+            OnPropertyChanged(nameof(RefreshFeeObjectsUnavailableReason));
+            OnPropertyChanged(nameof(StartGenerationUnavailableReason));
+            OnPropertyChanged(nameof(LinkOnlyUnavailableReason));
             InvalidateCommands();
         }
     }
@@ -695,8 +735,14 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         OnPropertyChanged(nameof(ObjectCount));
         OnPropertyChanged(nameof(EdgeCount));
         OnPropertyChanged(nameof(AssignmentCount));
+        OnPropertyChanged(nameof(SelectedAssignmentCount));
         OnPropertyChanged(nameof(HasValidationErrors));
         OnPropertyChanged(nameof(IsFeeObjectDiscoveryAvailable));
+        OnPropertyChanged(nameof(CanStartGeneration));
+        OnPropertyChanged(nameof(CanLinkOnly));
+        OnPropertyChanged(nameof(RefreshFeeObjectsUnavailableReason));
+        OnPropertyChanged(nameof(StartGenerationUnavailableReason));
+        OnPropertyChanged(nameof(LinkOnlyUnavailableReason));
         OnPropertyChanged(nameof(SelectedContainerSupportsCreation));
         OnPropertyChanged(nameof(IsCreationRequestedForSelection));
         InvalidateCommands();
@@ -835,6 +881,10 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     {
         ReplaceCollection(Issues, issues);
         OnPropertyChanged(nameof(HasValidationErrors));
+        OnPropertyChanged(nameof(CanStartGeneration));
+        OnPropertyChanged(nameof(CanLinkOnly));
+        OnPropertyChanged(nameof(StartGenerationUnavailableReason));
+        OnPropertyChanged(nameof(LinkOnlyUnavailableReason));
     }
 
     private void Reject(string message)
@@ -851,7 +901,32 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
         OnPropertyChanged(nameof(FeeUnavailableReason));
         OnPropertyChanged(nameof(IsFeeObjectDiscoveryAvailable));
+        OnPropertyChanged(nameof(CanStartGeneration));
+        OnPropertyChanged(nameof(CanLinkOnly));
+        OnPropertyChanged(nameof(RefreshFeeObjectsUnavailableReason));
+        OnPropertyChanged(nameof(StartGenerationUnavailableReason));
+        OnPropertyChanged(nameof(LinkOnlyUnavailableReason));
         InvalidateCommands();
+    }
+
+    private string GetExecutionUnavailableReason(bool linkOnly)
+    {
+        if (IsBusy)
+            return "Ein Container2FEE-Vorgang läuft bereits.";
+        if (!HasPlan)
+            return "Zuerst eine Container-XML oder einen gespeicherten Plan laden.";
+        if (!Connection.CanUseFeeFeatures)
+            return Connection.UnavailableReason;
+        var blockingIssue = Issues.FirstOrDefault(issue => issue.Severity == VisualIssueSeverity.Error);
+        if (blockingIssue is not null)
+            return blockingIssue.Message;
+        if (SelectedContainerCount == 0)
+            return "Mindestens einen unterstützten Container auswählen.";
+        if (linkOnly && SelectedAssignmentCount == 0)
+            return "Mindestens einem Ziel eines ausgewählten Containers ein vorhandenes FEE-SimObject zuordnen.";
+        return linkOnly
+            ? "Verknüpft nur vorhandene SimObjects; eine Interface-Auswahl ist dafür nicht erforderlich."
+            : string.Empty;
     }
 
     private void InvalidateCommands() => CommandManager.InvalidateRequerySuggested();

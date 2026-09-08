@@ -117,7 +117,7 @@
                             Command="{Binding RedoCommand}" />
                     <Button Style="{StaticResource VisualToolbarButton}" Content="FEE aktualisieren"
                             Command="{Binding RefreshFeeObjectsCommand}"
-                            ToolTip="{Binding FeeUnavailableReason}"
+                            ToolTip="{Binding RefreshFeeObjectsUnavailableReason}"
                             ToolTipService.ShowOnDisabled="True" />
                     <Button Style="{StaticResource VisualToolbarButton}" Content="Automatisch zuordnen"
                             Command="{Binding AutoAssignCommand}"
@@ -135,12 +135,12 @@
                     <Button MinWidth="150" MinHeight="32" Padding="12,4"
                             Content="Start Generation"
                             Command="{Binding StartGenerationCommand}"
-                            ToolTip="{Binding FeeUnavailableReason}"
+                            ToolTip="{Binding StartGenerationUnavailableReason}"
                             ToolTipService.ShowOnDisabled="True" />
                     <Button MinWidth="205" MinHeight="32" Margin="6,0,0,0" Padding="12,4"
                             Content="Nur SimObjects verknüpfen"
                             Command="{Binding LinkOnlyCommand}"
-                            ToolTip="Erzeugt keine Container neu. Benötigt bestehende gleichnamige LogicObjects aus Model Validation > Update Objects."
+                            ToolTip="{Binding LinkOnlyUnavailableReason}"
                             ToolTipService.ShowOnDisabled="True" />
                 </WrapPanel>
             </Grid>
