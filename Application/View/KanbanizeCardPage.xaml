@@ -23,12 +23,16 @@
                            Text="VIBN-Karten sicher in das Arbeitsplätze-Board übernehmen oder einzelne eigene Karten erstellen."
                            TextWrapping="Wrap" />
             </StackPanel>
-            <Button Grid.Column="1"
-                    MinWidth="180"
-                    MinHeight="38"
-                    VerticalAlignment="Center"
-                    Content="Boards aktualisieren"
-                    Command="{Binding ReloadBoardsCommand}" />
+            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                <Button MinWidth="165" MinHeight="38" Margin="0,0,8,0"
+                        Content="Planansicht anzeigen"
+                        Command="{Binding OpenPlanViewCommand}"
+                        IsEnabled="{Binding CanOpenPlanView}"
+                        ToolTip="{Binding OpenPlanViewUnavailableReason}" />
+                <Button MinWidth="180" MinHeight="38"
+                        Content="Boards aktualisieren"
+                        Command="{Binding ReloadBoardsCommand}" />
+            </StackPanel>
         </Grid>
 
         <TabControl Grid.Row="1">
@@ -57,7 +61,7 @@
                                       DisplayMemberPath="DisplayName"
                                       SelectedItem="{Binding SelectedSourceBoard}" />
                             <TextBlock Foreground="#FF666666"
-                                       Text="Es werden nur aktive Karten mit ‚Grundinbetriebnahme‘ übernommen. Vorlagen und archivierte Quellspalten bleiben ausgeschlossen."
+                                       Text="Es werden aktive Karten mit ‚Grundinbetriebnahme‘ oder ‚Nachpflege‘ übernommen. Vorlagen und archivierte Quellspalten bleiben ausgeschlossen."
                                        TextWrapping="Wrap" />
                         </StackPanel>
                     </GroupBox>
@@ -186,7 +190,7 @@
                                     </DataTemplate>
                                 </DataGridTemplateColumn.CellTemplate>
                             </DataGridTemplateColumn>
-                            <DataGridTemplateColumn Header="Aktion" IsReadOnly="True" Width="102">
+                            <DataGridTemplateColumn Header="Aktion" IsReadOnly="True" Width="150">
                                 <DataGridTemplateColumn.CellTemplate>
                                     <DataTemplate>
                                         <Border Margin="3" Padding="5,3" Background="{Binding ActionBackground, Mode=OneWay}" CornerRadius="3">
@@ -203,6 +207,9 @@
                             <DataGridTextColumn Header="Ziel-ID" Binding="{Binding TargetCardId, Mode=OneWay}" IsReadOnly="True" Width="90" />
                             <DataGridTextColumn Header="Ziel-Start" Binding="{Binding TargetStart, Mode=OneWay}" IsReadOnly="True" Width="145" />
                             <DataGridTextColumn Header="Ziel-Ende" Binding="{Binding TargetDeadline, Mode=OneWay}" IsReadOnly="True" Width="145" />
+                            <DataGridTextColumn Header="Client" Binding="{Binding ClientCount, Mode=OneWay}" IsReadOnly="True" Width="65" />
+                            <DataGridTextColumn Header="Core" Binding="{Binding CoreCount, Mode=OneWay}" IsReadOnly="True" Width="60" />
+                            <DataGridTextColumn Header="Weitere Rollen" Binding="{Binding RoleSummary, Mode=OneWay}" IsReadOnly="True" Width="180" />
                             <DataGridTextColumn Header="Hinweis" Binding="{Binding Details, Mode=OneWay}" IsReadOnly="True" Width="2*" MinWidth="270" />
                         </DataGrid.Columns>
                     </DataGrid>

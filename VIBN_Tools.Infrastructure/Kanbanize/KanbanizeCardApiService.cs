@@ -264,6 +264,30 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
         await EnsureSuccessAsync(response, cancellationToken);
     }
 
+    public async Task UpdateGeneratedTitleAsync(
+        int cardId,
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        if (cardId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(cardId));
+        if (string.IsNullOrWhiteSpace(title) || title.Trim().Length > 255)
+            throw new ArgumentException("Ein gültiger Kartentitel mit höchstens 255 Zeichen ist erforderlich.", nameof(title));
+        EnsureConfigured();
+
+        var payload = new Dictionary<string, object?>
+        {
+            ["title"] = title.Trim()
+        };
+        using var request = CreateRequest(HttpMethod.Patch, $"/cards/{cardId}");
+        request.Content = new StringContent(
+            JsonSerializer.Serialize(payload),
+            Encoding.UTF8,
+            "application/json");
+        using var response = await _httpClient.SendAsync(request, cancellationToken);
+        await EnsureSuccessAsync(response, cancellationToken);
+    }
+
     private async Task<KanbanizeCreatedCard> CreateCardFromPayloadAsync(
         Dictionary<string, object?> payload,
         string fallbackTitle,

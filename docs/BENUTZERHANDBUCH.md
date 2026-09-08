@@ -139,6 +139,8 @@ Der Hauptreiter ist ausschließlich mit Level9 sichtbar. Level9 kann Benutzer an
 
 ## Kanbanize Karten
 
+Die VIBN-Synchronisierung berücksichtigt aktive Quellkarten mit **Grundinbetriebnahme** und **Nachpflege**. Zusammengehörige CORE-/CLIENT-/weitere Rollenkarten werden dunkelgrün gruppiert; Konflikte werden nur nach den dokumentierten Quell-ID-, Titel-, Lane-, Termin- und CORE-Regeln gemeldet. Termine erscheinen ohne Uhrzeit. Wenn zu einer bisherigen `*[Gen]*`-Hauptkarte eine Rollenkarte kopiert wurde, kann die Vorschau gezielt nur den Zusatz `CORE` an der Hauptkarte ergänzen. **Planansicht anzeigen** öffnet das Arbeitsplätze-Board im Standardbrowser. Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
+
 ![Kanbanize-Vorschau für die sichere VIBN-Synchronisierung](screenshots/kanbanize-cards.png)
 
 Der Reiter hat zwei bewusst getrennte Arbeitsweisen.

@@ -164,6 +164,11 @@ internal static class Program
 
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
+            if (!Uri.TryCreate(KanbanizeCardPageVM.PlanViewUrl, UriKind.Absolute, out var planUri) ||
+                planUri.Scheme != Uri.UriSchemeHttps || planUri.AbsolutePath != "/ctrl_plan/1541/")
+            {
+                throw new InvalidOperationException("Kanbanize plan-view URL is invalid.");
+            }
             // Populate the deferred DataGrid template as well: this catches
             // bindings in the coloured synchronization preview before release.
             var sourceCard = new KanbanizeCardInfo(
@@ -191,11 +196,32 @@ internal static class Program
                     sourceCard with { Id = 5712, BoardId = 1541 },
                     "UI-Prüfung einer vorhandenen Karte.",
                     schedule));
+            var relatedTargets = new[]
+            {
+                sourceCard with { Id = 6001, BoardId = 1541, CustomId = "4711", Title = "UI-Prüfung *[Gen]* CORE" },
+                sourceCard with { Id = 6002, BoardId = 1541, CustomId = "4711", Title = "UI-Prüfung - CLIENT" }
+            };
+            var relatedRow = new VibnWorkplaceSynchronizationRowVM(
+                new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.RelatedCards,
+                    sourceCard,
+                    relatedTargets[0],
+                    "Zwei Rollen gefunden.",
+                    schedule,
+                    relatedTargets));
             if (!createRow.IsSelected || deadlineRow.IsSelected)
                 throw new InvalidOperationException("Only new Kanbanize cards must be selected by default.");
+            if (createRow.SourceDeadline.Contains(':') ||
+                relatedRow.ActionText != "2 Karten gefunden" ||
+                relatedRow.ClientCount != 1 || relatedRow.CoreCount != 1 ||
+                relatedRow.ActionBackground != "#FF70AD47")
+            {
+                throw new InvalidOperationException("Kanbanize date or structured role presentation is incorrect.");
+            }
 
             kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(createRow);
             kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(deadlineRow);
+            kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(relatedRow);
             kanbanizeViewModel.WorkplaceSynchronization.SelectAllCommand.Execute(null);
             if (kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Any(item => item.CanSynchronize && !item.IsSelected))
                 throw new InvalidOperationException("Selecting all Kanbanize preview rows failed.");

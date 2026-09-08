@@ -13,8 +13,10 @@ namespace VIBN_Tools.Application.VM;
 /// </summary>
 public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
 {
+    public const string PlanViewUrl = "https://grobgroup.kanbanize.com/ctrl_plan/1541/";
     private readonly IKanbanizeCardService _cards;
     private readonly IApplicationLog _log;
+    private readonly IExternalPathLauncher? _pathLauncher;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _structureCancellation;
     private IReadOnlyList<KanbanizeColumnInfo> _boardColumns = Array.Empty<KanbanizeColumnInfo>();
@@ -23,10 +25,12 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
     public KanbanizeCardPageVM(
         IKanbanizeCardService cards,
         IVibnWorkplaceSynchronizationService workplaceSynchronization,
-        IApplicationLog? log = null)
+        IApplicationLog? log = null,
+        IExternalPathLauncher? pathLauncher = null)
     {
         _cards = cards ?? throw new ArgumentNullException(nameof(cards));
         _log = log ?? NullApplicationLog.Instance;
+        _pathLauncher = pathLauncher;
         WorkplaceSynchronization = new VibnWorkplaceSynchronizationVM(
             _cards,
             workplaceSynchronization,
@@ -40,6 +44,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
 
         ReloadBoardsCommand = GetCommandBindingAsync(LoadBoardsAsync);
         CreateCardCommand = GetCommandBindingAsync(CreateCardAsync);
+        OpenPlanViewCommand = GetCommandBinding(OpenPlanView);
     }
 
     public ObservableCollection<KanbanizeBoardInfo> Boards { get; } = new();
@@ -60,6 +65,14 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
     public ICommand ReloadBoardsCommand { get; }
 
     public ICommand CreateCardCommand { get; }
+
+    public ICommand OpenPlanViewCommand { get; }
+
+    public bool CanOpenPlanView => _pathLauncher is not null;
+
+    public string OpenPlanViewUnavailableReason => CanOpenPlanView
+        ? "Öffnet die Arbeitsplätze-Planansicht im Standardbrowser."
+        : "Kein Dienst zum Öffnen des Standardbrowsers verfügbar.";
 
     public bool IsConfigured => _cards.IsConfigured;
 
@@ -386,6 +399,26 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         finally
         {
             IsBusy = false;
+        }
+    }
+
+    private void OpenPlanView()
+    {
+        if (_pathLauncher is null)
+        {
+            StatusText = OpenPlanViewUnavailableReason;
+            return;
+        }
+
+        try
+        {
+            _pathLauncher.Open(PlanViewUrl);
+            StatusText = "Planansicht wurde im Standardbrowser geöffnet.";
+        }
+        catch (Exception exception)
+        {
+            StatusText = "Planansicht konnte nicht geöffnet werden.";
+            _log.Error("Kanbanize Karten", StatusText, exception);
         }
     }
 

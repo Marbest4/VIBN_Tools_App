@@ -26,6 +26,18 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
         TargetCardId = item.TargetCard?.Id.ToString() ?? "—";
         TargetStart = FormatDeadline(item.TargetCard?.StartDate);
         TargetDeadline = FormatDeadline(item.TargetCard?.Deadline);
+        var relatedTargets = item.RelatedTargetCards ??
+            (item.TargetCard is null ? Array.Empty<KanbanizeCardInfo>() : [item.TargetCard]);
+        RelatedCardCount = relatedTargets.Count;
+        var roleCounts = relatedTargets
+            .GroupBy(card => VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(card.Title).Role)
+            .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+        ClientCount = roleCounts.TryGetValue("CLIENT", out var clientCount) ? clientCount : 0;
+        CoreCount = roleCounts.TryGetValue("CORE", out var coreCount) ? coreCount : 0;
+        RoleSummary = string.Join(
+            ", ",
+            roleCounts.OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(group => $"{group.Key}: {group.Value}"));
         Details = item.Message;
         _isSelected = Action == VibnWorkplaceSynchronizationAction.Create;
     }
@@ -34,7 +46,8 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
 
     public bool CanSynchronize =>
         Action is VibnWorkplaceSynchronizationAction.Create or
-            VibnWorkplaceSynchronizationAction.UpdateDeadline;
+            VibnWorkplaceSynchronizationAction.UpdateDeadline or
+            VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle;
 
     /// <summary>New cards start selected; every other change requires an explicit selection.</summary>
     public bool IsSelected
@@ -55,7 +68,9 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
     {
         VibnWorkplaceSynchronizationAction.Create => "Neu",
         VibnWorkplaceSynchronizationAction.UpdateDeadline => "Zeitplan",
+        VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle => "CORE benennen",
         VibnWorkplaceSynchronizationAction.Unchanged => "Unverändert",
+        VibnWorkplaceSynchronizationAction.RelatedCards => $"{RelatedCardCount} Karten gefunden",
         VibnWorkplaceSynchronizationAction.Conflict => "Konflikt",
         _ => Action.ToString()
     };
@@ -64,7 +79,9 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
     {
         VibnWorkplaceSynchronizationAction.Create => "#FFDDEBF7",
         VibnWorkplaceSynchronizationAction.UpdateDeadline => "#FFFFF2CC",
+        VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle => "#FFFFF2CC",
         VibnWorkplaceSynchronizationAction.Unchanged => "#FFE2F0D9",
+        VibnWorkplaceSynchronizationAction.RelatedCards => "#FF70AD47",
         VibnWorkplaceSynchronizationAction.Conflict => "#FFFFC7CE",
         _ => "#FFF3F5F7"
     };
@@ -85,10 +102,18 @@ public sealed class VibnWorkplaceSynchronizationRowVM : MvvmBase
 
     public string TargetDeadline { get; }
 
+    public int RelatedCardCount { get; }
+
+    public int ClientCount { get; }
+
+    public int CoreCount { get; }
+
+    public string RoleSummary { get; }
+
     public string Details { get; }
 
     private static string FormatDeadline(DateTimeOffset? deadline) =>
-        deadline?.ToLocalTime().ToString("dd.MM.yyyy HH:mm") ?? "—";
+        deadline?.ToLocalTime().ToString("dd.MM.yyyy") ?? "—";
 }
 
 /// <summary>
@@ -266,6 +291,8 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
 
     public int DeadlineUpdateCount => _preview?.DeadlineUpdateCount ?? 0;
 
+    public int TitleUpdateCount => _preview?.TitleUpdateCount ?? 0;
+
     public int UnchangedCount => _preview?.UnchangedCount ?? 0;
 
     public int ConflictCount => _preview?.ConflictCount ?? 0;
@@ -442,7 +469,9 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
             foreach (var failure in result.Failures)
                 _log.Warning("Kanbanize Synchronisierung", failure);
             StatusText = $"Synchronisierung abgeschlossen: {result.CreatedCount} neu, " +
-                         $"{result.DeadlineUpdateCount} Zeitplan(e) angepasst, {result.Failures.Count} Fehler. " +
+                         $"{result.DeadlineUpdateCount} Zeitplan(e) angepasst, " +
+                         $"{result.TitleUpdateCount} Hauptkarte(n) als CORE benannt, " +
+                         $"{result.Failures.Count} Fehler. " +
                          DescribePreview(refreshedPreview);
             _log.Information("Kanbanize Synchronisierung", StatusText);
         }
@@ -483,6 +512,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
             new VibnWorkplaceSynchronizationRowVM(item, OnPreviewSelectionChanged)));
         OnPropertyChanged(nameof(CreateCount));
         OnPropertyChanged(nameof(DeadlineUpdateCount));
+        OnPropertyChanged(nameof(TitleUpdateCount));
         OnPropertyChanged(nameof(UnchangedCount));
         OnPropertyChanged(nameof(ConflictCount));
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
@@ -498,6 +528,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
         PreviewItems.Clear();
         OnPropertyChanged(nameof(CreateCount));
         OnPropertyChanged(nameof(DeadlineUpdateCount));
+        OnPropertyChanged(nameof(TitleUpdateCount));
         OnPropertyChanged(nameof(UnchangedCount));
         OnPropertyChanged(nameof(ConflictCount));
         OnPropertyChanged(nameof(ExcludedSourceCardCount));
@@ -560,6 +591,7 @@ public sealed class VibnWorkplaceSynchronizationVM : MvvmBase, IDisposable
 
     private static string DescribePreview(VibnWorkplaceSynchronizationPreview preview) =>
         $"Prüfung: {preview.CreateCount} neu, {preview.DeadlineUpdateCount} Zeitplan(e), " +
+        $"{preview.TitleUpdateCount} CORE-Umbenennung(en), {preview.RelatedCardsCount} Rollenfamilie(n), " +
         $"{preview.UnchangedCount} unverändert, {preview.ConflictCount} Konflikt(e), " +
         $"{preview.ExcludedSourceCardCount} Quelle(n) ausgeschlossen.";
 

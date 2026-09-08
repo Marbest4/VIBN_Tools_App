@@ -128,7 +128,8 @@ public static class ViCoFeatureBootstrapper
         return new KanbanizeCardPageVM(
             cards,
             new VibnWorkplaceSynchronizationService(cards),
-            ApplicationLogService.Instance);
+            ApplicationLogService.Instance,
+            new WindowsPathLauncher());
     }
 
     public static ViCoAdministrationPageVM CreateAdministrationViewModel()

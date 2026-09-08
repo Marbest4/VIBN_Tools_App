@@ -553,7 +553,12 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
             new KanbanizeCardInfo(102, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM2000", null, sourceDeadline),
             new KanbanizeCardInfo(105, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM5000", null, sourceDeadline),
             new KanbanizeCardInfo(106, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM6000", null, sourceDeadline),
+            new KanbanizeCardInfo(107, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM7000", null, sourceDeadline),
             new KanbanizeCardInfo(109, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM9000", null, sourceDeadline),
+            new KanbanizeCardInfo(110, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM10000", null, sourceDeadline),
+            new KanbanizeCardInfo(111, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM11000", null, sourceDeadline),
+            new KanbanizeCardInfo(112, 1392, 10, 20, "[VIBN] Nachpflege GM12000", null, sourceDeadline),
+            new KanbanizeCardInfo(113, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM13000", null, sourceDeadline),
             new KanbanizeCardInfo(108, 1392, 10, 25236, "[VIBN] Grundinbetriebnahme Archiv", null, sourceDeadline)
         },
         new[]
@@ -561,14 +566,24 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
             new KanbanizeCardInfo(201, 1541, 28125, 29373, "Bestehende Karte", "102", sourceDeadline.AddDays(-3), expectedStart.AddDays(-1)),
             new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd.AddHours(4), expectedStart.AddHours(4)),
             new KanbanizeCardInfo(209, 1541, 28125, 29373, "*[Gen]* GM9000", null, expectedEnd, expectedStart),
-            new KanbanizeCardInfo(206, 1541, 28125, 29373, "Doppelte Eins", "106", sourceDeadline),
-            new KanbanizeCardInfo(207, 1541, 28125, 29373, "Doppelte Zwei", "106", sourceDeadline)
+            new KanbanizeCardInfo(206, 1541, 28125, 29373, "GM6000 *[Gen]* CORE", "106", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(207, 1541, 28125, 29373, "GM6000 - CLIENT", "106", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(210, 1541, 28125, 29373, "GM7000 *[Gen]*", "107", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(211, 1541, 28125, 29373, "GM7000 *[Gen]*", "107", expectedEnd.AddDays(1), expectedStart),
+            new KanbanizeCardInfo(212, 1541, 28125, 29373, "GM10000 *[Gen]*", "110", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(213, 1541, 28125, 29373, "GM10000 *[Gen]*", "999", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(214, 1541, 28125, 29373, "GM11000 *[Gen]* CORE", "111", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(215, 1541, 28125, 29373, "GM11000 - CORE", "111", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(216, 1541, 28125, 29373, "GM12000 *[Gen]*", "112", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(217, 1541, 28125, 29373, "GM13000 *[Gen]*", "113", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(218, 1541, 28125, 29373, "GM13000 - CLIENT", "113", expectedEnd, expectedStart)
         });
     var synchronization = new VibnWorkplaceSynchronizationService(service);
     var settings = new VibnWorkplaceSynchronizationSettings(1392, 1541, 28125, 29373, 3, true);
 
     var preview = await synchronization.PreviewAsync(settings);
-    Assert(preview.CreateCount == 1 && preview.DeadlineUpdateCount == 1 && preview.UnchangedCount == 2,
+    Assert(preview.CreateCount == 1 && preview.DeadlineUpdateCount == 1 && preview.UnchangedCount == 3 &&
+           preview.RelatedCardsCount == 1 && preview.TitleUpdateCount == 1,
         "The preview must distinguish missing, stale and already-current target schedules.");
     Assert(preview.Items.Single(item => item.SourceCard.Id == 109).Action == VibnWorkplaceSynchronizationAction.Unchanged,
         "A legacy generated title must prevent duplicates even if its custom source ID is absent.");
@@ -583,8 +598,33 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
                new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset),
                new DateTimeOffset(2026, 8, 28, 8, 0, 0, TimeZoneInfo.Local.GetUtcOffset(localDate.AddDays(1)))),
         "Kanbanize planning dates must be compared by local calendar date and ignore the time component.");
-    Assert(preview.ConflictCount == 1 && preview.ExcludedSourceCardCount == 1,
-        "Duplicate target IDs must be reported and archived source cards excluded.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 106).Action ==
+               VibnWorkplaceSynchronizationAction.RelatedCards &&
+           preview.Items.Single(item => item.SourceCard.Id == 106).RelatedTargetCards?.Count == 2,
+        "Different CORE/CLIENT cards with one source ID must be grouped without a blanket conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 107).Message.Contains("unterschiedliche", StringComparison.OrdinalIgnoreCase),
+        "Equal names on the same lane with different schedules need a specific conflict reason.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 110).Message.Contains("unterschiedliche Quellkarten-IDs", StringComparison.OrdinalIgnoreCase),
+        "Equal target names with different source IDs must be a conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 111).Message.Contains("CORE", StringComparison.Ordinal),
+        "Duplicate CORE roles for one source ID must be a conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 113).Action ==
+               VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle &&
+           preview.Items.Single(item => item.SourceCard.Id == 113).ProposedTitle == "GM13000 *[Gen]* CORE",
+        "A copied generated card must propose the primary-card CORE suffix.");
+    Assert(preview.ConflictCount == 3 && preview.ExcludedSourceCardCount == 1,
+        "Only the specified target inconsistencies must conflict and archived source cards stay excluded.");
+    Assert(VibnWorkplaceSynchronizationPolicy.IsEligibleSourceCard(
+               new KanbanizeCardInfo(1, 1392, 1, 1, "[VIBN] Nachpflege Test", null, sourceDeadline)),
+        "Active Nachpflege cards must be eligible sources.");
+    var generatedTitle = VibnWorkplaceSynchronizationPolicy.GetGeneratedTitle(
+        "[VIBN] Grundinbetriebnahme [GM7283/01-1030] Kunde - Ort");
+    var primary = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(generatedTitle);
+    var client = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(
+        "[GM7283/01-1030] Kunde - Ort - CLIENT");
+    Assert(generatedTitle == "[GM7283/01-1030] Kunde - Ort *[Gen]*" &&
+           primary.IdentityKey == client.IdentityKey && client.Role == "CLIENT",
+        "Generated and copied card titles must share a structured base identity and role parsing.");
     Assert(preview.Items.Where(item => item.SourceCard.Deadline is not null).All(item =>
             item.Schedule is null || item.Schedule.EndDate == item.SourceCard.Deadline!.Value.AddDays(56)),
         "Every VIBN card must derive its end date from its own deadline without requiring a template card.");
@@ -598,7 +638,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
            service.ScheduleChanges.Count == 0,
         "Only explicitly selected preview rows may be synchronized.");
     Assert(service.GeneratedCards.Single().SourceCardId == 101 &&
-           service.GeneratedCards.Single().Title == "*[Gen]* GM1000" &&
+           service.GeneratedCards.Single().Title == "GM1000 *[Gen]*" &&
            service.GeneratedCards.Single().StartDate == expectedStart &&
            service.GeneratedCards.Single().Deadline == expectedEnd,
         "A generated card must preserve its identity and receive the calculated start/end schedule.");
@@ -610,6 +650,11 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
     Assert(service.ScheduleChanges.SequenceEqual(new[] { new ScheduleChange(201, expectedStart, expectedEnd) }),
         "Only the existing generated card schedule may be changed; no other target field is updated.");
 
+    var renameOnly = await synchronization.SynchronizeAsync(settings, new[] { 113 });
+    Assert(renameOnly.TitleUpdateCount == 1 && renameOnly.CreatedCount == 0 &&
+           service.TitleChanges.SequenceEqual(new[] { new TitleChange(217, "GM13000 *[Gen]* CORE") }),
+        "Only the generated primary card title may receive the CORE suffix after a role copy exists.");
+
     var repeatPreview = await synchronization.PreviewAsync(settings);
     var repeatSelection = repeatPreview.Items
         .Where(item => item.Action is VibnWorkplaceSynchronizationAction.Create or VibnWorkplaceSynchronizationAction.UpdateDeadline)
@@ -617,7 +662,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         .ToArray();
     Assert(repeatSelection.Length == 0,
         "A repeated preview must not expose already applied changes for selection.");
-    var repeat = new VibnWorkplaceSynchronizationResult(repeatPreview, 0, 0, Array.Empty<string>());
+    var repeat = new VibnWorkplaceSynchronizationResult(repeatPreview, 0, 0, 0, Array.Empty<string>());
     Assert(repeat.CreatedCount == 0 && repeat.DeadlineUpdateCount == 0,
         "A second synchronization must not create duplicates or repeat unchanged schedule updates.");
 }
@@ -635,6 +680,7 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
         {"data":{"card_id":9001,"title":"*[Gen]* GM1000"}}
         """);
     handler.EnqueueJson("{}");
+    handler.EnqueueJson("{}");
     using var httpClient = new HttpClient(handler);
     var api = new KanbanizeCardApiService(httpClient, "test-only-key", "https://example.test/api/v2");
 
@@ -643,15 +689,16 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
         101,
         28125,
         29373,
-        "*[Gen]* GM1000",
+        "GM1000 *[Gen]*",
         3,
         end,
         start));
     await api.UpdateGeneratedScheduleAsync(9001, start, end);
+    await api.UpdateGeneratedTitleAsync(9001, "GM1000 *[Gen]* CORE");
 
     Assert(cards.Count == 1 && string.IsNullOrEmpty(cards[0].CustomId) && cards[0].StartDate == sourceDeadline.AddDays(-14),
         "The card reader must preserve the source card identity and workplace start date.");
-    Assert(handler.Requests.Count == 3, "The API adapter should make one read and two narrowly scoped writes.");
+    Assert(handler.Requests.Count == 4, "The API adapter should make one read and three narrowly scoped writes.");
     Assert(handler.Requests[0].RelativeUrl.Contains("per_page=1000", StringComparison.Ordinal) &&
            handler.Requests[0].RelativeUrl.Contains("expand=custom_fields", StringComparison.Ordinal) &&
            handler.Requests[0].RelativeUrl.Contains("fields=card_id,title,custom_id,deadline", StringComparison.Ordinal) &&
@@ -684,6 +731,14 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
            patchPayload.RootElement.GetProperty("custom_fields_to_add_or_update")[0].GetProperty("field_id").GetInt32() == 508 &&
            patchPayload.RootElement.GetProperty("custom_fields_to_add_or_update")[0].GetProperty("value").GetString() == start.UtcDateTime.ToString("O"),
         "The schedule sync must PATCH only the generated start field and deadline of an existing target card.");
+
+    using var titlePayload = JsonDocument.Parse(handler.Requests[3].Body);
+    var titleFields = titlePayload.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
+    Assert(handler.Requests[3].Method == HttpMethod.Patch &&
+           handler.Requests[3].RelativeUrl == "/api/v2/cards/9001" &&
+           titleFields.SequenceEqual(new[] { "title" }, StringComparer.Ordinal) &&
+           titlePayload.RootElement.GetProperty("title").GetString() == "GM1000 *[Gen]* CORE",
+        "The CORE rename must PATCH only the generated card title.");
 }
 
 static async Task VerifyWorkstationConfigurationWriteScopeAsync()
@@ -1087,6 +1142,8 @@ sealed class KanbanizeRefreshHttpMessageHandler : HttpMessageHandler
 
 sealed record ScheduleChange(int CardId, DateTimeOffset StartDate, DateTimeOffset EndDate);
 
+sealed record TitleChange(int CardId, string Title);
+
 sealed class MemoryKanbanizeCardService : IKanbanizeCardService
 {
     private readonly List<KanbanizeCardInfo> _sourceCards;
@@ -1106,6 +1163,8 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
     public List<KanbanizeGeneratedCardDraft> GeneratedCards { get; } = new();
 
     public List<ScheduleChange> ScheduleChanges { get; } = new();
+
+    public List<TitleChange> TitleChanges { get; } = new();
 
     public Task<IReadOnlyList<KanbanizeBoardInfo>> LoadBoardsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<KanbanizeBoardInfo>>(Array.Empty<KanbanizeBoardInfo>());
@@ -1163,6 +1222,19 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
             Deadline = endDate
         };
         ScheduleChanges.Add(new ScheduleChange(cardId, startDate, endDate));
+        return Task.CompletedTask;
+    }
+
+    public Task UpdateGeneratedTitleAsync(
+        int cardId,
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        var index = _targetCards.FindIndex(card => card.Id == cardId);
+        if (index < 0)
+            throw new InvalidOperationException("Target card not found.");
+        _targetCards[index] = _targetCards[index] with { Title = title };
+        TitleChanges.Add(new TitleChange(cardId, title));
         return Task.CompletedTask;
     }
 }
