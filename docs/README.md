@@ -14,9 +14,14 @@
 - [Entwicklerhandbuch](ENTWICKLERHANDBUCH.md) – Erweiterungsmuster, Abhängigkeitsrichtung und Tests.
 - [Klassenreferenz](KLASSENREFERENZ.md) – wo sich welche Logik befindet.
 - [Quellcode-Dokumentation](QUELLCODE_DOKUMENTATION.md) – Kommentarregeln und Lesereihenfolge.
+- [FEE2Container](FEE2CONTAINER.md) – Provenienzformat, Bedienung, Round-Trip und Grenzen.
+- [AI-Regelvorschläge](AI_REGELVORSCHLAEGE.md) – strukturiertes Änderungslog, Konfidenz und Review-Grenzen.
+- [Lokale Automatisierungsinstallationen](INSTALLATION_DISCOVERY.md) – dynamische TIA-/Openness-, WinCC-, Siemens- und TwinCAT-Erkennung.
 - [Datenflüsse](DATENFLUESSE.md) – PC-Daten, RDP, Konfiguration, Kanbanize, TIA und FEE.
 - [Architektur](ARCHITECTURE.md) – kurze technische Übersicht in Englisch.
 - [Umsetzungsstatus 2026](UMSETZUNGSSTATUS_2026.md) – Abgleich zwischen implementiert, automatisch geprüft und fachlich noch offen.
+- [Refactoring Phase A](REFACTORING_PHASE_A_2026-09.md) – verifizierte Ausgangsarchitektur, Tab-/Service-Zuordnung, Datenmodelle, Risiken und Zielreihenfolge.
+- [Anforderungsmatrix Refactoring](REQUIREMENT_MATRIX_2026-09.md) – vollständige Traceability von Ist-Stand, betroffenem Code, geplantem Scope und Verifikation.
 
 ## Kompatibilitätshinweis
 

@@ -10,7 +10,7 @@ Wenn `VIBN_Tools_Setup.exe` bereits vorliegt:
 2. Setup mit einem Benutzer ausführen, der Software installieren darf.
 3. Installationsordner bestätigen und optional die Desktopverknüpfung auswählen.
 4. `VIBN_Tools.exe` beziehungsweise die Desktopverknüpfung starten.
-5. In **Project Settings → Kanbanize- und Remote-Konfiguration** API-Key und RDP-Kennwort verdeckt eingeben. Die Statusanzeige bestätigt die Konfiguration; eine CMD-Datei oder ein Neustart ist nicht erforderlich.
+5. In **Project Settings → Geschützte Zugangsdaten** FEE-Benutzer/-Passwort, API-Key und RDP-Kennwort eingeben. Die Statusanzeige bestätigt die Konfiguration; eine CMD-Datei oder ein Neustart ist nicht erforderlich.
 
 Visual Studio und eine separate .NET-Installation werden nicht benötigt. Für TIA-Funktionen müssen eine passende TIA-/Openness-Version, .NET Framework 4.8 und die Siemens-Openness-Benutzergruppe vorhanden sein. FEE-Funktionen benötigen die freigegebene FEE-Laufzeit beziehungsweise die zugehörigen betrieblichen Dienste und Lizenzen.
 
@@ -62,14 +62,17 @@ Der Publish enthält nicht den vollständigen FEE-Installationsordner. Das Skrip
 2. `FEE_SCREEN_SIM_ROOT`
 3. installierte Unterordner von `C:\Program Files\fe.screen-sim V5`, absteigend nach Version
 4. `external\fe-screen-sim` als CI-/Testfallback
+5. `SDK` als unveränderter flacher Repository-Buildfallback
 
-Installationsordner ohne `Bin\FS.SDK.dll` werden mit einer Warnung übersprungen. Ohne explizite oder zuvor gespeicherte Auswahl wird die höchste vollständige Version gewählt und als
+Produktinstallationen benötigen `Bin\FS.SDK.dll`; die beiden Repository-Fallbacks dürfen zusätzlich das flache Layout mit `FS.SDK.dll` direkt im Stammordner verwenden. Ordner ohne diese Markierung werden mit einer Warnung übersprungen. Ohne explizite oder zuvor gespeicherte Auswahl wird die höchste vollständige Installation gewählt und als
 
 ```text
 FEE SDK erkannt: Version ... unter '...'
 ```
 
 ausgegeben. `Prepare-Development.cmd` listet mehrere vollständige SDKs absteigend auf, markiert die neueste als Standard und lässt den Entwickler den Referenzordner auswählen. Die Auswahl wird als `FEE_SCREEN_SIM_ROOT` für den aktuellen Windows-Benutzer gespeichert. Visual Studio muss danach neu gestartet werden, weil bereits geladene Projektverweise nicht innerhalb eines laufenden Prozesses ausgetauscht werden können. Eine Laufzeit-Auswahl in Project Settings wäre technisch zu spät und ist deshalb bewusst nicht vorhanden.
+
+Der eingecheckte flache Ordner `SDK` enthält den vollständigen derzeit benötigten Abhängigkeitsabschluss. Hauptprojekt, `Grob Generation Interface` und Solution bauen gemeinsam. Einzelne Assemblies aus anderen Versionen zu mischen bleibt nicht unterstützt; vor Installer/Publish berechnet das Buildskript weiterhin die rekursive Runtime-Closure und bricht bei jeder Lücke ab.
 
 ### Direktes Debuggen in Visual Studio
 

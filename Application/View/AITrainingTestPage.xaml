@@ -519,6 +519,60 @@
                 </Grid>
             </TabItem>
 
+            <TabItem Header="Regelvorschläge">
+                <DockPanel Margin="10">
+                    <StackPanel DockPanel.Dock="Top" Margin="0,0,0,8">
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="Vorschläge aktualisieren" Width="165"
+                                    Command="{Binding RefreshRuleSuggestionsCommand}" />
+                            <Button Content="Aktionslogs öffnen" Width="145"
+                                    Command="{Binding OpenActionLogFolderCommand}" />
+                            <Button Content="XML-Vorschau" Width="125"
+                                    Command="{Binding PreviewRequirementsPatchCommand}"
+                                    ToolTip="Wählt eine AutoCreate-XML und zeigt die angenommenen exakten Slotregeln vor jeder Änderung." />
+                            <Button Content="XML übernehmen" Width="130"
+                                    Command="{Binding ApplyRequirementsPatchCommand}"
+                                    ToolTip="Nur nach aktueller Vorschau und erneuter Bestätigung; erstellt eine Sicherungsdatei." />
+                        </StackPanel>
+                        <TextBlock Margin="0,7,0,0" TextWrapping="Wrap"
+                                   Text="{Binding RuleSuggestionSummary}" />
+                        <TextBlock Margin="0,4,0,0" Foreground="#FF555555" TextWrapping="Wrap"
+                                   Text="Diese erste sichere Stufe schlägt nur exakte Typ-/Signal-/Slot-Regeln vor. Annehmen markiert die Auswahl; XML-Vorschau prüft Schema und Konflikte. Erst XML übernehmen verändert nach Bestätigung die gewählte Datei und legt eine Sicherung an." />
+                        <TextBox Margin="0,7,0,0" MinHeight="58" MaxHeight="120"
+                                 IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True"
+                                 VerticalScrollBarVisibility="Auto"
+                                 Text="{Binding RequirementsPatchPreview, Mode=OneWay}" />
+                    </StackPanel>
+
+                    <DataGrid ItemsSource="{Binding RuleSuggestions}" IsReadOnly="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Vorgeschlagene Regel" Binding="{Binding ProposedRule}" Width="3*" />
+                            <DataGridTextColumn Header="Eigenschaft" Binding="{Binding PropertyName}" Width="110" />
+                            <DataGridTextColumn Header="Vorher" Binding="{Binding PreviousValue}" Width="150" />
+                            <DataGridTextColumn Header="Neu" Binding="{Binding NewValue}" Width="150" />
+                            <DataGridTextColumn Header="Häufigkeit" Binding="{Binding Frequency}" Width="90" />
+                            <DataGridTextColumn Header="Fälle" Binding="{Binding RelevantCases}" Width="75" />
+                            <DataGridTextColumn Header="Konfidenz" Binding="{Binding Confidence, StringFormat={}{0:P0}}" Width="95" />
+                            <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100" />
+                            <DataGridTemplateColumn Header="Prüfung" Width="175">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Button Content="Annehmen" Padding="7,2" Margin="0,0,4,0"
+                                                    Command="{Binding DataContext.AcceptRuleSuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Content="Ablehnen" Padding="7,2"
+                                                    Command="{Binding DataContext.RejectRuleSuggestionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding}" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
+            </TabItem>
+
         </TabControl>
 
         <!-- =========================

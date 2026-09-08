@@ -67,9 +67,33 @@ public sealed class TiaProgramItemInfo
 
 public sealed class TiaAxisInfo
 {
+    /// <summary>Stable identity composed from the technology-group path and object name.</summary>
+    public string Id { get; set; } = string.Empty;
+
     public string Name { get; set; } = string.Empty;
 
     public string TechnologyType { get; set; } = string.Empty;
+
+    public string GroupPath { get; set; } = string.Empty;
+
+    /// <summary>Only populated by the configuration command.</summary>
+    public List<TiaAxisParameterResult> ParameterResults { get; set; } = new();
+}
+
+public sealed class TiaAxisConfigurationPayload
+{
+    public List<string> AxisIds { get; set; } = new();
+}
+
+public sealed class TiaAxisParameterResult
+{
+    public string Name { get; set; } = string.Empty;
+
+    public string Value { get; set; } = string.Empty;
+
+    public bool Success { get; set; }
+
+    public string Error { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -82,7 +106,17 @@ public sealed class TiaAxisInfo
 /// </summary>
 public sealed class TiaHardwareModuleInfo
 {
+    public int TraversalIndex { get; set; }
+
     public int DeviceIndex { get; set; }
+
+    public int HierarchyDepth { get; set; }
+
+    public string ParentName { get; set; } = string.Empty;
+
+    public string ObjectClass { get; set; } = string.Empty;
+
+    public string HardwareIdentifier { get; set; } = string.Empty;
 
     public int Slot { get; set; } = -1;
 

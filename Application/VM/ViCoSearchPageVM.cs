@@ -74,10 +74,17 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         SaveConfigurationCommand = GetCommandBindingAsync(SaveConfigurationAsync);
         CreateConfigurationCommand = GetCommandBindingAsync(CreateConfigurationAsync);
         SaveAutoRefreshIntervalCommand = GetCommandBindingAsync(SaveAutoRefreshIntervalAsync);
+        SaveDisplayPreferencesCommand = GetCommandBindingAsync(SaveDisplayPreferencesAsync);
         OpenPcProjectsCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.WorkstationProjects));
         OpenSimulationCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.Simulation));
         OpenCommissioningCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.Commissioning));
         OpenPlanningCommand = GetCommandBinding(() => OpenRelated(ViCoRelatedPathKind.Planning));
+        ContextConnectRemoteCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, ConnectRemote));
+        ContextConnectRemoteWithPromptCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, ConnectRemoteWithPrompt));
+        ContextOpenPcProjectsCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.WorkstationProjects)));
+        ContextOpenSimulationCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Simulation)));
+        ContextOpenCommissioningCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Commissioning)));
+        ContextOpenPlanningCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Planning)));
     }
 
     public ObservableCollection<ViCoWorkstationRowVM> Results { get; } = new();
@@ -89,10 +96,17 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     public ICommand SaveConfigurationCommand { get; }
     public ICommand CreateConfigurationCommand { get; }
     public ICommand SaveAutoRefreshIntervalCommand { get; }
+    public ICommand SaveDisplayPreferencesCommand { get; }
     public ICommand OpenPcProjectsCommand { get; }
     public ICommand OpenSimulationCommand { get; }
     public ICommand OpenCommissioningCommand { get; }
     public ICommand OpenPlanningCommand { get; }
+    public ICommand ContextConnectRemoteCommand { get; }
+    public ICommand ContextConnectRemoteWithPromptCommand { get; }
+    public ICommand ContextOpenPcProjectsCommand { get; }
+    public ICommand ContextOpenSimulationCommand { get; }
+    public ICommand ContextOpenCommissioningCommand { get; }
+    public ICommand ContextOpenPlanningCommand { get; }
     public int MonitorCount => _remoteDesktop.MonitorCount;
     public bool HasMonitor2 => MonitorCount >= 2;
     public bool HasMonitor3 => MonitorCount >= 3;
@@ -109,6 +123,19 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         set
         {
             _autoRefreshIntervalMinutes = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private bool _showExtendedInformation;
+    public bool ShowExtendedInformation
+    {
+        get => _showExtendedInformation;
+        set
+        {
+            if (_showExtendedInformation == value)
+                return;
+            _showExtendedInformation = value;
             OnPropertyChanged();
         }
     }
@@ -157,10 +184,19 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             _selectedWorkstation = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(SelectedRemoteUser));
+            OnPropertyChanged(nameof(HasSelectedWorkstation));
             OnPropertyChanged(nameof(CanUseSelectedWorkstationActions));
+            OnPropertyChanged(nameof(CanUseRemoteActions));
+            OnPropertyChanged(nameof(CanOpenPcProjects));
+            OnPropertyChanged(nameof(CanOpenServerPathActions));
+            OnPropertyChanged(nameof(RemoteActionUnavailableReason));
+            OnPropertyChanged(nameof(PcProjectsUnavailableReason));
+            OnPropertyChanged(nameof(ServerPathActionUnavailableReason));
             OnPropertyChanged(nameof(IsSelectedWorkstationOffline));
             OnPropertyChanged(nameof(CanEditConfiguration));
             OnPropertyChanged(nameof(CanCreateConfiguration));
+            OnPropertyChanged(nameof(EditConfigurationUnavailableReason));
+            OnPropertyChanged(nameof(CreateConfigurationUnavailableReason));
             OnPropertyChanged(nameof(HasSelectedConfigurationCard));
             OnPropertyChanged(nameof(IsSelectedConfigurationMissing));
             Projects.Clear();
@@ -183,8 +219,36 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     public string SelectedRemoteUser => SelectedWorkstation?.UserName ?? string.Empty;
 
-    /// <summary>Offline PCs cannot execute RDP or path actions and expose no action buttons.</summary>
+    public bool HasSelectedWorkstation => SelectedWorkstation is not null;
+
+    /// <summary>Compatibility property for callers that require the workstation itself to be online.</summary>
     public bool CanUseSelectedWorkstationActions => SelectedWorkstation?.IsOnline == true;
+
+    public bool CanUseRemoteActions => SelectedWorkstation?.IsOnline == true;
+
+    public bool CanOpenPcProjects => SelectedWorkstation?.IsOnline == true && _pathResolver is not null;
+
+    public bool CanOpenServerPathActions => SelectedWorkstation is not null && _pathResolver is not null;
+
+    public string RemoteActionUnavailableReason => SelectedWorkstation is null
+        ? "Zuerst einen Arbeitsplatz auswählen."
+        : SelectedWorkstation.IsOnline
+            ? "Remote Desktop öffnen."
+            : "Remote Desktop ist deaktiviert, weil der ausgewählte PC offline ist.";
+
+    public string PcProjectsUnavailableReason => SelectedWorkstation is null
+        ? "Zuerst einen Arbeitsplatz auswählen."
+        : !SelectedWorkstation.IsOnline
+            ? "Der PC-Projektordner ist deaktiviert, weil der ausgewählte PC offline ist."
+            : _pathResolver is null
+                ? "Die Projektpfade wurden noch nicht geladen."
+                : "Projektordner auf dem ausgewählten PC öffnen.";
+
+    public string ServerPathActionUnavailableReason => SelectedWorkstation is null
+        ? "Zuerst einen Arbeitsplatz auswählen."
+        : _pathResolver is null
+            ? "Die Serverpfade wurden noch nicht geladen."
+            : "Der Serverpfad ist auch bei einem offline geschalteten PC verfügbar.";
 
     public bool IsSelectedWorkstationOffline =>
         SelectedWorkstation is not null && !SelectedWorkstation.IsOnline;
@@ -201,6 +265,24 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         SelectedWorkstation.Model.KanbanizeLaneId > 0 &&
         SelectedWorkstation.Model.ConfigurationColumnId > 0;
 
+    public string EditConfigurationUnavailableReason => CanEditConfiguration
+        ? "Speichert die bearbeitbaren Felder der vorhandenen KONFIGURATION-Karte."
+        : !_configurationService.IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : SelectedWorkstation is null
+                ? "Zuerst einen Arbeitsplatz auswählen."
+                : "Für diesen Arbeitsplatz ist keine bearbeitbare KONFIGURATION-Karte vorhanden.";
+
+    public string CreateConfigurationUnavailableReason => CanCreateConfiguration
+        ? "Legt die standardisierte KONFIGURATION-Karte für den ausgewählten Arbeitsplatz an."
+        : !_configurationService.IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : SelectedWorkstation is null
+                ? "Zuerst einen Arbeitsplatz auswählen."
+                : SelectedWorkstation.Model.HasConfigurationCard
+                    ? "Für diesen Arbeitsplatz ist bereits eine KONFIGURATION-Karte vorhanden."
+                    : "Lane oder Zielspalte der Arbeitsplätze-Karte ist nicht eindeutig ermittelbar.";
+
     public bool HasSelectedConfigurationCard => SelectedWorkstation?.Model.HasConfigurationCard == true;
 
     public bool IsSelectedConfigurationMissing =>
@@ -214,9 +296,15 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             _selectedProject = value;
             OnPropertyChanged();
+            OnPropertyChanged(nameof(SelectedProjectStart));
+            OnPropertyChanged(nameof(SelectedProjectEnd));
             UpdatePathInformation();
         }
     }
+
+    public string SelectedProjectStart => FormatProjectDate(FindSelectedProjectCard()?.StartDate);
+
+    public string SelectedProjectEnd => FormatProjectDate(FindSelectedProjectCard()?.Deadline);
 
     private string _pathInformation = "PC und Projekt auswählen.";
     public string PathInformation
@@ -326,6 +414,10 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             _pathResolver = await resolverTask;
             _allWorkstations = snapshot.Workstations;
             _synchronizeWorkstations(_allWorkstations);
+            OnPropertyChanged(nameof(CanOpenPcProjects));
+            OnPropertyChanged(nameof(CanOpenServerPathActions));
+            OnPropertyChanged(nameof(PcProjectsUnavailableReason));
+            OnPropertyChanged(nameof(ServerPathActionUnavailableReason));
             ApplySearch();
             StatusText = completionMessage ?? (snapshot.Warnings.Count == 0
                 ? $"{_allWorkstations.Count} Arbeitsstationen geladen. Kanbanize-Benutzer wurden synchronisiert."
@@ -358,6 +450,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
                     _lastObservedOnlineConfiguration = isOnlineConfigured;
                     OnPropertyChanged(nameof(CanEditConfiguration));
                     OnPropertyChanged(nameof(CanCreateConfiguration));
+                    OnPropertyChanged(nameof(EditConfigurationUnavailableReason));
+                    OnPropertyChanged(nameof(CreateConfigurationUnavailableReason));
                 }
 
                 if (!isOnlineConfigured)
@@ -538,7 +632,11 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         if (ReferenceEquals(row, SelectedWorkstation))
         {
             OnPropertyChanged(nameof(CanUseSelectedWorkstationActions));
+            OnPropertyChanged(nameof(CanUseRemoteActions));
+            OnPropertyChanged(nameof(CanOpenPcProjects));
             OnPropertyChanged(nameof(IsSelectedWorkstationOffline));
+            OnPropertyChanged(nameof(RemoteActionUnavailableReason));
+            OnPropertyChanged(nameof(PcProjectsUnavailableReason));
         }
     }
 
@@ -558,7 +656,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             return;
         if (!CanUseSelectedWorkstationActions)
         {
-            StatusText = "Der PC ist offline. Remote- und Pfadaktionen sind ausgeblendet.";
+            StatusText = RemoteActionUnavailableReason;
             return;
         }
         if (!promptForCredentials && string.IsNullOrWhiteSpace(SelectedWorkstation.UserName))
@@ -666,10 +764,12 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             var settings = await _autoRefreshSettingsStore.LoadAsync(_lifetimeCancellation.Token);
             AutoRefreshIntervalMinutes = ViCoAutoRefreshPolicy.Normalize(settings.IntervalMinutes);
+            ShowExtendedInformation = settings.ShowExtendedInformation;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             AutoRefreshIntervalMinutes = ViCoAutoRefreshSettings.Default.IntervalMinutes;
+            ShowExtendedInformation = ViCoAutoRefreshSettings.Default.ShowExtendedInformation;
             _log.Warning(
                 "ViCo AutoUpdate",
                 "Das gespeicherte Aktualisierungsintervall konnte nicht gelesen werden; fünf Minuten werden verwendet.",
@@ -684,7 +784,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         try
         {
             await _autoRefreshSettingsStore.SaveAsync(
-                new ViCoAutoRefreshSettings(normalized),
+                new ViCoAutoRefreshSettings(normalized, ShowExtendedInformation),
                 _lifetimeCancellation.Token);
             ScheduleNextAutoRefresh();
             StatusText = $"Kanbanize-AutoUpdate wird alle {normalized} Minute(n) ausgeführt.";
@@ -694,6 +794,27 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             StatusText = "Das Kanbanize-AutoUpdate-Intervall konnte nicht gespeichert werden.";
             _log.Error("ViCo AutoUpdate", StatusText, exception);
+        }
+    }
+
+    private async Task SaveDisplayPreferencesAsync()
+    {
+        try
+        {
+            await _autoRefreshSettingsStore.SaveAsync(
+                new ViCoAutoRefreshSettings(
+                    ViCoAutoRefreshPolicy.Normalize(AutoRefreshIntervalMinutes),
+                    ShowExtendedInformation),
+                _lifetimeCancellation.Token);
+            StatusText = ShowExtendedInformation
+                ? "Die Zusatzspalten Projekt-IP und Sonstiges werden angezeigt."
+                : "Die Zusatzspalten Projekt-IP und Sonstiges sind ausgeblendet.";
+            _log.Information("ViCo Anzeige", StatusText);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            StatusText = "Die ViCo-Anzeigeeinstellung konnte nicht gespeichert werden.";
+            _log.Error("ViCo Anzeige", StatusText, exception);
         }
     }
 
@@ -772,9 +893,11 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     {
         if (SelectedWorkstation is null || _pathResolver is null)
             return;
-        if (!CanUseSelectedWorkstationActions)
+        var requiresOnlineWorkstation = kind is ViCoRelatedPathKind.WorkstationProjects or
+            ViCoRelatedPathKind.WorkstationProject;
+        if (requiresOnlineWorkstation && !SelectedWorkstation.IsOnline)
         {
-            StatusText = "Der PC ist offline. Remote- und Pfadaktionen sind ausgeblendet.";
+            StatusText = PcProjectsUnavailableReason;
             return;
         }
         var project = SelectedProject ?? SearchText;
@@ -788,6 +911,30 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         StatusText = $"Geöffnet: {path}";
         _log.Information("ViCo-Pfade", StatusText);
     }
+
+    private void ExecuteForRow(object parameter, Action action)
+    {
+        if (parameter is not ViCoWorkstationRowVM row)
+            return;
+        SelectedWorkstation = row;
+        action();
+    }
+
+    private ViCoProjectCardInfo? FindSelectedProjectCard()
+    {
+        if (SelectedWorkstation is null || string.IsNullOrWhiteSpace(SelectedProject))
+            return null;
+
+        var selectedIdentity = ProjectIdentity.Normalize(SelectedProject);
+        return SelectedWorkstation.Model.ProjectCardDetails.FirstOrDefault(card =>
+                   ProjectIdentity.Normalize(card.Title) == selectedIdentity)
+               ?? SelectedWorkstation.Model.ProjectCardDetails.FirstOrDefault(card =>
+                   ProjectIdentity.Normalize(card.Title).Contains(selectedIdentity, StringComparison.Ordinal) ||
+                   selectedIdentity.Contains(ProjectIdentity.Normalize(card.Title), StringComparison.Ordinal));
+    }
+
+    private static string FormatProjectDate(DateTimeOffset? value) =>
+        value is null ? "nicht angegeben" : value.Value.LocalDateTime.ToString("dd.MM.yyyy");
 
     private void UpdatePathInformation()
     {

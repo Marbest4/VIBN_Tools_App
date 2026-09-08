@@ -19,7 +19,7 @@ Beide Abläufe enthalten keine Lizenzanfrage- oder Lizenzdatenlogik.
 
 ### Bedienablauf
 
-1. **Boards aktualisieren** drücken.
+1. **Boards aktualisieren** drücken. Alternativ öffnet **Planansicht anzeigen** die feste Arbeitsplätze-Planansicht `1541` im Standardbrowser.
 2. Quellboard „Virtuelle Inbetriebnahme“ sowie Zielboard „Arbeitsplätze“ und die gewünschte Zielposition auswählen.
 3. **Prüfen** drücken und jede Zeile der Vorschau lesen. Neu anzulegende Karten sind in **Sync** standardmäßig markiert; Aktualisierungen bestehender Karten nicht.
 4. Ausschließlich die gewünschten Zeilen in der Spalte **Sync** markieren. **Alle selektieren** und **Alle deselektieren** wirken nur auf schreibbare Vorschauzeilen.
@@ -27,7 +27,7 @@ Beide Abläufe enthalten keine Lizenzanfrage- oder Lizenzdatenlogik.
 
 ### Auswahlregel
 
-Eine Quellkarte ist zulässig, wenn ihr Titel `Grundinbetriebnahme` enthält, sie nicht `Vorlage` heißt und nicht in der Archivspalte liegt. Eine zusätzliche Vorlagenkarte ist für die Synchronisierung nicht erforderlich.
+Eine Quellkarte ist zulässig, wenn ihr Titel `Grundinbetriebnahme` oder `Nachpflege` enthält, sie nicht `Vorlage` heißt und nicht in der Archivspalte liegt. Eine zusätzliche Vorlagenkarte ist für die Synchronisierung nicht erforderlich.
 
 ### Terminregel
 
@@ -42,19 +42,25 @@ Fehlt die Deadline einer Quellkarte, zeigt die Vorschau für genau diese Karte e
 
 Beim Prüfen werden Start und Deadline ausschließlich nach dem lokalen Kalendertag verglichen. Unterschiedliche Uhrzeiten am selben Tag erzeugen deshalb keinen unnötigen Updatevorschlag.
 
+Die Vorschau zeigt grundsätzlich nur `dd.MM.yyyy`; Uhrzeiten werden in dieser Ansicht nicht dargestellt.
+
 ### Duplikat- und Änderungsregel
 
 Die Zielkarte speichert die Quellkarten-ID als `custom_id` und Parent-Link. Dadurch erkennt ein zweiter Lauf zuverlässig dieselbe Karte.
 
 | Situation | Verhalten |
 | --- | --- |
-| keine Zielkarte mit Quell-ID | neue verknüpfte Zielkarte an ausgewählter Zielposition erstellen |
+| keine Zielkarte mit Quell-ID oder strukturierter Titelidentität | neue verknüpfte Zielkarte an ausgewählter Zielposition erstellen; der Name endet mit `*[Gen]*` |
 | genau eine Zielkarte mit abweichendem Zeitplan | nur Startdatumsfeld und Deadline patchen |
 | genau eine Zielkarte mit gleichem Zeitplan | unverändert |
-| mehrere Zielkarten mit gleicher Quell-ID | Konflikt, keinerlei Änderung |
+| mehrere Karten mit gleicher Quell-ID und unterschiedlichen Rollen | dunkelgrün als zusammengehörige Kartenfamilie; CLIENT, CORE und weitere Rollen werden gezählt |
+| Hauptkarte `*[Gen]*` plus kopierte Rollenkarte, aber noch ohne CORE | auswählbare Vorschau benennt ausschließlich die Hauptkarte in `*[Gen]* CORE` um |
+| gleiche Quell-ID, gleiche Lane, exakt gleicher Titel, aber unterschiedliche Start-/Endtage | Konflikt mit konkretem Terminhinweis |
+| exakt gleicher Titel mit unterschiedlichen Quellkarten-IDs | Konflikt |
+| CORE innerhalb einer Quellkartenfamilie mehrfach vorhanden | Konflikt |
 | fehlende Quell-Deadline | Konflikt für diese Quellkarte, keinerlei Änderung |
 
-Die Automatik verschiebt, löscht, benennt, beschreibt oder priorisiert keine vorhandene Karte. Jede Einzelausnahme wird in der Vorschau und im Diagnoseprotokoll sichtbar.
+Die Titelanalyse liest vom Ende: `*[Gen]*`, `*[Gen]* CORE` und Zusatzkarten wie `… - CLIENT` werden auf eine gemeinsame Basisidentität und eine erweiterbare Rollenbezeichnung abgebildet. Historische Karten mit führendem `*[Gen]*` bleiben lesbar. Die Automatik verschiebt, löscht, beschreibt oder priorisiert keine vorhandene Karte. Die einzige Umbenennung ist die in der Vorschau einzeln wählbare CORE-Kennzeichnung der generierten Hauptkarte; der HTTP-Adapter sendet dafür ausschließlich das Feld `title`.
 
 ## Eigene Karte
 

@@ -4,8 +4,9 @@
 
 | Klasse/Datei | Aufgabe |
 | --- | --- |
-| `Application/View/MainWindow.xaml` | Hauptnavigation, zentrierte Reiterbeschriftungen und Level7-/Level8-Sichtbarkeit |
+| `Application/View/MainWindow.xaml` | Hauptnavigation, zentrierte Reiterbeschriftungen und Level7-/Level8-/Level9-Sichtbarkeit |
 | `Application/VM/MainWindowVM.cs` | lädt Arbeitsplätze/Rollen beim Start und berechnet Hauptreiter-Berechtigungen |
+| `Application/NavigationPreferenceStore.cs` | speichert ausschließlich den ein-/ausgeklappten Zustand der linken Navigation atomar pro Benutzer |
 | `Application/ViCoFeatureBootstrapper.cs` | Composition Root für ViCo, Kanbanize, RDP, Rollen und TIA-Bridge |
 | `Application/ApplicationLogService.cs` | zentraler Anwendungslog für Status, Warnungen und Fehler |
 | `Application/View/DiagnosticsPanel.xaml` | sichtbares Diagnosefenster im Hauptfenster |
@@ -24,7 +25,7 @@
 | `Diagnostics.cs` | neutraler Logvertrag `IApplicationLog` |
 | `Administration.cs` | Outlook-/Updateverträge für die ViCo-Verwaltung |
 | `AutoRefreshSettings.cs` | Intervallmodell, 1–1440-Minuten-Regel und persistenter Store-Vertrag |
-| `UserCredentialConfiguration.cs` | statusorientierter Vertrag zum Speichern/Löschen von API-Key und RDP-Passwort ohne Secret-Ausgabe |
+| `UserCredentialConfiguration.cs` | statusorientierter Vertrag zum Speichern/Löschen von FEE-Zugang, API-Key und RDP-Passwort ohne Secret-Ausgabe |
 
 ## ViCo-Infrastruktur (`VIBN_Tools.Infrastructure/ViCo`)
 
@@ -51,7 +52,6 @@
 | `ViCoConfigurationFieldVM` | Änderungsnachverfolgung einer vorhandenen Konfigurations-Unteraufgabe |
 | `ViCoPageVM` | Projekte und Favoriten |
 | `ViCoCopyPageVM` | Transfer zwischen Quell- und Zielpfaden |
-| `ViCoWorkspacePageVM` | Sichtbarkeit des Verwaltungsreiters ab Level8 |
 | `ViCoAdministrationPageVM` | Rollen, Termine, Versionen; nur Level9 schreibt Rollen |
 | `TiaPortalPageVM` | PLC-, Library- und Achsenansicht mit abgefangenen Bridge-Fehlern |
 
@@ -92,11 +92,11 @@
 | `ExistingSimObjectLinkAdapter.cs` | ausschließlich vorhandene SimObjects mit vorhandenen gleichnamigen LogicObjects verbinden; keine Erzeugung |
 | `ContainerToFeeVisualPageVM.cs` / `.xaml` | Commands, Filter, Drag-and-drop und dreigeteilte Darstellung |
 
-## Special Devices und bestehende VIBN-Bereiche
+## SpecialDevices2FEE und bestehende VIBN-Bereiche
 
 | Bereich | Einstiegspunkt |
 | --- | --- |
-| TIA-Hardware nach Special Devices | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `Application/TiaHardwareMappingStore.cs`, `SpecialDevices/DeviceFactory.cs` |
+| TIA-Hardware nach SpecialDevices2FEE | `SpecialDevicePageVM.cs`, `SpecialDeviceHardwareImportVM.cs`, `Application/TiaHardwareMappingStore.cs`, `SpecialDevices/DeviceFactory.cs` |
 | CAD Wizard | `CadWizardPageVM.cs` |
 | Zuli Converter | `ZuliConverterPageVM.cs` |
 | Container Generation | `ContainerGenerationPageVM.cs` (funktionierender Legacy-ZULI-/Generierungsworkflow) und `ContainerGeneration/` (Fachlogik); erneute Aufteilung erst nach Golden-Master-Tests |

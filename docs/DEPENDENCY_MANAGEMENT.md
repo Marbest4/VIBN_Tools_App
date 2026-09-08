@@ -23,14 +23,19 @@ Skala: 1 = ungünstig, 5 = sehr gut.
 ## Umgesetzter Zwischenstand
 
 - NuGet-Versionen stehen vorerst explizit an den `PackageReference`-Einträgen. Das erhält die Restore-Kompatibilität mit den aktuell eingesetzten Visual-Studio-/NuGet-Versionen.
-- `Directory.Build.props` ermittelt `FeeScreenSimRoot` aus Parameter/Environment, `external`, danach installierter Standardversion.
-- `Directory.Build.targets` bricht früh mit einer klaren SDK-Meldung ab.
+- `Directory.Build.props` ermittelt `FeeScreenSimRoot` aus Environment, einer eindeutigen vollständigen Installation, `external` und zuletzt dem flachen Repository-Ordner `SDK`.
+- `Directory.Build.targets` bricht früh mit einer klaren SDK-Meldung ab und liest die tatsächlich referenzierte Assemblyversion aus `FS.SDK.dll` aus.
 - Alle FS-Referenzen verwenden denselben Root und `Private=true`.
 - `Build.ps1` erkennt die höchste installierte Version automatisch.
 - Neue XML-Definitionen werden per Wildcard automatisch veröffentlicht.
 - `SixLabors.Fonts` ist explizit auf `1.0.1` festgelegt, weil ClosedXML und NPOI dieselbe binär kompatible Assembly laden müssen.
 - Build und Publish kopieren nicht mehr pauschal den FEE-`Bin`-/Pluginbaum. Der Releasepfad berechnet aus direkten Referenzen und `ReadingUnitPlugin.dll` die rekursiv benötigte `FS.*`-Closure. So gelangen weder unbenutzte FS-Werkzeuge noch Hersteller-Drittanbieterdateien in das Paket und können keine Paketabhängigkeiten überschreiben.
+- Container-Generation- und UI-Startup-Smoke-Test laden Container2FEE- beziehungsweise FEE-Discovery-Typen. Da klassische DLL-Referenzen über eine `ProjectReference` nicht vollständig in den Testausgabeordner transitieren, kopieren ausschließlich diese Testprojekte die unveränderten `SDK/FS.*.dll` als Laufzeitfixture. Produkt-Build und SDK-Auswahl bleiben davon unberührt.
 - `.vsconfig` und `Prepare-Development.cmd` bilden die minimale Entwicklungsumgebung und die normale Solution-Wiederherstellung reproduzierbar ab.
+
+Der vom Anwender bereitgestellte Ordner `SDK` bleibt in seinem flachen Uploadlayout unverändert. Hauptprojekt und rekursive Publish-Closure sind mit dem vollständigen Satz verifiziert; `FS.SDK.dll` trägt Version `5.0.11.48415`. Der Closure-Test umfasst 16 benötigte `FS.*`-Assemblies. Ein erfolgreicher Build belegt weiterhin nur den technischen Abhängigkeitsabschluss, nicht die Live-Kompatibilität mit einem konkreten FEE-Host.
+
+Das separat übernommene Projekt `Grob Generation Interface` wird nicht durch die Wildcard des SDK-Style-Hauptprojekts kompiliert, sondern als eigenes Solution-Projekt gebaut. Seine gelieferten Dateien bleiben bytegleich; `Directory.Build.props` und `Directory.Build.targets` injizieren Repository-SDK, lokalen Artefaktpfad und die zu `FS.Bridge` passende `System.Text.Json`-Version von außen.
 
 Eine spätere zentrale Paketverwaltung kann nach Vereinheitlichung und Prüfung der Entwicklerumgebungen nach [Microsofts NuGet Central Package Management](https://learn.microsoft.com/en-gb/nuget/consume-packages/central-package-management) erneut eingeführt werden.
 

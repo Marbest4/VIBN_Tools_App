@@ -4,6 +4,13 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
 {
     public class FeeBasicFrame : FeeAbstractObject
     {
+        /// <summary>
+        /// Persistent namespaced metadata written to the SDK TagComponent.
+        /// Existing marks and object names are intentionally not repurposed.
+        /// </summary>
+        public IReadOnlyDictionary<string, string> PersistentTags { get; init; } =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+
         //===================================================================================================================
         // C L A S S   S P E C I F I C   P R O P E R T I E S
         //===================================================================================================================
@@ -31,6 +38,15 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
         public override async Task<bool> CreateAsync()
         {
             await base.CreateAsync();
+
+            if (PersistentTags.Count > 0)
+            {
+                await Services.ApiInstance.Object.SetPropertyAsync(
+                    Guid,
+                    nameof(FS.SDK.Components.TagComponent.TagEntries),
+                    new Dictionary<string, string>(PersistentTags, StringComparer.Ordinal),
+                    nameof(FS.SDK.Components.TagComponent));
+            }
 
             return true;
         }

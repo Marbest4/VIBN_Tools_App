@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Windows.Input;
+using Microsoft.Win32;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.SpecialDevices;
@@ -37,7 +38,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     private string? _selectedTiaVersion;
     private TiaPlcInfo? _selectedTiaPlc;
     private int _selectedDeviceIndex = -1;
-    private string _statusText = "Special Devices sind bereit.";
+    private string _statusText = "SpecialDevices2FEE ist bereit.";
 
     public SpecialDevicePageVM(
         ITiaBridgeClient tiaClient,
@@ -62,6 +63,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         AddSelectedHardwareDevicesCommand = GetCommandBinding(AddSelectedHardwareDevices);
         DeleteSelectedDevicesCommand = GetCommandBinding(DeleteSelectedDevice);
         DeleteAllDevicesCommand = GetCommandBinding(DeleteAllDevices);
+        LoadReverseSnapshotCommand = GetCommandBinding(LoadReverseSnapshot);
         CreateSpecialDevicesCommand = GetCommandBindingAsync(CreateSpecialDevicesAsync);
         if (Connection is not null)
             Connection.PropertyChanged += OnFeeConnectionPropertyChanged;
@@ -102,6 +104,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     public ICommand DeleteAllDevicesCommand { get; }
 
     public ICommand CreateSpecialDevicesCommand { get; }
+
+    public ICommand LoadReverseSnapshotCommand { get; }
 
     public FeeConnectionService? Connection => Services.Connection;
 
@@ -222,7 +226,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaVersion = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanConnectTia));
+            NotifyTiaCommandState();
         }
     }
 
@@ -235,8 +239,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 return;
             _selectedTiaPlc = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanSelectTiaPlc));
-            OnPropertyChanged(nameof(CanReadTiaHardware));
+            NotifyTiaCommandState();
         }
     }
 
@@ -261,6 +264,32 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
     public bool CanReadTiaHardware => CanSelectTiaPlc;
 
+    public string ConnectTiaUnavailableReason => CanConnectTia
+        ? "Verbindet die Anwendung mit dem geöffneten TIA-Projekt der gewählten Version."
+        : IsBusyTia
+            ? "Ein TIA-Vorgang läuft bereits."
+            : _isDisconnectingTia
+                ? "Die bestehende TIA-Verbindung wird gerade getrennt."
+                : _isTiaAttached || _tiaClient.IsConnected
+                    ? "Die Anwendung ist bereits mit TIA verbunden."
+                    : "Zuerst eine installierte TIA-Version auswählen.";
+
+    public string DisconnectTiaUnavailableReason => CanDisconnectTia
+        ? "Bricht einen laufenden Lesevorgang ab und trennt ausschließlich die VIBN-TIA-Bridge."
+        : "Es besteht keine TIA-Verbindung und kein TIA-Vorgang läuft.";
+
+    public string SelectTiaPlcUnavailableReason => CanSelectTiaPlc
+        ? "Übernimmt die ausgewählte PLC als Quelle für die Hardwarediagnose."
+        : IsBusyTia
+            ? "Ein TIA-Vorgang läuft bereits."
+            : !_isTiaAttached
+                ? "Zuerst mit einem geöffneten TIA-Projekt verbinden."
+                : "Zuerst eine PLC auswählen.";
+
+    public string ReadTiaHardwareUnavailableReason => CanReadTiaHardware
+        ? "Liest die Hardware der ausgewählten PLC ohne das TIA-Projekt zu verändern."
+        : SelectTiaPlcUnavailableReason;
+
     public bool IsBusyCreateDevices
     {
         get => _isBusyCreateDevices;
@@ -270,12 +299,24 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanModifyDeviceQueue));
             OnPropertyChanged(nameof(CanCreateInFee));
+            OnPropertyChanged(nameof(DeviceQueueUnavailableReason));
+            OnPropertyChanged(nameof(CreateInFeeUnavailableReason));
         }
     }
 
     public bool CanModifyDeviceQueue => !IsBusyCreateDevices;
 
     public bool CanCreateInFee => CanModifyDeviceQueue && Connection?.CanUseFeeFeatures == true;
+
+    public string DeviceQueueUnavailableReason => CanModifyDeviceQueue
+        ? "Bearbeitet die Special-Device-Warteschlange."
+        : "Die Warteschlange ist während der laufenden FEE-Erzeugung gesperrt.";
+
+    public string CreateInFeeUnavailableReason => CanCreateInFee
+        ? "Erzeugt alle Geräte aus der Warteschlange in FEE."
+        : !CanModifyDeviceQueue
+            ? "Eine Special-Device-Erzeugung läuft bereits."
+            : Connection?.UnavailableReason ?? "Keine Verbindung zu FEE vorhanden.";
 
     public int SelectedDeviceIndex
     {
@@ -313,6 +354,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             nameof(FeeConnectionService.CanUseFeeFeatures))
         {
             OnPropertyChanged(nameof(CanCreateInFee));
+            OnPropertyChanged(nameof(CreateInFeeUnavailableReason));
         }
     }
 
@@ -355,7 +397,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         catch (Exception exception)
         {
             StatusText = "Manuelles Special Device konnte nicht vorbereitet werden.";
-            _log.Error("Special Devices", StatusText, exception);
+            _log.Error("SpecialDevices2FEE", StatusText, exception);
         }
     }
 
@@ -520,7 +562,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             ? $"{added} TIA-Hardwareelement(e) wurden in die Warteschlange übernommen."
             : $"{added} Gerät(e) übernommen; {errors.Count} Zuordnung(en) prüfen: {string.Join(" ", errors.Take(3))}";
         if (errors.Count > 0)
-            _log.Warning("Special Devices", StatusText);
+            _log.Warning("SpecialDevices2FEE", StatusText);
     }
 
     private void DeleteSelectedDevice()
@@ -537,12 +579,56 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         StatusText = "Die Special-Device-Warteschlange wurde geleert.";
     }
 
+    private void LoadReverseSnapshot()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = "FEE2SpecialDevices-Export laden",
+            Filter = "VIBN Special Device (*.specialdevice.json)|*.specialdevice.json|JSON (*.json)|*.json",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog() != true)
+            return;
+        if (!FeeSpecialDeviceProvenanceCodec.TryLoadFile(dialog.FileName, out var snapshot, out var readError))
+        {
+            StatusText = readError;
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+
+        var import = SpecialDeviceSnapshotImporter.Create(snapshot!);
+        if (!import.Success || import.Device is null)
+        {
+            StatusText = $"FEE2SpecialDevices-Export wurde nicht übernommen: {import.Error}";
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+        if (SpecialDevices.Any(device =>
+                string.Equals(device.DevicePrefix, import.Device.DevicePrefix, StringComparison.OrdinalIgnoreCase) &&
+                device.DeviceManufacturer == import.Device.DeviceManufacturer))
+        {
+            StatusText = $"Gerät '{import.Device.DevicePrefix}' ist bereits in der Warteschlange.";
+            _log.Warning("SpecialDevices2FEE", StatusText);
+            return;
+        }
+
+        SpecialDevices.Add(import.Device);
+        StatusText = import.Warnings.Count == 0
+            ? $"{import.Device.DevicePrefix} wurde aus dem FEE2SpecialDevices-Export in die Warteschlange übernommen."
+            : $"{import.Device.DevicePrefix} wurde übernommen. Prüfung erforderlich: {string.Join(" ", import.Warnings)}";
+        if (import.Warnings.Count == 0)
+            _log.Information("SpecialDevices2FEE", StatusText);
+        else
+            _log.Warning("SpecialDevices2FEE", StatusText);
+    }
+
     private async Task CreateSpecialDevicesAsync()
     {
         if (!Connection.CanUseFeeFeatures)
         {
             StatusText = FeeConnectionService.MissingConnectionMessage;
-            _log.Warning("Special Devices", StatusText);
+            _log.Warning("SpecialDevices2FEE", StatusText);
             return;
         }
 
@@ -569,7 +655,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                 catch (Exception exception)
                 {
                     failures.Add($"{device.DevicePrefix}: {exception.Message}");
-                    _log.Error("Special Devices", $"Gerät {device.DevicePrefix} konnte nicht erzeugt werden.", exception);
+                    _log.Error("SpecialDevices2FEE", $"Gerät {device.DevicePrefix} konnte nicht erzeugt werden.", exception);
                 }
 
                 // A failed attempt can already have created partial FEE
@@ -642,6 +728,10 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         OnPropertyChanged(nameof(CanDisconnectTia));
         OnPropertyChanged(nameof(CanSelectTiaPlc));
         OnPropertyChanged(nameof(CanReadTiaHardware));
+        OnPropertyChanged(nameof(ConnectTiaUnavailableReason));
+        OnPropertyChanged(nameof(DisconnectTiaUnavailableReason));
+        OnPropertyChanged(nameof(SelectTiaPlcUnavailableReason));
+        OnPropertyChanged(nameof(ReadTiaHardwareUnavailableReason));
     }
 
     private void LoadDeviceTypesForManufacturer()

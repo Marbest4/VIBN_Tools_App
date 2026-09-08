@@ -11,6 +11,8 @@ public sealed class UserEnvironmentCredentialConfigurationService : IUserCredent
 {
     public const string KanbanizeApiKeyVariable = "VIBN_VICO_KANBANIZE_API_KEY";
     public const string RemoteDesktopPasswordVariable = "VIBN_RDP_PASSWORD";
+    public const string FeeUsernameVariable = "VIBN_FEE_USERNAME";
+    public const string FeePasswordVariable = "VIBN_FEE_PASSWORD";
 
     private readonly Func<string, EnvironmentVariableTarget, string?> _read;
     private readonly Action<string, string?, EnvironmentVariableTarget> _write;
@@ -31,9 +33,16 @@ public sealed class UserEnvironmentCredentialConfigurationService : IUserCredent
 
     public UserCredentialConfigurationStatus ReadStatus() => new(
         HasValue(KanbanizeApiKeyVariable),
-        HasValue(RemoteDesktopPasswordVariable));
+        HasValue(RemoteDesktopPasswordVariable),
+        HasValue(FeeUsernameVariable) && HasValue(FeePasswordVariable));
 
     public string? GetKanbanizeApiKey() => ReadValue(KanbanizeApiKeyVariable)?.Trim();
+
+    public string? GetRemoteDesktopPassword() => ReadValue(RemoteDesktopPasswordVariable);
+
+    public string? GetFeeUsername() => ReadValue(FeeUsernameVariable)?.Trim();
+
+    public string? GetFeePassword() => ReadValue(FeePasswordVariable);
 
     public void SaveKanbanizeApiKey(string apiKey)
     {
@@ -49,9 +58,25 @@ public sealed class UserEnvironmentCredentialConfigurationService : IUserCredent
         WriteValue(RemoteDesktopPasswordVariable, password);
     }
 
+    public void SaveFeeCredentials(string username, string password)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+            throw new ArgumentException("Der FEE-Benutzer darf nicht leer sein.", nameof(username));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentException("Das FEE-Passwort darf nicht leer sein.", nameof(password));
+        WriteValue(FeeUsernameVariable, username.Trim());
+        WriteValue(FeePasswordVariable, password);
+    }
+
     public void DeleteKanbanizeApiKey() => WriteValue(KanbanizeApiKeyVariable, null);
 
     public void DeleteRemoteDesktopPassword() => WriteValue(RemoteDesktopPasswordVariable, null);
+
+    public void DeleteFeeCredentials()
+    {
+        WriteValue(FeeUsernameVariable, null);
+        WriteValue(FeePasswordVariable, null);
+    }
 
     private bool HasValue(string name) => !string.IsNullOrWhiteSpace(ReadValue(name));
 

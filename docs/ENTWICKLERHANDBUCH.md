@@ -35,9 +35,9 @@ Die `KONFIGURATION`-Bearbeitung ist das Referenzmuster: vorhandene Unteraufgaben
 
 Zuerst ein Interface in `Workstations.cs` ergänzen. Danach eine konkrete Implementierung in `DesktopWorkstationServices.cs` schreiben und sie im Bootstrapper registrieren. Keine `Process.Start`-Aufrufe direkt aus einem ViewModel einfügen. Offline-Schutz und Fehlerprotokoll gehören in das ViewModel.
 
-Ein RDP-Profil darf ausschließlich Ziel-PC, Benutzer, Monitorwahl und Abfragemodus enthalten. Der einzige Kennwortprovider ist `VIBN_RDP_PASSWORD`; `WindowsTemporaryRemoteCredentialStore` reicht den Wert über `ProcessStartInfo.ArgumentList` an `cmdkey`, protokolliert ihn nie und entfernt den Zieleintrag verzögert. Keine zweite Passwortquelle und kein Literal ergänzen.
+Ein RDP-Profil darf ausschließlich Ziel-PC, Benutzer, Monitorwahl und Abfragemodus enthalten. Der einzige Kennwortprovider ist `IUserCredentialConfigurationService.GetRemoteDesktopPassword`; `WindowsTemporaryRemoteCredentialStore` reicht den Wert über `ProcessStartInfo.ArgumentList` an `cmdkey`, protokolliert ihn nie und entfernt den Zieleintrag verzögert. Keine zweite Passwortquelle und kein Literal ergänzen.
 
-`UserEnvironmentCredentialConfigurationService` ist der einzige UI-Schreibpfad für `VIBN_VICO_KANBANIZE_API_KEY` und `VIBN_RDP_PASSWORD`. Neue Kanbanize-Adapter müssen einen Provider (`Func<string?>`) verwenden und den Key pro Anfrage auflösen, damit Änderungen aus Project Settings ohne Neustart gelten. Secret-Werte dürfen nicht als bindbare Statusproperty, Logparameter oder Cachewert zurückgegeben werden; PasswordBox-Eingaben sind nach dem Speichern zu leeren.
+`SecureUserCredentialConfigurationService` ist der einzige produktive UI-Schreibpfad. Er verwendet `WindowsCredentialManagerSecretStore` für FEE-Benutzer/-Passwort, Kanbanize-Key und RDP-Passwort und migriert alte `VIBN_VICO_KANBANIZE_API_KEY`-, `VIBN_RDP_PASSWORD`-, `VIBN_FEE_USERNAME`- und `VIBN_FEE_PASSWORD`-Benutzervariablen nach erfolgreichem Schreiben. `UserEnvironmentCredentialConfigurationService` bleibt ausschließlich als Migrationsadapter und Test-Seam bestehen. Neue Kanbanize-/RDP-/FEE-Adapter müssen Provider verwenden und Werte erst für die jeweilige Aktion auflösen. Secret-Werte dürfen nicht als bindbare Statusproperty, Logparameter oder Cachewert zurückgegeben werden; PasswordBox-Eingaben sind nach dem Speichern zu leeren.
 
 `quser /server:<PC>` besitzt keinen sicheren Rechte-Bypass. Fehler 5 wird als Berechtigungsdiagnose an die Oberfläche gereicht. Alternative Implementierungen dürfen keine Credentials auslesen oder Berechtigungen umgehen.
 
@@ -81,6 +81,10 @@ Der alte Reiter und `ContainerToFeePageVM` bleiben die Verhaltensreferenz. Neue 
 
 `RuntimeVisualPlanBinder` ist der einzige Übergang vom visuellen Plan zu den Legacy-Containern. Vollständige Generierung und `ExistingSimObjectLinkAdapter` dürfen keine zweite Zuordnungslogik aufbauen. Die Auswahlgrenze ist ein vollständiger unterstützter Container: Logik, Signale und Hilfsobjekte bilden im bisherigen Executor eine Abhängigkeitseinheit. Beliebige Signal-/Slot-Neuverdrahtung darf erst eingeführt werden, wenn der Executor dieselbe Änderung deterministisch anwenden und testen kann. Der Sidecar darf die Quell-XML nie überschreiben.
 
+Die Signale vollständiger Generierungen laufen ausschließlich über `SignalResolutionPlanner`: erst alle Interfaces read-only durchsuchen, dann Tag-/Adress-/Typwidersprüche oder Mehrdeutigkeit melden, identische fehlende Signale deduplizieren und bestehende GUIDs mit `ReuseExistingWithoutUpdate` binden. `GrobGenerationInterfaceResolver` verlangt gleichzeitig den festgelegten Namen, die Provider-GUID und den Providertyp. Fehlende Variablen werden vor BasicFrame/Logik/SimObject im erkannten Interface angelegt und anschließend ebenfalls nur noch per GUID wiederverwendet. Die optionale Interfaceauswahl ist keine Suchgrenze. Sidecar-Schema 4 speichert bei SimObjects nur Abweichungen vom Standard `Erzeugen=true`; alte Signalmodus-Auswahlen werden beim Laden verworfen und diagnostiziert.
+
+`ContainerSlotMultiplicityPolicy` ist die einzige fachliche Quelle für doppelte Slots. Validierung und FEE-Parser müssen sie beide aufrufen. `ContainerBaseClass` bewahrt sämtliche eingelesenen Signale in einer case-insensitiven Slotabbildung auf; deshalb dürfen Binder oder Diagnosen nicht erneut nur über einzelne Reflection-Properties iterieren. Ein mehrfach belegter einfacher `PLC_IN_`-Slot wird erst nach dem Erzeugen der Ziel-Logik über `AssignAdditionalInputFanInsAsync` mit je einem `FeeSimpleMove` pro Signal verbunden. Listen-Slots erledigen dies weiterhin in der konkreten Containerklasse und dürfen nicht zusätzlich in den zentralen Fan-in gelangen.
+
 Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den aktuellen Objektbestand aus **Model Validation → Update Objects**, genau ein vorhandenes gleichnamiges `FeeLogic` je ausgewähltem `ILogicSimObjectOwner` und validiert alle Arbeitseinträge vor dem ersten Slot-Schreibzugriff.
 
 ### Neues Special Device
@@ -92,7 +96,7 @@ Der Link-only-Adapter darf keine Erzeugungsmethode aufrufen. Er verlangt den akt
 
 ### Neue Rolle oder Reiterberechtigung
 
-Rollenlogik liegt allein in `ViCoRolePolicy`. Sichtbarkeiten liegen in `MainWindowVM`/`MainWindow.xaml` bzw. `ViCoWorkspacePageVM`. Die Regel darf nicht als Zeichenvergleich in mehreren XAML-Dateien dupliziert werden.
+Rollenlogik liegt allein in `ViCoRolePolicy`. Die Hauptnavigation bindet ausschließlich die von `MainWindowVM` berechneten Level7-/Level8-/Level9-Gates. Die Regel darf nicht als Zeichenvergleich in mehreren XAML-Dateien dupliziert werden.
 
 ## Nebenläufigkeit und UI-Stabilität
 
@@ -118,7 +122,7 @@ Nach einer Änderung immer `scripts/Publish-IbnRemote.ps1` ausführen und prüfe
 | Test | Ziel |
 | --- | --- |
 | `Tests/CoreSmokeTests` | Modelle, Parser, Rollen, RDP-Profil, Kanbanize-Idempotenz, schmale HTTP-Payloads, TIA-Library und Named-Pipe-Protokoll |
-| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import von `Interface5.xlsx` und `Interface7.xlsx`, erwartete Fonts-Assembly und Übergabe an den fachlichen Container-Generator |
+| `Tests/ContainerGenerationSmokeTests` | echter ClosedXML-/ZuLi-Import, alle sieben bereitgestellten Interface-/Container-Referenzpaare mit Bilanz- und Regressionsgrenzen, erwartete Fonts-Assembly, PLC_IN/PLC_OUT-Policy und semantischer ContainerFile-A/B-Vergleich mit selektiver Übernahme |
 | `Tests/UiStartupSmokeTests` | integrierte WPF-Views, deferred Tabs, DataGrid-/ComboBox-Bindings, visueller XML-Plan, Sidecar, Undo/Redo und Screenshot-Erzeugung |
 | `Tests/Test-TiaHardwareTraversal.ps1` | Gerätegruppen, Proxy-Deduplizierung, Local Session und exakte PN/PN-Bit-/Bytebereiche |
 | `scripts/Publish-IbnRemote.ps1` plus kurzer Starttest | minimale, selbstständige IBN-Einzeldatei ohne zusätzliche Publish-Dateien |
@@ -132,4 +136,6 @@ XML-Kommentare erklären öffentliche Modelle, Grenzen und Invarianten. Kommenta
 
 Neue Klassen sollen eine eng abgegrenzte Aufgabe haben. Wenn eine ViewModel-Datei mehrere eigenständige Präsentationsmodelle enthält, diese in getrennte Dateien auslagern – beispielsweise `ViCoWorkstationRowVM` gegenüber `ViCoSearchPageVM`.
 
-`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Die Referenzdateien sichern jetzt den Import und die Übergabe an `ContainerGenerator`; sie enthalten jedoch keine freigegebene Requirements-Datei samt erwarteter vollständiger Ausgabe. Die UI-Klasse daher erst weiter aufteilen, wenn zusätzlich dieser fachliche Golden Master vorliegt.
+`ContainerGenerationPageVM` ist derzeit eine dokumentierte Ausnahme. Die frühere Aufteilung hat den ZULI-Import verändert und wurde deshalb zurückgenommen. Der Regressionstest verarbeitet jetzt alle sieben bereitgestellten Interface-/Container-Paare und bilanziert jedes Eingangssignal als zugeordnet, offen oder gefiltert. Die Referenzcontainer wurden laut XML-Metadaten allerdings mit mehreren Regelständen (`EN V15/V16`, `DE V13/V18` und unversioniert) erzeugt, während nur `DE V17` freigegeben vorliegt. Deshalb sind verifizierte Untergrenzen gegen Verschlechterungen hinterlegt, aber keine fachlich falsche byte- oder slotgenaue Gleichheit erzwungen. Eine weitere Zerlegung der UI-Klasse ist erst mit den exakten zu jedem Paar gehörenden Regelständen vertretbar.
+
+`ContainerFileWorkspaceReader` projiziert exportierte XML-Dateien direkt auf `ContainerData` und `ContainerEntry`. Der A/B-Vergleich muss anschließend `GenerationWorkspaceReconciler` verwenden; eine zweite Matching- oder Differenzhierarchie ist unzulässig. Damit gelten dieselben stabilen Signal-Schlüssel, feldgenauen Unterschiede, Review-Zustände und selektiven Entscheidungen für Reimport und fertige ContainerFiles. Die Requirements-Datei bleibt für Slotgültigkeit und Min-/Max-Prüfung verbindlich.

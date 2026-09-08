@@ -30,7 +30,9 @@ public interface ITiaOpennessSession : IDisposable
 
     void CreateDataTypeFolder(TiaFolderPayload payload);
 
-    IReadOnlyList<TiaAxisInfo> ConfigureAxes();
+    IReadOnlyList<TiaAxisInfo> ListAxes();
+
+    IReadOnlyList<TiaAxisInfo> ConfigureAxes(TiaAxisConfigurationPayload payload);
 
     void Save();
 }

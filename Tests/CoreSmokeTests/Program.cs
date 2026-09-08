@@ -52,6 +52,8 @@ try
     await VerifyAdministrationIdentityAsync();
     Console.WriteLine("Running TIA library workflow smoke test...");
     await VerifyTiaLibraryWorkflowAsync(temporaryRoot);
+    Console.WriteLine("Running TIA axis selection and result smoke test...");
+    VerifyTiaAxisSelectionModel();
     Console.WriteLine("Running typed TIA pipe protocol smoke test...");
     await VerifyTypedTiaPipeProtocolAsync();
     Console.WriteLine("All ViCo core smoke tests passed.");
@@ -139,7 +141,7 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
         {
             schemaVersion = 1,
             lanes = Array.Empty<object>(),
-            cards = new[]
+            cards = new object[]
             {
                 new
                 {
@@ -155,6 +157,16 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
                         new { id = 914, description = "PROJEKT-IP: 10.20.30.40" },
                         new { id = 915, description = "SONSTIGES: Wartungsfenster Freitag" }
                     }
+                },
+                new
+                {
+                    id = 902,
+                    laneId = "lane-1",
+                    columnId = "29375",
+                    title = "[GM9000/01-001] Demo",
+                    startDate = "2026-09-01T00:00:00+00:00",
+                    deadline = "2026-09-30T00:00:00+00:00",
+                    subtasks = Array.Empty<object>()
                 }
             }
         }));
@@ -178,6 +190,10 @@ static async Task VerifyLegacyWorkstationCatalogAsync(string temporaryRoot)
         "Beckhoff software information is missing.");
     Assert(workstation.RobotCount == 1 && workstation.RobotDetails[0].Name == "R01",
         "Robot name, status or deduplication failed.");
+    Assert(workstation.ProjectCardDetails.Count == 1 &&
+           workstation.ProjectCardDetails[0].StartDate?.Day == 1 &&
+           workstation.ProjectCardDetails[0].Deadline?.Day == 30,
+        "Structured project start/deadline data was not retained from the workstation cache.");
     Assert(new ViCoWorkstationSearch().Search(snapshot.Workstations, "GM9000", ViCoSearchMode.Project).Count == 1,
         "Project-oriented workstation search failed.");
 }
@@ -266,25 +282,67 @@ static void VerifyUserCredentialConfiguration()
         (name, value, target) => variables[(name, target)] = value);
 
     Assert(!service.ReadStatus().HasKanbanizeApiKey &&
-           !service.ReadStatus().HasRemoteDesktopPassword,
-        "A fresh user credential configuration must report both values as missing.");
+           !service.ReadStatus().HasRemoteDesktopPassword &&
+           !service.ReadStatus().HasFeeCredentials,
+        "A fresh user credential configuration must report all values as missing.");
 
     service.SaveKanbanizeApiKey("  test-api-key  ");
     service.SaveRemoteDesktopPassword(" test password ");
+    service.SaveFeeCredentials(" fee-user ", "fee-password");
     var configured = service.ReadStatus();
-    Assert(configured.HasKanbanizeApiKey && configured.HasRemoteDesktopPassword,
+    Assert(configured.HasKanbanizeApiKey && configured.HasRemoteDesktopPassword && configured.HasFeeCredentials,
         "Saved per-user credentials were not detected.");
     Assert(service.GetKanbanizeApiKey() == "test-api-key",
         "The API key provider did not return the current persisted value.");
+    Assert(service.GetRemoteDesktopPassword() == " test password ",
+        "The RDP password provider must preserve significant whitespace.");
+    Assert(service.GetFeeUsername() == "fee-user" && service.GetFeePassword() == "fee-password",
+        "The FEE credential provider did not preserve the configured pair.");
     Assert(variables[(UserEnvironmentCredentialConfigurationService.RemoteDesktopPasswordVariable,
             EnvironmentVariableTarget.Process)] == " test password ",
         "The RDP password must be available immediately without trimming or restarting the app.");
 
     service.DeleteKanbanizeApiKey();
     service.DeleteRemoteDesktopPassword();
+    service.DeleteFeeCredentials();
     Assert(!service.ReadStatus().HasKanbanizeApiKey &&
-           !service.ReadStatus().HasRemoteDesktopPassword,
+           !service.ReadStatus().HasRemoteDesktopPassword &&
+           !service.ReadStatus().HasFeeCredentials,
         "Deleted credentials still appear configured.");
+
+    service.SaveKanbanizeApiKey("legacy-key");
+    service.SaveRemoteDesktopPassword("legacy-password");
+    service.SaveFeeCredentials("legacy-fee-user", "legacy-fee-password");
+    var protectedStore = new MemoryUserSecretStore();
+    var protectedService = new SecureUserCredentialConfigurationService(protectedStore, service);
+    var protectedStatus = protectedService.ReadStatus();
+    Assert(protectedStatus.HasKanbanizeApiKey && protectedStatus.HasRemoteDesktopPassword && protectedStatus.HasFeeCredentials &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.KanbanizeTarget] == "legacy-key" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.RemoteDesktopTarget] == "legacy-password" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.FeeUsernameTarget] == "legacy-fee-user" &&
+           protectedStore.Values[SecureUserCredentialConfigurationService.FeePasswordTarget] == "legacy-fee-password",
+        "Legacy user environment credentials were not migrated into the protected store.");
+    Assert(service.GetKanbanizeApiKey() is null && service.GetRemoteDesktopPassword() is null &&
+           service.GetFeeUsername() is null && service.GetFeePassword() is null,
+        "Plain environment credentials must be removed after successful migration.");
+    protectedService.SaveKanbanizeApiKey("replacement-key");
+    Assert(protectedService.GetKanbanizeApiKey() == "replacement-key",
+        "The protected credential store did not replace the API key.");
+    protectedService.DeleteKanbanizeApiKey();
+    protectedService.DeleteRemoteDesktopPassword();
+    protectedService.DeleteFeeCredentials();
+    Assert(!protectedService.ReadStatus().HasKanbanizeApiKey &&
+           !protectedService.ReadStatus().HasRemoteDesktopPassword &&
+           !protectedService.ReadStatus().HasFeeCredentials,
+        "Protected credentials still appear configured after deletion.");
+
+    service.SaveKanbanizeApiKey("retained-legacy-key");
+    var unavailableStore = new MemoryUserSecretStore { FailWrites = true };
+    var fallbackService = new SecureUserCredentialConfigurationService(unavailableStore, service);
+    Assert(fallbackService.GetKanbanizeApiKey() == "retained-legacy-key" &&
+           service.GetKanbanizeApiKey() == "retained-legacy-key",
+        "A failed protected-store migration must retain and return the only legacy value.");
+    service.DeleteKanbanizeApiKey();
 
     string? dynamicApiKey = null;
     using var httpClient = new HttpClient();
@@ -302,10 +360,12 @@ static async Task VerifyAutoRefreshPreferencesAsync(string temporaryRoot)
 {
     var file = Path.Combine(temporaryRoot, "preferences", "vico.json");
     var store = new JsonViCoAutoRefreshSettingsStore(file);
-    await store.SaveAsync(new ViCoAutoRefreshSettings(0));
+    await store.SaveAsync(new ViCoAutoRefreshSettings(0, true));
     var normalized = await store.LoadAsync();
     Assert(normalized.IntervalMinutes == ViCoAutoRefreshPolicy.MinimumIntervalMinutes,
         "An invalid auto-refresh interval was not normalized before persistence.");
+    Assert(normalized.ShowExtendedInformation,
+        "The optional ViCo column preference was not persisted.");
 
     await File.WriteAllTextAsync(file, "not-json");
     var recovered = await store.LoadAsync();
@@ -473,6 +533,10 @@ static void VerifyRoleAdministrationPolicy()
 
     Assert(ViCoRolePolicy.GetEffectiveLevel(@"grob\lutzma", null) == "Level9",
         "lutzma must be an effective Level9 administrator even before the compatible store is refreshed.");
+    Assert(ViCoRolePolicy.HasMinimumLevel("Level9", 9),
+        "Level9 must satisfy the administration navigation gate.");
+    Assert(!ViCoRolePolicy.HasMinimumLevel("Level8", 9),
+        "Level8 must not satisfy the administration navigation gate.");
     var mandatoryUserDowngrade = ViCoRolePolicy.PlanSave(twoLevel9.Select(role =>
         WindowsUserIdentity.Equals(role.UserName, "lutzma")
             ? role with { Level = "Level8" }
@@ -505,7 +569,12 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
             new KanbanizeCardInfo(102, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM2000", null, sourceDeadline),
             new KanbanizeCardInfo(105, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM5000", null, sourceDeadline),
             new KanbanizeCardInfo(106, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM6000", null, sourceDeadline),
+            new KanbanizeCardInfo(107, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM7000", null, sourceDeadline),
             new KanbanizeCardInfo(109, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM9000", null, sourceDeadline),
+            new KanbanizeCardInfo(110, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM10000", null, sourceDeadline),
+            new KanbanizeCardInfo(111, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM11000", null, sourceDeadline),
+            new KanbanizeCardInfo(112, 1392, 10, 20, "[VIBN] Nachpflege GM12000", null, sourceDeadline),
+            new KanbanizeCardInfo(113, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM13000", null, sourceDeadline),
             new KanbanizeCardInfo(108, 1392, 10, 25236, "[VIBN] Grundinbetriebnahme Archiv", null, sourceDeadline)
         },
         new[]
@@ -513,14 +582,24 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
             new KanbanizeCardInfo(201, 1541, 28125, 29373, "Bestehende Karte", "102", sourceDeadline.AddDays(-3), expectedStart.AddDays(-1)),
             new KanbanizeCardInfo(205, 1541, 28125, 29373, "Bereits aktuell", "105", expectedEnd.AddHours(4), expectedStart.AddHours(4)),
             new KanbanizeCardInfo(209, 1541, 28125, 29373, "*[Gen]* GM9000", null, expectedEnd, expectedStart),
-            new KanbanizeCardInfo(206, 1541, 28125, 29373, "Doppelte Eins", "106", sourceDeadline),
-            new KanbanizeCardInfo(207, 1541, 28125, 29373, "Doppelte Zwei", "106", sourceDeadline)
+            new KanbanizeCardInfo(206, 1541, 28125, 29373, "GM6000 *[Gen]* CORE", "106", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(207, 1541, 28125, 29373, "GM6000 - CLIENT", "106", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(210, 1541, 28125, 29373, "GM7000 *[Gen]*", "107", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(211, 1541, 28125, 29373, "GM7000 *[Gen]*", "107", expectedEnd.AddDays(1), expectedStart),
+            new KanbanizeCardInfo(212, 1541, 28125, 29373, "GM10000 *[Gen]*", "110", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(213, 1541, 28125, 29373, "GM10000 *[Gen]*", "999", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(214, 1541, 28125, 29373, "GM11000 *[Gen]* CORE", "111", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(215, 1541, 28125, 29373, "GM11000 - CORE", "111", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(216, 1541, 28125, 29373, "GM12000 *[Gen]*", "112", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(217, 1541, 28125, 29373, "GM13000 *[Gen]*", "113", expectedEnd, expectedStart),
+            new KanbanizeCardInfo(218, 1541, 28125, 29373, "GM13000 - CLIENT", "113", expectedEnd, expectedStart)
         });
     var synchronization = new VibnWorkplaceSynchronizationService(service);
     var settings = new VibnWorkplaceSynchronizationSettings(1392, 1541, 28125, 29373, 3, true);
 
     var preview = await synchronization.PreviewAsync(settings);
-    Assert(preview.CreateCount == 1 && preview.DeadlineUpdateCount == 1 && preview.UnchangedCount == 2,
+    Assert(preview.CreateCount == 1 && preview.DeadlineUpdateCount == 1 && preview.UnchangedCount == 3 &&
+           preview.RelatedCardsCount == 1 && preview.TitleUpdateCount == 1,
         "The preview must distinguish missing, stale and already-current target schedules.");
     Assert(preview.Items.Single(item => item.SourceCard.Id == 109).Action == VibnWorkplaceSynchronizationAction.Unchanged,
         "A legacy generated title must prevent duplicates even if its custom source ID is absent.");
@@ -535,8 +614,33 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
                new DateTimeOffset(2026, 8, 27, 16, 30, 0, localOffset),
                new DateTimeOffset(2026, 8, 28, 8, 0, 0, TimeZoneInfo.Local.GetUtcOffset(localDate.AddDays(1)))),
         "Kanbanize planning dates must be compared by local calendar date and ignore the time component.");
-    Assert(preview.ConflictCount == 1 && preview.ExcludedSourceCardCount == 1,
-        "Duplicate target IDs must be reported and archived source cards excluded.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 106).Action ==
+               VibnWorkplaceSynchronizationAction.RelatedCards &&
+           preview.Items.Single(item => item.SourceCard.Id == 106).RelatedTargetCards?.Count == 2,
+        "Different CORE/CLIENT cards with one source ID must be grouped without a blanket conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 107).Message.Contains("unterschiedliche", StringComparison.OrdinalIgnoreCase),
+        "Equal names on the same lane with different schedules need a specific conflict reason.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 110).Message.Contains("unterschiedliche Quellkarten-IDs", StringComparison.OrdinalIgnoreCase),
+        "Equal target names with different source IDs must be a conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 111).Message.Contains("CORE", StringComparison.Ordinal),
+        "Duplicate CORE roles for one source ID must be a conflict.");
+    Assert(preview.Items.Single(item => item.SourceCard.Id == 113).Action ==
+               VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle &&
+           preview.Items.Single(item => item.SourceCard.Id == 113).ProposedTitle == "GM13000 *[Gen]* CORE",
+        "A copied generated card must propose the primary-card CORE suffix.");
+    Assert(preview.ConflictCount == 3 && preview.ExcludedSourceCardCount == 1,
+        "Only the specified target inconsistencies must conflict and archived source cards stay excluded.");
+    Assert(VibnWorkplaceSynchronizationPolicy.IsEligibleSourceCard(
+               new KanbanizeCardInfo(1, 1392, 1, 1, "[VIBN] Nachpflege Test", null, sourceDeadline)),
+        "Active Nachpflege cards must be eligible sources.");
+    var generatedTitle = VibnWorkplaceSynchronizationPolicy.GetGeneratedTitle(
+        "[VIBN] Grundinbetriebnahme [GM7283/01-1030] Kunde - Ort");
+    var primary = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(generatedTitle);
+    var client = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(
+        "[GM7283/01-1030] Kunde - Ort - CLIENT");
+    Assert(generatedTitle == "[GM7283/01-1030] Kunde - Ort *[Gen]*" &&
+           primary.IdentityKey == client.IdentityKey && client.Role == "CLIENT",
+        "Generated and copied card titles must share a structured base identity and role parsing.");
     Assert(preview.Items.Where(item => item.SourceCard.Deadline is not null).All(item =>
             item.Schedule is null || item.Schedule.EndDate == item.SourceCard.Deadline!.Value.AddDays(56)),
         "Every VIBN card must derive its end date from its own deadline without requiring a template card.");
@@ -550,7 +654,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
            service.ScheduleChanges.Count == 0,
         "Only explicitly selected preview rows may be synchronized.");
     Assert(service.GeneratedCards.Single().SourceCardId == 101 &&
-           service.GeneratedCards.Single().Title == "*[Gen]* GM1000" &&
+           service.GeneratedCards.Single().Title == "GM1000 *[Gen]*" &&
            service.GeneratedCards.Single().StartDate == expectedStart &&
            service.GeneratedCards.Single().Deadline == expectedEnd,
         "A generated card must preserve its identity and receive the calculated start/end schedule.");
@@ -562,6 +666,11 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
     Assert(service.ScheduleChanges.SequenceEqual(new[] { new ScheduleChange(201, expectedStart, expectedEnd) }),
         "Only the existing generated card schedule may be changed; no other target field is updated.");
 
+    var renameOnly = await synchronization.SynchronizeAsync(settings, new[] { 113 });
+    Assert(renameOnly.TitleUpdateCount == 1 && renameOnly.CreatedCount == 0 &&
+           service.TitleChanges.SequenceEqual(new[] { new TitleChange(217, "GM13000 *[Gen]* CORE") }),
+        "Only the generated primary card title may receive the CORE suffix after a role copy exists.");
+
     var repeatPreview = await synchronization.PreviewAsync(settings);
     var repeatSelection = repeatPreview.Items
         .Where(item => item.Action is VibnWorkplaceSynchronizationAction.Create or VibnWorkplaceSynchronizationAction.UpdateDeadline)
@@ -569,7 +678,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
         .ToArray();
     Assert(repeatSelection.Length == 0,
         "A repeated preview must not expose already applied changes for selection.");
-    var repeat = new VibnWorkplaceSynchronizationResult(repeatPreview, 0, 0, Array.Empty<string>());
+    var repeat = new VibnWorkplaceSynchronizationResult(repeatPreview, 0, 0, 0, Array.Empty<string>());
     Assert(repeat.CreatedCount == 0 && repeat.DeadlineUpdateCount == 0,
         "A second synchronization must not create duplicates or repeat unchanged schedule updates.");
 }
@@ -587,6 +696,7 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
         {"data":{"card_id":9001,"title":"*[Gen]* GM1000"}}
         """);
     handler.EnqueueJson("{}");
+    handler.EnqueueJson("{}");
     using var httpClient = new HttpClient(handler);
     var api = new KanbanizeCardApiService(httpClient, "test-only-key", "https://example.test/api/v2");
 
@@ -595,15 +705,16 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
         101,
         28125,
         29373,
-        "*[Gen]* GM1000",
+        "GM1000 *[Gen]*",
         3,
         end,
         start));
     await api.UpdateGeneratedScheduleAsync(9001, start, end);
+    await api.UpdateGeneratedTitleAsync(9001, "GM1000 *[Gen]* CORE");
 
     Assert(cards.Count == 1 && string.IsNullOrEmpty(cards[0].CustomId) && cards[0].StartDate == sourceDeadline.AddDays(-14),
         "The card reader must preserve the source card identity and workplace start date.");
-    Assert(handler.Requests.Count == 3, "The API adapter should make one read and two narrowly scoped writes.");
+    Assert(handler.Requests.Count == 4, "The API adapter should make one read and three narrowly scoped writes.");
     Assert(handler.Requests[0].RelativeUrl.Contains("per_page=1000", StringComparison.Ordinal) &&
            handler.Requests[0].RelativeUrl.Contains("expand=custom_fields", StringComparison.Ordinal) &&
            handler.Requests[0].RelativeUrl.Contains("fields=card_id,title,custom_id,deadline", StringComparison.Ordinal) &&
@@ -636,6 +747,14 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
            patchPayload.RootElement.GetProperty("custom_fields_to_add_or_update")[0].GetProperty("field_id").GetInt32() == 508 &&
            patchPayload.RootElement.GetProperty("custom_fields_to_add_or_update")[0].GetProperty("value").GetString() == start.UtcDateTime.ToString("O"),
         "The schedule sync must PATCH only the generated start field and deadline of an existing target card.");
+
+    using var titlePayload = JsonDocument.Parse(handler.Requests[3].Body);
+    var titleFields = titlePayload.RootElement.EnumerateObject().Select(property => property.Name).ToArray();
+    Assert(handler.Requests[3].Method == HttpMethod.Patch &&
+           handler.Requests[3].RelativeUrl == "/api/v2/cards/9001" &&
+           titleFields.SequenceEqual(new[] { "title" }, StringComparer.Ordinal) &&
+           titlePayload.RootElement.GetProperty("title").GetString() == "GM1000 *[Gen]* CORE",
+        "The CORE rename must PATCH only the generated card title.");
 }
 
 static async Task VerifyWorkstationConfigurationWriteScopeAsync()
@@ -733,6 +852,10 @@ static async Task VerifyKanbanizeRefreshApiAsync(string temporaryRoot)
            configuration.GetProperty("subtasks").EnumerateArray().Any(subtask =>
                subtask.GetProperty("description").GetString() == "SW: TIA V20"),
         "Nested/dictionary KONFIGURATION subtasks from the direct card endpoint were not cached.");
+    var project = cards.EnumerateArray().Single(card => card.GetProperty("id").GetInt32() == 502);
+    Assert(project.GetProperty("startDate").GetDateTimeOffset().Day == 1 &&
+           project.GetProperty("deadline").GetDateTimeOffset().Day == 30,
+        "Kanbanize project dates were not retained in the structured workstation cache.");
 }
 
 static async Task VerifyAdministrationIdentityAsync()
@@ -772,6 +895,8 @@ static async Task VerifyTiaLibraryWorkflowAsync(string temporaryRoot)
     await service.ImportAsync(library, configureAxes: true, "V18");
 
     Assert(client.Saved, "TIA library import should save the project.");
+    Assert(client.ConfiguredAxisIds.SequenceEqual(new[] { "Technology/AxisX" }),
+        "TIA library import should explicitly configure all axes discovered by the read-only command.");
     Assert(client.ImportedBlocks.Count == 4, "TIA block and generated axis imports are incomplete.");
     Assert(client.ImportedBlocks[^1].File.EndsWith("FB_IDB.xml", StringComparison.OrdinalIgnoreCase),
         "TIA instance DB should be imported last.");
@@ -784,6 +909,37 @@ static async Task VerifyTiaLibraryWorkflowAsync(string temporaryRoot)
         "TIA block export structure is incorrect.");
     Assert(File.Exists(Path.Combine(exportPath, "_Datatype", "VICOBIB", "Type.xml")),
         "TIA data type export structure is incorrect.");
+}
+
+static void VerifyTiaAxisSelectionModel()
+{
+    var row = new VIBN_Tools.Application.VM.TiaAxisSelectionRowVM(new TiaAxisInfo
+    {
+        Id = "Technology/Motion/AxisX",
+        Name = "AxisX",
+        TechnologyType = "PositioningAxis",
+        GroupPath = "Technology/Motion"
+    });
+
+    Assert(row.IsSelected && row.Result == "Nur gelesen",
+        "A discovered axis should be selected by default and clearly marked as read-only.");
+    row.IsSelected = false;
+    Assert(!row.IsSelected, "An axis must be individually deselectable before configuration.");
+
+    row.ApplyConfigurationResult(new TiaAxisInfo
+    {
+        Id = row.Id,
+        Name = row.Name,
+        TechnologyType = row.TechnologyType,
+        GroupPath = row.GroupPath,
+        ParameterResults =
+        [
+            new TiaAxisParameterResult { Name = "Simulation.Mode", Value = "1", Success = true },
+            new TiaAxisParameterResult { Name = "PositionControl.EnableDSC", Value = "0", Success = false, Error = "read-only" }
+        ]
+    });
+    Assert(row.Result == "1 gesetzt, 1 fehlgeschlagen",
+        "Axis configuration should expose exact success/failure counts in the UI model.");
 }
 
 static async Task VerifyTypedTiaPipeProtocolAsync()
@@ -802,7 +958,7 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
         using var reader = new StreamReader(server, leaveOpen: true);
         using var writer = new StreamWriter(server, leaveOpen: true) { AutoFlush = true };
 
-        for (var requestIndex = 0; requestIndex < 3; requestIndex++)
+        for (var requestIndex = 0; requestIndex < 5; requestIndex++)
         {
             var requestLine = await reader.ReadLineAsync();
             var request = JsonSerializer.Deserialize<TiaRequestEnvelope>(requestLine!);
@@ -810,9 +966,17 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
             {
                 0 => TiaCommands.Ping,
                 1 => TiaCommands.ListHardware,
+                2 => TiaCommands.ListAxes,
+                3 => TiaCommands.ConfigureAxes,
                 _ => TiaCommands.Close
             };
             Assert(request?.Command == expectedCommand, $"Typed TIA pipe command '{expectedCommand}' was not received.");
+            if (requestIndex == 3)
+            {
+                var configuration = JsonSerializer.Deserialize<TiaAxisConfigurationPayload>(request!.PayloadJson);
+                Assert(configuration?.AxisIds.SequenceEqual(new[] { "Technology/Motion/AxisX" }) == true,
+                    "The selected stable axis IDs must survive the typed pipe request.");
+            }
 
             var response = new TiaResponseEnvelope
             {
@@ -846,6 +1010,30 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
                             OutputLength = 6
                         }
                     }),
+                    2 => JsonSerializer.Serialize(new[]
+                    {
+                        new TiaAxisInfo
+                        {
+                            Id = "Technology/Motion/AxisX",
+                            Name = "AxisX",
+                            GroupPath = "Technology/Motion",
+                            TechnologyType = "PositioningAxis"
+                        }
+                    }),
+                    3 => JsonSerializer.Serialize(new[]
+                    {
+                        new TiaAxisInfo
+                        {
+                            Id = "Technology/Motion/AxisX",
+                            Name = "AxisX",
+                            GroupPath = "Technology/Motion",
+                            TechnologyType = "PositioningAxis",
+                            ParameterResults =
+                            [
+                                new TiaAxisParameterResult { Name = "Simulation.Mode", Value = "1", Success = true }
+                            ]
+                        }
+                    }),
                     _ => JsonSerializer.Serialize((object?)null)
                 }
             };
@@ -874,6 +1062,12 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
                hardware[0].FirmwareVersion == "V1.0" &&
                hardware[0].InputAddressRange == "8–19" && hardware[0].OutputAddressRange == "12–17",
             "TIA hardware configuration must survive the typed pipe boundary.");
+        var axes = await client.ListAxesAsync();
+        Assert(axes.Count == 1 && axes[0].Id == "Technology/Motion/AxisX",
+            "The read-only TIA axis list must survive the typed pipe boundary.");
+        var configuredAxes = await client.ConfigureAxesAsync(new[] { axes[0].Id });
+        Assert(configuredAxes.Count == 1 && configuredAxes[0].ParameterResults.Single().Success,
+            "Selective TIA axis configuration results must survive the typed pipe boundary.");
     }
     finally
     {
@@ -951,7 +1145,7 @@ sealed class KanbanizeRefreshHttpMessageHandler : HttpMessageHandler
         {
             "/api/v2/boards/1541/lanes" => "{\"data\":[{\"lane_id\":28125,\"name\":\"GM12345 Tool PC\"}]}",
             var value when value.StartsWith("/api/v2/cards?board_ids=1541", StringComparison.Ordinal) =>
-                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\"}],\"pagination\":{\"all_pages\":1}}}",
+                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\",\"start_date\":\"2026-09-01T00:00:00Z\",\"deadline\":\"2026-09-30T00:00:00Z\"}],\"pagination\":{\"all_pages\":1}}}",
             "/api/v2/cards/501/subtasks" =>
                 "{\"data\":{\"subtasks\":{\"601\":{\"subtask_id\":601,\"description\":\"STANDORT: Werk 1\"},\"602\":{\"description\":{\"text\":\"SW: TIA V20\"}}}}}",
             var value when value.StartsWith("/api/v2/cards?board_ids=846", StringComparison.Ordinal) =>
@@ -967,6 +1161,8 @@ sealed class KanbanizeRefreshHttpMessageHandler : HttpMessageHandler
 }
 
 sealed record ScheduleChange(int CardId, DateTimeOffset StartDate, DateTimeOffset EndDate);
+
+sealed record TitleChange(int CardId, string Title);
 
 sealed class MemoryKanbanizeCardService : IKanbanizeCardService
 {
@@ -987,6 +1183,8 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
     public List<KanbanizeGeneratedCardDraft> GeneratedCards { get; } = new();
 
     public List<ScheduleChange> ScheduleChanges { get; } = new();
+
+    public List<TitleChange> TitleChanges { get; } = new();
 
     public Task<IReadOnlyList<KanbanizeBoardInfo>> LoadBoardsAsync(CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<KanbanizeBoardInfo>>(Array.Empty<KanbanizeBoardInfo>());
@@ -1046,6 +1244,19 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
         ScheduleChanges.Add(new ScheduleChange(cardId, startDate, endDate));
         return Task.CompletedTask;
     }
+
+    public Task UpdateGeneratedTitleAsync(
+        int cardId,
+        string title,
+        CancellationToken cancellationToken = default)
+    {
+        var index = _targetCards.FindIndex(card => card.Id == cardId);
+        if (index < 0)
+            throw new InvalidOperationException("Target card not found.");
+        _targetCards[index] = _targetCards[index] with { Title = title };
+        TitleChanges.Add(new TitleChange(cardId, title));
+        return Task.CompletedTask;
+    }
 }
 
 sealed class MemoryRoleStore : IViCoUserRoleStore
@@ -1089,4 +1300,22 @@ sealed class NoOpPathLauncher : IExternalPathLauncher
     public void Open(string path)
     {
     }
+}
+
+sealed class MemoryUserSecretStore : IUserSecretStore
+{
+    public Dictionary<string, string> Values { get; } = new(StringComparer.Ordinal);
+
+    public bool FailWrites { get; init; }
+
+    public string? Read(string targetName) => Values.GetValueOrDefault(targetName);
+
+    public void Write(string targetName, string secret)
+    {
+        if (FailWrites)
+            throw new System.ComponentModel.Win32Exception(1312);
+        Values[targetName] = secret;
+    }
+
+    public void Delete(string targetName) => Values.Remove(targetName);
 }

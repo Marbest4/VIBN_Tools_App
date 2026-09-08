@@ -8,13 +8,13 @@ VIBN Tools verwendet Rollen ausschließlich zur Steuerung der Tool-Berechtigunge
 
 | Bereich | erforderliche Rolle |
 | --- | --- |
-| normale VIBN-Reiter, Project Settings, ViCo, Zuli Converter, Special Devices, Model Validation, Model Control, Interface Operation | alle Benutzer |
+| normale VIBN-Reiter, Project Settings, ViCo, Zuli Converter, SpecialDevices2FEE, Model Validation, Model Control, Interface Operation | alle Benutzer |
 | CAD Wizard, Container Generation, Container2Fee | Level7 oder höher |
 | Kanbanize Karten, AI-Test | Level8 oder höher |
-| ViCo → Verwaltung anzeigen | Level8 oder höher |
+| Administration anzeigen und verwenden | Level9 |
 | Benutzer hinzufügen, entfernen oder Stufe ändern | Level9 |
 
-Die Sichtbarkeit wird beim Start aus derselben Rollenliste bestimmt, die auch der Verwaltungsreiter verwendet. Ein nicht erkannter Benutzer erhält keine Level7-/Level8-Reiter.
+Die Sichtbarkeit wird beim Start aus derselben Rollenliste bestimmt, die auch die Administration verwendet. Ein nicht erkannter Benutzer erhält keine Level7-/Level8-/Level9-Reiter.
 
 ## Verbindliche Level9-Regel
 
@@ -26,7 +26,7 @@ Wenn nur `lutzma` Level9 ist, kann ein Level9-Administrator zuerst einen zweiten
 
 ## Bedienung im Verwaltungsreiter
 
-1. ViCo öffnen und **Verwaltung** wählen. Der Reiter ist ab Level8 sichtbar.
+1. Den Hauptreiter **Administration** öffnen. Er ist ausschließlich mit Level9 sichtbar.
 2. Mit **Aktualisieren** die Rollenliste einlesen.
 3. Als Level9 im Bereich **Benutzer- und Rollenverwaltung** Benutzername und Stufe wählen und **Benutzer hinzufügen** klicken.
 4. Für eine Änderung den Benutzer in der Tabelle markieren, eine neue Stufe wählen und **Stufe speichern** klicken.

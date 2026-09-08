@@ -52,8 +52,13 @@ namespace VIBN_Tools.Application.VM
             {
                 _enableOpenContainerXml = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(OpenContainerUnavailableReason));
             }
         }
+
+        public string OpenContainerUnavailableReason => EnableOpenContainerXml
+            ? "Lädt ein ContainerFile für die Zuordnung."
+            : "Die Containerdatei kann während einer laufenden Zuordnung oder Generierung nicht gewechselt werden.";
 
 
 
@@ -61,6 +66,12 @@ namespace VIBN_Tools.Application.VM
         public ICommand SearchSimObjects => GetCommandBindingAsync(Search_SimObjects);
 
         public bool CanExecuteSearchSimObjects => Connection.IsConnected && ListAllContainers.Count > 0;
+
+        public string SearchSimObjectsUnavailableReason => CanExecuteSearchSimObjects
+            ? "Sucht passende SimObjects für die geladenen Container."
+            : !Connection.IsConnected
+                ? Connection.UnavailableReason
+                : "Zuerst ein gültiges ContainerFile laden.";
 
 
         private bool _isProcessingSearchSimObjects;
@@ -71,6 +82,7 @@ namespace VIBN_Tools.Application.VM
             {
                 _isProcessingSearchSimObjects = value;
                 OnPropertyChanged(nameof(CanExecuteGeneration));
+                OnPropertyChanged(nameof(GenerationUnavailableReason));
             }
         }
 
@@ -89,8 +101,13 @@ namespace VIBN_Tools.Application.VM
             {
                 _enableFindAssignSimObjects = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(AssignmentUnavailableReason));
             }
         }
+
+        public string AssignmentUnavailableReason => EnableFindAssignSimObjects
+            ? "Ordnet dem aktuell angezeigten Ziel vorhandene oder neue SimObjects zu."
+            : "Zuerst ein ContainerFile laden und die SimObject-Suche starten.";
 
         // Infotext
         private string _selectionInfoText;
@@ -173,8 +190,13 @@ namespace VIBN_Tools.Application.VM
             {
                 _enableGoBackToLast = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(GoBackUnavailableReason));
             }
         }
+
+        public string GoBackUnavailableReason => EnableGoBackToLast
+            ? "Kehrt zur vorherigen SimObject-Zuordnung zurück."
+            : "Es ist keine vorherige SimObject-Zuordnung vorhanden.";
 
 
         // Button Cancel SkimObject Selection
@@ -216,6 +238,14 @@ namespace VIBN_Tools.Application.VM
         }
 
         public bool CanExecuteGeneration => Connection.IsConnected && !IsProcessingSearchSimObjects && (ListAllContainers.Count > 0 || ListUnknownSignals.Count > 0);
+
+        public string GenerationUnavailableReason => CanExecuteGeneration
+            ? "Erzeugt und verknüpft die vorbereiteten Containerdaten in FEE."
+            : !Connection.IsConnected
+                ? Connection.UnavailableReason
+                : IsProcessingSearchSimObjects
+                    ? "Die SimObject-Zuordnung ist noch nicht abgeschlossen."
+                    : "Zuerst ein ContainerFile mit Containern oder fehlenden Signalen laden.";
 
 
 
@@ -353,17 +383,22 @@ namespace VIBN_Tools.Application.VM
                 {
                     OnPropertyChanged(nameof(CanExecuteGeneration));
                     OnPropertyChanged(nameof(CanExecuteSearchSimObjects));
+                    OnPropertyChanged(nameof(GenerationUnavailableReason));
+                    OnPropertyChanged(nameof(SearchSimObjectsUnavailableReason));
                 }
             };
             ListAllContainers.CollectionChanged += (s, e) =>
             {
                 OnPropertyChanged(nameof(CanExecuteGeneration));
                 OnPropertyChanged(nameof(CanExecuteSearchSimObjects));
+                OnPropertyChanged(nameof(GenerationUnavailableReason));
+                OnPropertyChanged(nameof(SearchSimObjectsUnavailableReason));
             };
 
             ListUnknownSignals.CollectionChanged += (s, e) =>
             {
                 OnPropertyChanged(nameof(CanExecuteGeneration));
+                OnPropertyChanged(nameof(GenerationUnavailableReason));
             };
 
 

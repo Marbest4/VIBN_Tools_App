@@ -13,8 +13,10 @@ namespace VIBN_Tools.Application.VM;
 /// </summary>
 public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
 {
+    public const string PlanViewUrl = "https://grobgroup.kanbanize.com/ctrl_plan/1541/";
     private readonly IKanbanizeCardService _cards;
     private readonly IApplicationLog _log;
+    private readonly IExternalPathLauncher? _pathLauncher;
     private readonly CancellationTokenSource _lifetimeCancellation = new();
     private CancellationTokenSource? _structureCancellation;
     private IReadOnlyList<KanbanizeColumnInfo> _boardColumns = Array.Empty<KanbanizeColumnInfo>();
@@ -23,10 +25,12 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
     public KanbanizeCardPageVM(
         IKanbanizeCardService cards,
         IVibnWorkplaceSynchronizationService workplaceSynchronization,
-        IApplicationLog? log = null)
+        IApplicationLog? log = null,
+        IExternalPathLauncher? pathLauncher = null)
     {
         _cards = cards ?? throw new ArgumentNullException(nameof(cards));
         _log = log ?? NullApplicationLog.Instance;
+        _pathLauncher = pathLauncher;
         WorkplaceSynchronization = new VibnWorkplaceSynchronizationVM(
             _cards,
             workplaceSynchronization,
@@ -40,6 +44,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
 
         ReloadBoardsCommand = GetCommandBindingAsync(LoadBoardsAsync);
         CreateCardCommand = GetCommandBindingAsync(CreateCardAsync);
+        OpenPlanViewCommand = GetCommandBinding(OpenPlanView);
     }
 
     public ObservableCollection<KanbanizeBoardInfo> Boards { get; } = new();
@@ -61,6 +66,14 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
 
     public ICommand CreateCardCommand { get; }
 
+    public ICommand OpenPlanViewCommand { get; }
+
+    public bool CanOpenPlanView => _pathLauncher is not null;
+
+    public string OpenPlanViewUnavailableReason => CanOpenPlanView
+        ? "Öffnet die Arbeitsplätze-Planansicht im Standardbrowser."
+        : "Kein Dienst zum Öffnen des Standardbrowsers verfügbar.";
+
     public bool IsConfigured => _cards.IsConfigured;
 
     private KanbanizeBoardInfo? _selectedBoard;
@@ -73,7 +86,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
                 return;
             _selectedBoard = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
             _ = LoadBoardStructureAsync(value);
         }
     }
@@ -89,7 +102,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
             _selectedLane = value;
             OnPropertyChanged();
             RefreshColumnsForSelectedLane();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -103,7 +116,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
                 return;
             _selectedColumn = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -115,7 +128,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             _title = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -149,7 +162,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             _selectedPriority = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -161,7 +174,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             _hasDeadline = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -173,7 +186,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             _deadline = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -185,7 +198,7 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             _isBusy = value;
             OnPropertyChanged();
-            OnPropertyChanged(nameof(CanCreate));
+            NotifyCreateAvailabilityChanged();
         }
     }
 
@@ -207,6 +220,20 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         SelectedLane is not null &&
         SelectedColumn is not null &&
         !string.IsNullOrWhiteSpace(Title);
+
+    public string CreateUnavailableReason => CanCreate
+        ? "Erstellt die Karte an der ausgewählten Board-Position."
+        : !IsConfigured
+            ? "Kanbanize ist nicht konfiguriert; API-Schlüssel in Project Settings speichern."
+            : IsBusy
+                ? "Kanbanize-Daten werden gerade verarbeitet."
+                : SelectedBoard is null
+                    ? "Zuerst ein Board auswählen."
+                    : SelectedLane is null
+                        ? "Zuerst eine Lane auswählen."
+                        : SelectedColumn is null
+                            ? "Zuerst eine Spalte auswählen."
+                            : "Einen Kartentitel eingeben.";
 
     public async Task InitializeAsync()
     {
@@ -387,6 +414,32 @@ public sealed class KanbanizeCardPageVM : MvvmBase, IDisposable
         {
             IsBusy = false;
         }
+    }
+
+    private void OpenPlanView()
+    {
+        if (_pathLauncher is null)
+        {
+            StatusText = OpenPlanViewUnavailableReason;
+            return;
+        }
+
+        try
+        {
+            _pathLauncher.Open(PlanViewUrl);
+            StatusText = "Planansicht wurde im Standardbrowser geöffnet.";
+        }
+        catch (Exception exception)
+        {
+            StatusText = "Planansicht konnte nicht geöffnet werden.";
+            _log.Error("Kanbanize Karten", StatusText, exception);
+        }
+    }
+
+    private void NotifyCreateAvailabilityChanged()
+    {
+        OnPropertyChanged(nameof(CanCreate));
+        OnPropertyChanged(nameof(CreateUnavailableReason));
     }
 
     private static void Replace<T>(ObservableCollection<T> target, IEnumerable<T> values)

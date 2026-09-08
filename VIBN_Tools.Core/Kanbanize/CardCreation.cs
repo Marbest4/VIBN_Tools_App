@@ -98,6 +98,12 @@ public interface IKanbanizeCardService
         DateTimeOffset startDate,
         DateTimeOffset endDate,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Renames only the generated primary card after role copies exist.</summary>
+    Task UpdateGeneratedTitleAsync(
+        int cardId,
+        string title,
+        CancellationToken cancellationToken = default);
 }
 
 /// <summary>

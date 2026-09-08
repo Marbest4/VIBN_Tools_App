@@ -16,6 +16,7 @@ public static class TiaCommands
     public const string ExportDataType = "program.export-data-type";
     public const string CreateBlockFolder = "program.create-block-folder";
     public const string CreateDataTypeFolder = "program.create-data-type-folder";
+    public const string ListAxes = "technology.list-axes";
     public const string ConfigureAxes = "technology.configure-axes";
     public const string Save = "project.save";
     public const string Close = "system.close";

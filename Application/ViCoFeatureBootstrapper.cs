@@ -19,7 +19,7 @@ public static class ViCoFeatureBootstrapper
         new(SharedOptions.ServerCacheRoot);
     private static readonly IViCoUserRoleStore SharedUserRoleStore = CreateUserRoleStore();
     private static readonly IUserCredentialConfigurationService SharedCredentialConfiguration =
-        new UserEnvironmentCredentialConfigurationService();
+        new SecureUserCredentialConfigurationService();
 
     public static IWorkstationDirectory WorkstationDirectory { get; } =
         new WorkstationDirectory(SharedWorkstationCatalog);
@@ -94,7 +94,7 @@ public static class ViCoFeatureBootstrapper
         var options = ViCoPathsOptions.CreateDefault();
         var remoteDesktop = new WindowsRemoteDesktopService(
             options.WorkingDirectory,
-            new WindowsTemporaryRemoteCredentialStore());
+            new WindowsTemporaryRemoteCredentialStore(SharedCredentialConfiguration.GetRemoteDesktopPassword));
         return new ViCoSearchPageVM(
             SharedWorkstationCatalog,
             new ViCoWorkstationSearch(),
@@ -128,7 +128,8 @@ public static class ViCoFeatureBootstrapper
         return new KanbanizeCardPageVM(
             cards,
             new VibnWorkplaceSynchronizationService(cards),
-            ApplicationLogService.Instance);
+            ApplicationLogService.Instance,
+            new WindowsPathLauncher());
     }
 
     public static ViCoAdministrationPageVM CreateAdministrationViewModel()
@@ -139,15 +140,6 @@ public static class ViCoFeatureBootstrapper
             new OutlookMeetingService(),
             new FileSystemViCoUpdateService(options.VersionsRoot),
             new WindowsPathLauncher(),
-            WindowsIdentity.GetCurrent().Name,
-            ApplicationLogService.Instance);
-    }
-
-    /// <summary>Creates the authorization gate for the ViCo workspace navigation.</summary>
-    public static ViCoWorkspacePageVM CreateWorkspaceViewModel()
-    {
-        return new ViCoWorkspacePageVM(
-            SharedUserRoleStore,
             WindowsIdentity.GetCurrent().Name,
             ApplicationLogService.Instance);
     }
@@ -204,18 +196,6 @@ public static class ViCoFeatureBootstrapper
 
     private static IReadOnlyList<string> FindInstalledTiaVersions()
     {
-        var programFiles = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-        return Enumerable.Range(15, 8)
-            .Reverse()
-            .Select(version => $"V{version}")
-            .Where(version => File.Exists(Path.Combine(
-                programFiles,
-                "Siemens",
-                "Automation",
-                $"Portal {version}",
-                "PublicAPI",
-                version,
-                "Siemens.Engineering.dll")))
-            .ToArray();
+        return new AutomationInstallationDiscovery().Discover().TiaVersions;
     }
 }

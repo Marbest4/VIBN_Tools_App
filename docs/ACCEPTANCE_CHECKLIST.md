@@ -6,7 +6,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] `dotnet build VIBN_Tools_App.sln --configuration Release` hat keine Fehler.
 - [ ] `Tests/CoreSmokeTests` ist erfolgreich.
-- [ ] `Tests/ContainerGenerationSmokeTests` liest `Interface5.xlsx` und `Interface7.xlsx` und meldet `SixLabors.Fonts 1.0.1.0`.
+- [ ] `Tests/ContainerGenerationSmokeTests` liest alle sieben bereitgestellten Interface-/Container-Paare, bilanziert jedes Signal, hält die verifizierten Zuordnungs-/Slot-Untergrenzen ein und meldet `SixLabors.Fonts 1.0.1.0`.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
 - [ ] Anwendung startet ohne XamlParseException.
@@ -15,8 +15,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] Nicht-Level7-Benutzer sehen CAD Wizard, Container Generation und Container2Fee nicht.
 - [ ] Level7 sieht genau diese drei Bereiche zusätzlich.
-- [ ] Level8 sieht außerdem Kanbanize Karten, AI-Test und ViCo-Verwaltung.
-- [ ] Level9 kann Rollen ändern; Level8 kann sie nur ansehen.
+- [ ] Level8 sieht außerdem Kanbanize Karten und AI-Test, aber keine Administration.
+- [ ] Level9 sieht den Hauptreiter Administration und kann Rollen ändern.
 - [ ] `lutzma` wird als Level9 erkannt und kann nicht verändert/entfernt werden.
 - [ ] Eine Änderung, die weniger als zwei Level9-Benutzer hinterließe, wird abgewiesen.
 
@@ -27,16 +27,19 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Project Settings zeigt verwendete SDK- und lokal installierte FEE-Version; eine künstlich abweichende Version wird rot hervorgehoben.
 - [ ] Von mehreren lokalen Versionsordnern zählt nur ein Ordner mit `Bin\FS.SDK.dll`; höhere unvollständige Ordner werden ignoriert.
 - [ ] Bei mehreren vollständigen SDKs listet `Prepare-Development.cmd` alle Versionen absteigend; Enter wählt die neueste und eine Nummer wählt nach VS-Neustart exakt den angegebenen Ordner.
-- [ ] Project Settings zeigt API-Key/RDP-Passwort jeweils als konfiguriert/nicht konfiguriert; Speichern gilt ohne Neustart und beide Löschen-Buttons entfernen nur den eigenen Wert.
+- [ ] Project Settings zeigt FEE-Zugang, API-Key und RDP-Passwort jeweils als konfiguriert/nicht konfiguriert; Speichern gilt ohne Neustart und die Löschen-Buttons entfernen nur die eigene Gruppe.
+- [ ] Im normalen interaktiven Windows-Profil erscheinen die Ziele `GROB/VIBN_Tools/FeeUsername`, `GROB/VIBN_Tools/FeePassword`, `GROB/VIBN_Tools/KanbanizeApiKey` und `GROB/VIBN_Tools/RemoteDesktopPassword` im Credential Manager; App-Neustart liest sie, Löschen entfernt sie. Der Codex-Dienstkontext konnte diesen Live-Test wegen Windows-Fehler 1312 (keine Anmeldesitzung) nicht ausführen.
 - [ ] ViCo-Countdown startet mit dem gespeicherten Intervall neu, pausiert ohne API-Key und führt bei Ablauf genau einen Kanbanize-Abruf aus.
 - [ ] Hauptfenster bleibt auf 1366 × 768 bedienbar; Project Settings und ViCo zeigen bei Bedarf Scrollleisten ohne die DataGrid-Virtualisierung zu verlieren.
 - [ ] IBN startet kompakt mit ausschließlich PC/Online/Projekte; Details, RDP und Zugangsdaten bleiben über die Expander auf 480 × 340 erreichbar.
 - [ ] Ohne FEE-Verbindung sind alle dokumentierten FEE-Aktionen grau, nicht ausführbar und zeigen den Tooltip „Keine Verbindung zu FEE vorhanden.“.
 - [ ] ViCo-Suche findet PC, Benutzer und Projekt mit demselben Suchfeld.
-- [ ] Spalten Belegung, Software, Standort, Projekt-IP, Sonstiges, RDP-Sitzung, letzte Anmeldung und Benutzer sind plausibel.
+- [ ] Hauptspalten stehen exakt als Belegung, PC, Online, Projekt, Software, Benutzer, Standort, Sonstiges und Projekt-IP; die letzten zwei lassen sich persistent ein-/ausblenden.
 - [ ] Nur Planung/In-Arbeit-Projekte stehen in der aktiven Projektauswahl; Backlog/Abschluss stehen im Detailbereich.
 - [ ] Frei ist grün, Belegt rot; Online ist grün, Offline rot.
-- [ ] Offline-PCs zeigen keine Remote-/Pfadbuttons.
+- [ ] Offline-PCs lassen RDP, Anmeldedialog und PC-Projektordner sichtbar aber deaktiviert; vorhandene Serverpfade für Simulation, PLC und Planung bleiben nutzbar.
+- [ ] Rechtsklick auf eine Zeile bietet dieselben Aktionen wie der Detailbereich und wählt vor Ausführung genau diese Zeile aus.
+- [ ] Projektstart/-ende erscheinen ohne Uhrzeit oder als „nicht angegeben“; die Pfadanzeige lässt sich markieren und kopieren.
 - [ ] RDP-Sitzungsrechte fehlen: Anzeige lautet „Nicht abrufbar“, nicht „offline“.
 - [ ] Automatischer Remote-Button nutzt den Kanbanize-Benutzer; der zweite Button zeigt den Windows-Anmeldedialog.
 - [ ] Eine vorhandene KONFIGURATION-Unteraufgabe lässt sich bearbeiten und zurückspeichern; keine andere Karteninformation ändert sich.
@@ -55,10 +58,15 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Bestehende generierte Karte ändert nur Startfeld und Deadline, nicht Titel/Position/Beschreibung.
 - [ ] Eigene Karte kann unabhängig erstellt werden.
 
-## TIA und Special Devices
+## TIA und SpecialDevices2FEE
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
-- [ ] Die einzige Hardwareansicht unter Special Devices gruppiert gleiche Gerätenamen und zeigt GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Diagnosepfad, Objektklasse, Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] Nach vollständig erfolgreicher SpecialDevices2FEE-Erzeugung ist der Root in FEE2SpecialDevices sichtbar; ein absichtlich fehlgeschlagener Teilvorgang ist nicht als gültige Quelle markiert.
+- [ ] JSON-Export enthält Präfix, Hersteller, Gerätetyp, E-/A-Startbyte und alle Signal-GUIDs; eine nachträglich geänderte FEE-Variable wird über ihre GUID aktualisiert.
+- [ ] Ältere/manuelle BasicFrames werden gezählt, aber nicht heuristisch als Special Device exportiert.
+- [ ] Ein gültiges FEE2SpecialDevices-JSON wird über den bestehenden Gerätekatalog genau einmal in die Warteschlange übernommen; unbekannter Typ und doppelte Präfix-/Herstellerkombination werden abgewiesen.
+- [ ] Abweichende FEE-Signale erzeugen beim Queue-Import einen sichtbaren Prüfhinweis und überschreiben die katalogisierte Gerätedefinition nicht.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
 - [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
 - [ ] Geräteüberschrift zeigt realen Gerätenamen und -typ; IP, PROFINET-Name und Firmware werden vom Geräte-/Interfaceknoten auf beide adressführenden Module übernommen.
@@ -76,6 +84,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Fehlende SimObject-Ziele sind rot, Erzeugungswünsche gelb und vorhandene Zuordnungen auf Ziel- und FEE-Objektseite grün dargestellt.
 - [ ] **Nur SimObjects verknüpfen** verbindet nach Model Validation → Update Objects vorhandene SimObjects mit genau einer gleichnamigen vorhandenen Logik und erzeugt kein Modellobjekt neu.
 - [ ] Container2FEE Visual erzeugt mit denselben Zuordnungen fachlich dasselbe Ergebnis wie der bestehende Executor; Erzeugen und Überspringen sind geprüft.
+- [ ] Container2FEE Visual erzeugt in FEE einen BasicFrame mit `vibn.container2fee.schema`-Tag; nach FEE-Speichern, Schließen und Öffnen findet FEE2Container denselben Root und exportiert ein semantisch gleiches ContainerFile.
+- [ ] Eine direkte Slotänderung und eine PLC_IN-Änderung über MoveBit werden nach Save/Reload als eindeutige Route innerhalb des Roots exportiert; externe oder mehrdeutige Routen bleiben unverändert und erscheinen als Diagnose.
 - [ ] Model Validation, Model Control und Interface Operation funktionieren mit dem Testmodell; Update Objects protokolliert Objektzahl und Laufzeit und ist gegenüber dem Referenzmodell nicht langsamer.
 - [ ] Keine bestehende Funktion wurde durch ViCo-/Kanbanize-Aufrufe verändert.
 

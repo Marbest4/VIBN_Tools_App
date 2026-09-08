@@ -93,25 +93,33 @@ public sealed class WindowsRemoteDesktopService : IRemoteDesktopService
 
 /// <summary>
 /// Stores a credential only for the RDP startup window. The password comes
-/// from the current user's environment and is never compiled into the tool.
+/// from the injected per-user secret provider and is never compiled into the tool.
 /// </summary>
 public sealed class WindowsTemporaryRemoteCredentialStore : IRemoteCredentialStore
 {
     public const string PasswordEnvironmentVariable = "VIBN_RDP_PASSWORD";
+    private readonly Func<string?> _passwordProvider;
+
+    public WindowsTemporaryRemoteCredentialStore()
+        : this(() => Environment.GetEnvironmentVariable(
+                       PasswordEnvironmentVariable,
+                       EnvironmentVariableTarget.User) ??
+                   Environment.GetEnvironmentVariable(PasswordEnvironmentVariable))
+    {
+    }
+
+    public WindowsTemporaryRemoteCredentialStore(Func<string?> passwordProvider)
+    {
+        _passwordProvider = passwordProvider ?? throw new ArgumentNullException(nameof(passwordProvider));
+    }
 
     public void SaveTemporary(string hostName, string userName)
     {
-        // Read the persistent user value first. This avoids an older value
-        // inherited by a still-running Visual Studio process taking precedence
-        // after the configuration assistant changed the password.
-        var password = Environment.GetEnvironmentVariable(
-                           PasswordEnvironmentVariable,
-                           EnvironmentVariableTarget.User) ??
-                       Environment.GetEnvironmentVariable(PasswordEnvironmentVariable);
+        var password = _passwordProvider();
         if (string.IsNullOrWhiteSpace(password))
         {
             throw new InvalidOperationException(
-                $"Automatische RDP-Anmeldung ist nicht eingerichtet. Benutzervariable {PasswordEnvironmentVariable} setzen.");
+                "Automatische RDP-Anmeldung ist nicht eingerichtet. Passwort in Project Settings speichern oder die Anmeldung mit Abfrage verwenden.");
         }
         if (string.IsNullOrWhiteSpace(hostName) || string.IsNullOrWhiteSpace(userName))
             throw new ArgumentException("Remote-PC und Benutzer müssen angegeben sein.");

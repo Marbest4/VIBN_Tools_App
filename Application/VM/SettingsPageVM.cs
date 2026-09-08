@@ -33,6 +33,7 @@ namespace VIBN_Tools.Application.VM
         private readonly INetworkAvailabilityService _availability;
         private readonly IApplicationLog _log;
         private readonly IUserCredentialConfigurationService _credentialConfiguration;
+        private readonly IAutomationInstallationDiscovery _automationInstallationDiscovery;
         private CancellationTokenSource? _serverFilterCancellation;
         private int _serverRefreshVersion;
 
@@ -174,6 +175,22 @@ namespace VIBN_Tools.Application.VM
 
         public string FeeVersionStatus { get; }
 
+        public ObservableCollection<InstalledAutomationComponent> InstalledAutomationComponents { get; } = new();
+
+        private string _automationDiscoveryStatus = "Installationssuche noch nicht ausgeführt.";
+        public string AutomationDiscoveryStatus
+        {
+            get => _automationDiscoveryStatus;
+            private set
+            {
+                _automationDiscoveryStatus = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ICommand RefreshAutomationInstallations =>
+            GetCommandBinding(RefreshAutomationInstallationInventory);
+
         private string _kanbanizeApiKeyInput = string.Empty;
         public string KanbanizeApiKeyInput
         {
@@ -192,6 +209,28 @@ namespace VIBN_Tools.Application.VM
             set
             {
                 _remoteDesktopPasswordInput = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _feeUsernameInput = "admin";
+        public string FeeUsernameInput
+        {
+            get => _feeUsernameInput;
+            set
+            {
+                _feeUsernameInput = value ?? string.Empty;
+                OnPropertyChanged();
+            }
+        }
+
+        private string _feePasswordInput = string.Empty;
+        public string FeePasswordInput
+        {
+            get => _feePasswordInput;
+            set
+            {
+                _feePasswordInput = value ?? string.Empty;
                 OnPropertyChanged();
             }
         }
@@ -220,11 +259,25 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
+        private bool _hasFeeCredentials;
+        public bool HasFeeCredentials
+        {
+            get => _hasFeeCredentials;
+            private set
+            {
+                _hasFeeCredentials = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(FeeCredentialsStatus));
+            }
+        }
+
         public string KanbanizeApiKeyStatus => HasKanbanizeApiKey ? "Konfiguriert" : "Nicht konfiguriert";
 
         public string RemoteDesktopPasswordStatus => HasRemoteDesktopPassword ? "Konfiguriert" : "Nicht konfiguriert";
 
-        private string _credentialStatus = "Zugangsdaten werden nur für den aktuellen Windows-Benutzer gespeichert.";
+        public string FeeCredentialsStatus => HasFeeCredentials ? "Konfiguriert" : "Nicht konfiguriert";
+
+        private string _credentialStatus = "Zugangsdaten werden geschützt im lokalen Windows Credential Manager gespeichert.";
         public string CredentialStatus
         {
             get => _credentialStatus;
@@ -240,6 +293,8 @@ namespace VIBN_Tools.Application.VM
         public ICommand DeleteKanbanizeApiKey => GetCommandBinding(DeleteKanbanizeApiKeyForUser);
 
         public ICommand DeleteRemoteDesktopPassword => GetCommandBinding(DeleteRemoteDesktopPasswordForUser);
+
+        public ICommand DeleteFeeCredentials => GetCommandBinding(DeleteFeeCredentialsForUser);
 
 
 
@@ -443,7 +498,8 @@ namespace VIBN_Tools.Application.VM
             INetworkAvailabilityService? availability = null,
             IApplicationLog? log = null,
             IFeeVersionInfoProvider? feeVersionInfoProvider = null,
-            IUserCredentialConfigurationService? credentialConfiguration = null)
+            IUserCredentialConfigurationService? credentialConfiguration = null,
+            IAutomationInstallationDiscovery? automationInstallationDiscovery = null)
         {
             _projectSettings = projectSettings;
             _connectionService = connectionService;
@@ -452,7 +508,9 @@ namespace VIBN_Tools.Application.VM
             _availability = availability ?? new NetworkAvailabilityService();
             _log = log ?? NullApplicationLog.Instance;
             _credentialConfiguration = credentialConfiguration ??
-                new UserEnvironmentCredentialConfigurationService();
+                new SecureUserCredentialConfigurationService();
+            _automationInstallationDiscovery = automationInstallationDiscovery ??
+                new AutomationInstallationDiscovery();
 
             var feeVersionInfo = (feeVersionInfoProvider ?? new FeeVersionInfoProvider()).Read();
             UsedFeeSdkVersion = feeVersionInfo.UsedSdkVersion;
@@ -464,6 +522,8 @@ namespace VIBN_Tools.Application.VM
                 $"Verwendete SDK-Version: {UsedFeeSdkVersion}; installierte FEE-Version: {InstalledFeeVersion}.");
             if (HasFeeVersionMismatch)
                 _log.Warning("Project Settings", FeeVersionStatus);
+
+            RefreshAutomationInstallationInventory();
 
             _workstations.PcNames.CollectionChanged += (_, _) => _ = RefreshOnlineServersAsync();
 
@@ -478,6 +538,29 @@ namespace VIBN_Tools.Application.VM
             LoadFeeData = false;
             RefreshCredentialStatus();
             _ = RefreshOnlineServersAsync();
+        }
+
+        private void RefreshAutomationInstallationInventory()
+        {
+            try
+            {
+                var inventory = _automationInstallationDiscovery.Discover();
+                InstalledAutomationComponents.Clear();
+                foreach (var component in inventory.Components)
+                    InstalledAutomationComponents.Add(component);
+                AutomationDiscoveryStatus = inventory.Components.Count == 0
+                    ? string.Join(" ", inventory.Diagnostics)
+                    : $"{inventory.Components.Count} lokale Komponente(n) erkannt." +
+                      (inventory.Diagnostics.Count == 0
+                          ? string.Empty
+                          : $" Hinweise: {string.Join(" ", inventory.Diagnostics)}");
+                _log.Information("Project Settings", AutomationDiscoveryStatus);
+            }
+            catch (Exception exception)
+            {
+                AutomationDiscoveryStatus = $"Installationssuche fehlgeschlagen: {exception.Message}";
+                _log.Error("Project Settings", AutomationDiscoveryStatus, exception);
+            }
         }
 
 
@@ -509,12 +592,23 @@ namespace VIBN_Tools.Application.VM
 
             _connectionService.LoadFeeDataOnConnect = LoadFeeData;
             var stopwatch = Stopwatch.StartNew();
-            ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
-            // Clear stale UI state before the SDK confirms the new endpoint.
-            ConnectedServer = "---";
-            _log.Information("Project Settings", ConnectionStatus);
             try
             {
+                var feeUsername = _credentialConfiguration.GetFeeUsername();
+                var feePassword = _credentialConfiguration.GetFeePassword();
+                if (string.IsNullOrWhiteSpace(feeUsername) || string.IsNullOrEmpty(feePassword))
+                {
+                    stopwatch.Stop();
+                    ConnectionStatus = "FEE-Zugangsdaten fehlen. Bitte unter Geschützte Zugangsdaten einmalig speichern.";
+                    _log.Warning("Project Settings", ConnectionStatus);
+                    return;
+                }
+
+                ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
+                // Clear stale UI state only after all prerequisites have been
+                // resolved and before the SDK confirms the new endpoint.
+                ConnectedServer = "---";
+                _log.Information("Project Settings", ConnectionStatus);
                 if (_connectionService.IsConnected)
                 {
                     Services.ApiInstance.Disconnect();
@@ -527,7 +621,7 @@ namespace VIBN_Tools.Application.VM
                     }
                 }
 
-                Services.ApiInstance.Connect(SelectedServer, "admin", "admin");
+                Services.ApiInstance.Connect(SelectedServer, feeUsername, feePassword);
                 var connected = await _connectionService.WaitForConnectedAsync(TimeSpan.FromSeconds(10));
                 stopwatch.Stop();
                 if (!connected)
@@ -610,12 +704,18 @@ namespace VIBN_Tools.Application.VM
                     _credentialConfiguration.SaveRemoteDesktopPassword(RemoteDesktopPasswordInput);
                     changed = true;
                 }
+                if (!string.IsNullOrEmpty(FeePasswordInput))
+                {
+                    _credentialConfiguration.SaveFeeCredentials(FeeUsernameInput, FeePasswordInput);
+                    changed = true;
+                }
 
                 KanbanizeApiKeyInput = string.Empty;
                 RemoteDesktopPasswordInput = string.Empty;
+                FeePasswordInput = string.Empty;
                 RefreshCredentialStatus();
                 CredentialStatus = changed
-                    ? "Eingegebene Zugangsdaten wurden für diesen Windows-Benutzer gespeichert."
+                    ? "Eingegebene Zugangsdaten wurden geschützt im Windows Credential Manager gespeichert."
                     : "Keine neuen Werte eingegeben; vorhandene Konfiguration bleibt unverändert.";
                 _log.Information("Zugangsdaten", CredentialStatus);
             }
@@ -641,6 +741,13 @@ namespace VIBN_Tools.Application.VM
                 "Remote-Desktop-Passwort wurde für diesen Windows-Benutzer entfernt.");
         }
 
+        private void DeleteFeeCredentialsForUser()
+        {
+            UpdateCredentialConfiguration(
+                _credentialConfiguration.DeleteFeeCredentials,
+                "FEE-Zugangsdaten wurden für diesen Windows-Benutzer entfernt.");
+        }
+
         private void UpdateCredentialConfiguration(Action update, string successMessage)
         {
             try
@@ -663,6 +770,7 @@ namespace VIBN_Tools.Application.VM
             var status = _credentialConfiguration.ReadStatus();
             HasKanbanizeApiKey = status.HasKanbanizeApiKey;
             HasRemoteDesktopPassword = status.HasRemoteDesktopPassword;
+            HasFeeCredentials = status.HasFeeCredentials;
         }
 
         private async Task CheckServerAsync(string serverName)

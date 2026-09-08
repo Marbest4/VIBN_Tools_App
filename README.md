@@ -14,7 +14,11 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - [Umsetzungsstatus 2026](docs/UMSETZUNGSSTATUS_2026.md) – ehrlicher Abgleich zwischen implementiert, geprüft und noch offen.
 - [TIA-Hardwareauslesung](docs/TIA_OPENNESS_HARDWARE.md) – Datenmodell, Ursache der Altdaten und Live-Abnahme.
 - [Container2FEE Visual](docs/CONTAINER2FEE_VISUAL.md) – zusätzlicher Planer, Drag-and-drop-Regeln, Sidecar und Legacy-Ausführung.
+- [FEE2Container](docs/FEE2CONTAINER.md) – provenancebasierter Rückexport für künftig generierte FEE-Roots.
+- [AI-Regelvorschläge](docs/AI_REGELVORSCHLAEGE.md) – nachvollziehbare Vorschläge aus manuellen Generatoränderungen.
+- [Lokale Automatisierungsinstallationen](docs/INSTALLATION_DISCOVERY.md) – dynamische TIA-/Openness-, WinCC-, Siemens- und TwinCAT-Erkennung.
 - [IBN Remote](docs/IBN_REMOTE.md) – separat minimierte Ein-EXE-Ausgabe nur für Arbeitsplatzsuche und RDP.
+- [FEE2SpecialDevices](docs/FEE2SPECIALDEVICES.md) – provenance-basierter Reverse-Export künftig erzeugter Special Devices.
 - [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md), [Deployment](docs/DEPLOYMENT.md) und [Diagramme](docs/ARCHITECTURE_DIAGRAMS.md).
 - [Installation und Installer](docs/INSTALLATION_UND_INSTALLER.md) – Setup erzeugen, auf andere Rechner übertragen und SDK-/Buildfehler beheben.
 
@@ -27,7 +31,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - Die ViCo-Übersicht zeigt den Countdown bis zum nächsten Kanbanize-AutoUpdate; das 1–1440-Minuten-Intervall wird lokal pro Benutzer gespeichert.
 - Kanbanize synchronisiert keine Duplikate und ändert bei vorhandenen generierten Karten ausschließlich den berechneten Starttermin und die Deadline.
 - Die TIA-Openness-Kommunikation läuft in einem separaten Bridge-Prozess; ein TIA-Fehler beendet nicht die WPF-Anwendung.
-- Rollen ersetzen Lizenzanfragen. Level7 schaltet CAD Wizard, Container Generation und Container2Fee frei; Level8 zusätzlich AI-Test und Kanbanize; die ViCo-Verwaltung ist ab Level8 sichtbar und ab Level9 schreibbar.
+- Rollen ersetzen Lizenzanfragen. Level7 schaltet CAD Wizard, Container Generation und Container2Fee frei; Level8 zusätzlich AI-Test und Kanbanize; Administration ist ausschließlich ab Level9 sichtbar und schreibbar.
 
 ## Build und lokale Prüfungen
 

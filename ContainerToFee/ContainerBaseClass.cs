@@ -1,15 +1,21 @@
 ﻿using System.Collections.ObjectModel;
+using System.IO;
 using System.Reflection;
-using System.Windows;
 using System.Xml.Linq;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
+using VIBN_Tools.ContainerGeneration.Models;
 using static VIBN_Tools.GlobalClasses.Interfaces;
 
 namespace VIBN_Tools.ContainerToFee
 {
     public abstract class ContainerBaseClass
     {
+        private readonly Dictionary<string, List<FeeInterfaceSignal>> _signalsBySlot =
+            new(StringComparer.OrdinalIgnoreCase);
+        private readonly Dictionary<string, List<FeeInterfaceSignal>> _additionalInputFanIns =
+            new(StringComparer.OrdinalIgnoreCase);
+
         public string ComponentName { get; set; }
         public Dictionary<string, PropertyInfo> SlotAssignment { get; set; }
 
@@ -22,73 +28,114 @@ namespace VIBN_Tools.ContainerToFee
         {
             ComponentName = componentName;
 
+            _signalsBySlot.Clear();
+            _additionalInputFanIns.Clear();
+            var slotLookup = SlotAssignment
+                .Where(item => item.Value is not null)
+                .ToDictionary(item => item.Key, item => item.Value, StringComparer.OrdinalIgnoreCase);
             var entriesGrouped = containerElement.Descendants("Entry")
-                .GroupBy(x => x.Element("Slot")?.Value)
-                .ToDictionary(group => group.Key, group => group.ToList());
+                .GroupBy(x => x.Element("Slot")?.Value?.Trim() ?? string.Empty,
+                    StringComparer.OrdinalIgnoreCase);
 
-            foreach (var key in entriesGrouped.Keys)
+            foreach (var group in entriesGrouped)
             {
-                int counter = 1;
+                var slotName = group.Key;
+                if (string.IsNullOrWhiteSpace(slotName))
+                    throw new InvalidDataException($"Container '{ComponentName}' enthält einen Eintrag ohne Slot.");
 
-                foreach (var entry in entriesGrouped[key])
+                var entries = group.ToArray();
+                var duplicateError = ContainerSlotMultiplicityPolicy.GetDuplicateError(
+                    slotName,
+                    entries.Length);
+                if (duplicateError is not null)
+                    throw new InvalidDataException($"Container '{ComponentName}': {duplicateError}");
+
+                if (!slotLookup.TryGetValue(slotName, out var property) || property is null)
                 {
-                    var tempSignal = new FeeInterfaceSignal
-                    {
-                        Tag = entry.Element("Signal")?.Value,
-                        Path = entry.Element("Address")?.Value?.Contains("GVL_IO") == true
-                            ? entry.Element("Address")?.Value
-                            : string.Empty,
-                        Address = entry.Element("Address")?.Value?.Contains("GVL_IO") == false
-                            ? entry.Element("Address")?.Value
-                            : string.Empty,
-                        Comment = entry.Element("ID")?.Value,
-                        IOTypeString = entry.Element("DataType")?.Value
-                    };
-                    tempSignal.SetIoMode();
+                    throw new InvalidDataException(
+                        $"Slot '{slotName}' existiert nicht im Container '{ComponentName}'.");
+                }
 
-                    var slotName = key;
-                    var property = SlotAssignment.TryGetValue(slotName, out PropertyInfo? value) ? value : null;
+                var signals = entries.Select(CreateSignal).ToList();
+                _signalsBySlot[slotName] = signals;
 
-                    if (property == null)
-                    {
-                        MessageBox.Show($"Slot '{slotName}' in Component '{ComponentName}' does not exist!");
-                        continue;
-                    }
-
-                    if (property.PropertyType == typeof(FeeInterfaceSignal))
-                    {
-                        // Multiple entries -> add counter
-                        if (entriesGrouped[key].Count > 1)
-                        {
-                            slotName = string.Concat(slotName, counter);
-                            counter++;
-                            property = SlotAssignment.TryGetValue(slotName, out PropertyInfo? indexedValue) ? indexedValue : null;
-                        }
-                        try
-                        {
-                            property?.SetValue(this, tempSignal);
-                        }
-                        catch (Exception)
-                        {
-
-                            MessageBox.Show($"Property: {property.Name}, DeclaringType: {property.DeclaringType}, TargetType: {this.GetType()}, ");
-                        }
-
-                    }
-                    else if (property.PropertyType == typeof(List<FeeInterfaceSignal>))
-                    {
-                        // Add slot to list
-                        var list = (List<FeeInterfaceSignal>)property.GetValue(this);
-                        if (list == null)
-                        {
-                            list = new List<FeeInterfaceSignal>();
-                            property.SetValue(this, list);
-                        }
-                        list.Add(tempSignal);
-                    }
+                if (property.PropertyType == typeof(FeeInterfaceSignal))
+                {
+                    if (signals.Count == 1)
+                        property.SetValue(this, signals[0]);
+                    else
+                        _additionalInputFanIns[slotName] = signals;
+                }
+                else if (property.PropertyType == typeof(List<FeeInterfaceSignal>))
+                {
+                    property.SetValue(this, signals);
+                }
+                else
+                {
+                    throw new InvalidDataException(
+                        $"Slot '{slotName}' in Container '{ComponentName}' besitzt den nicht unterstützten " +
+                        $"Zieltyp '{property.PropertyType.Name}'.");
                 }
             }
+        }
 
+        private static FeeInterfaceSignal CreateSignal(XElement entry)
+        {
+            var address = entry.Element("Address")?.Value ?? string.Empty;
+            var signal = new FeeInterfaceSignal
+            {
+                Tag = entry.Element("Signal")?.Value,
+                Path = address.Contains("GVL_IO", StringComparison.OrdinalIgnoreCase)
+                    ? address
+                    : string.Empty,
+                Address = !address.Contains("GVL_IO", StringComparison.OrdinalIgnoreCase)
+                    ? address
+                    : string.Empty,
+                Comment = entry.Element("ID")?.Value,
+                IOTypeString = entry.Element("DataType")?.Value
+            };
+            signal.SetIoMode();
+            return signal;
+        }
+
+        public IEnumerable<FeeInterfaceSignal> EnumerateAssignedSignals() =>
+            _signalsBySlot.Values.SelectMany(signals => signals);
+
+        public IReadOnlyList<PlcInputFanInAssignment> GetAdditionalInputFanIns() =>
+            _additionalInputFanIns
+                .OrderBy(item => item.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(item => new PlcInputFanInAssignment(item.Key, item.Value.AsReadOnly()))
+                .ToArray();
+
+        internal async Task AssignAdditionalInputFanInsAsync(
+            FeeLogic logic,
+            FeeInterface targetInterface)
+        {
+            foreach (var fanIn in GetAdditionalInputFanIns())
+            {
+                var slotsToAssign = new List<(Guid ObjectGuid, string SlotName)>
+                {
+                    (logic.Guid, fanIn.SlotName)
+                };
+
+                foreach (var signal in fanIn.Signals)
+                {
+                    var move = new FeeSimpleMove();
+                    await move.CreateAsync();
+                    await move.SendAndWaitAsync();
+                    await signal.CreateSignalAsync(targetInterface);
+                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(
+                        move.Guid,
+                        "Output 01",
+                        signal.Guid,
+                        true);
+                    slotsToAssign.Add((move.Guid, "Input 01"));
+                }
+
+                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(
+                    slotsToAssign.Select(item => item.ObjectGuid).ToArray(),
+                    slotsToAssign.Select(item => item.SlotName).ToArray());
+            }
         }
 
 
@@ -126,6 +173,9 @@ namespace VIBN_Tools.ContainerToFee
 
         public int CountNonNullSignals()
         {
+            if (_signalsBySlot.Count > 0)
+                return _signalsBySlot.Values.Sum(signals => signals.Count);
+
             var singleSignals = this.GetType()
                                     .GetProperties()
                                     .Where(p => p.PropertyType == typeof(FeeInterfaceSignal))
@@ -142,6 +192,10 @@ namespace VIBN_Tools.ContainerToFee
         }
 
     }
+
+    public sealed record PlcInputFanInAssignment(
+        string SlotName,
+        IReadOnlyList<FeeInterfaceSignal> Signals);
 
 
 

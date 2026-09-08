@@ -6,7 +6,7 @@ Stand: 28. August 2026. Prüfobjekt ist die vollständige Solution `VIBN_Tools_A
 
 Die Anwendung ist eine funktionsreiche WPF-Desktop-Suite mit gewachsenen Legacy-Anteilen und bereits gut abgetrennten ViCo-, Kanbanize- und TIA-Komponenten. Die wichtigste technische Stärke ist die Prozessisolation der Siemens-TIA-Openness-Anbindung. Das größte Buildrisiko war die nicht reproduzierbare Bindung an eine konkrete fe.screen-sim-Version. Dieses Risiko ist reduziert: Paketversionen sind explizit fixiert, der FEE-SDK-Pfad wird automatisch ermittelt und Build sowie Veröffentlichung prüfen die SDK-Vollständigkeit.
 
-Die TIA-Hardwareauslesung berücksichtigt nun Root-Geräte, Geräteordner, verschachtelte Geräteordner und die Systemgruppe für nicht gruppierte dezentrale Geräte. Sie liefert Gerät, Gerätetyp, Hersteller, Bestellnummer, Firmware, GSD-Metadaten, PROFINET-Name, IP-Adresse, Slot, Subslot, Modulpfad und getrennte Ein-/Ausgangsbereiche. Die doppelte Hardwareansicht unter ViCo/TIA Portal wurde entfernt; die Zuordnung befindet sich ausschließlich unter Special Devices.
+Die TIA-Hardwareauslesung berücksichtigt nun Root-Geräte, Geräteordner, verschachtelte Geräteordner und die Systemgruppe für nicht gruppierte dezentrale Geräte. Sie liefert Gerät, Gerätetyp, Hersteller, Bestellnummer, Firmware, GSD-Metadaten, PROFINET-Name, IP-Adresse, Slot, Subslot, Modulpfad, Hierarchiediagnose und getrennte Ein-/Ausgangsbereiche. Die doppelte Hardwareansicht unter ViCo/TIA Portal wurde entfernt; die Zuordnung befindet sich ausschließlich unter SpecialDevices2FEE.
 
 Validierter Zustand:
 
@@ -22,18 +22,18 @@ Validierter Zustand:
 | ID | Befund | Priorität | Risiko | Aufwand | Nutzen | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | A-01 | FEE-DLL-Pfade waren auf `5.0.9.44419` fest verdrahtet | Kritisch | Build/Start auf anderen PCs scheitert | Mittel | Sehr hoch | Behoben |
-| A-02 | Hardwarebaum wurde abgeflacht; Slot/Subslot, GSD und Netzwerkdienste fehlten | Kritisch | Falsche Special Devices und E/A-Adressen | Hoch | Sehr hoch | Implementiert und synthetisch geprüft; Live-Abnahme offen |
+| A-02 | Hardwarebaum wurde abgeflacht; Slot/Subslot, GSD und Netzwerkdienste fehlten | Kritisch | Falsche SpecialDevices2FEE-Zuordnungen und E/A-Adressen | Hoch | Sehr hoch | Implementiert und synthetisch geprüft; Live-Abnahme offen |
 | A-03 | `ContainerGenerationPageVM` bündelt 2.387 Zeilen | Hoch | Regressionen, geringe Testbarkeit | Hoch | Hoch | ZuLi-/Generator-Smoke-Test vorhanden; vollständigen Requirements-/Ausgabe-Golden-Master vor Aufteilung ergänzen |
 | A-04 | Paketversionen waren nicht reproduzierbar fixiert | Hoch | Versionsdrift/transitive Konflikte | Niedrig | Hoch | Explizit fixiert; zentrale Verwaltung erst nach VS-Vereinheitlichung |
 | A-05 | Zwei veraltete, vom Build ausgeschlossene Sensorimplementierungen | Mittel | Verwirrung und falsche Erweiterungspunkte | Niedrig | Mittel | Entfernt |
 | A-06 | Zweite Solution verwies außerhalb des Repositories | Hoch | Falscher Build-Einstieg | Niedrig | Hoch | Entfernt |
 | A-07 | Service-Locator `Services` koppelt ältere ViewModels an globale Zustände | Hoch | Isolierte Unit-Tests schwierig | Hoch | Hoch | Geplanter Folgeschritt |
 | A-08 | Einige allgemeine `catch (Exception)` an Legacy-Grenzen | Mittel | Ursachen können zu grob behandelt werden | Mittel | Mittel | Bericht/gezielte Migration |
-| A-09 | Benutzer-Secrets liegen in Benutzer-Umgebungsvariablen | Hoch | Für lokale Prozesse auslesbar | Mittel | Hoch | Sicherheits-Folgeschritt: Credential Manager/DPAPI |
+| A-09 | Benutzer-Secrets lagen in Benutzer-Umgebungsvariablen | Hoch | Für lokale Prozesse auslesbar | Mittel | Hoch | Behoben: Windows Credential Manager mit getesteter Migration; Windows-Profil-Abnahme offen |
 | A-10 | Event-Abonnements langlebiger ViewModels haben keinen einheitlichen Lifecycle | Mittel | Speicherbindung nach Viewwechsel möglich | Mittel | Mittel | `IDisposable`/Activation-Pattern empfohlen |
 | A-11 | Nur Smoke-/Policy-Tests, geringe Abdeckung der FEE-Legacylogik | Hoch | SDK-Regressionsrisiko | Hoch | Hoch | Testpyramide erweitern |
 | A-12 | Live-TIA-Verifikation benötigt reale TIA-Projekte und Openness-Rechte | Hoch | Mock-Test deckt Siemens-Runtime nicht ab | Mittel | Hoch | Live-Abnahmecheckliste |
-| A-13 | Project Settings verwendet weiterhin die bestehenden festen FEE-Anmeldedaten `admin/admin` | Hoch | Zugangsdaten im Quelltext, keine Rotation | Mittel | Hoch | Bewusst nicht in diesem Funktionsfix geändert; Sicherheits-Folgeschritt |
+| A-13 | Project Settings verwendete feste FEE-Anmeldedaten `admin/admin` | Hoch | Zugangsdaten im Quelltext, keine Rotation | Mittel | Hoch | Behoben: FEE-Benutzer/-Passwort aus Windows Credential Manager; einmalige Neueinrichtung erforderlich |
 
 ## 3. Architekturprüfung
 
@@ -83,9 +83,9 @@ Noch zu messen: reale TIA-Großprojekte, Container2FEE gegen produktive SDK-Asse
 
 ## 6. Sicherheitsbericht
 
-Im Repository wurde kein produktiver Kanbanize-API-Key und kein RDP-Passwort gefunden. Die aktuelle Ersteinrichtung legt diese Werte als Benutzer-Umgebungsvariablen ab. Das verhindert Quellcode-Secrets, ist aber kein sicherer Secretspeicher. Die bestehende FEE-Verbindung in `SettingsPageVM` verwendet dagegen noch `admin/admin`; diese Altlast wurde im aktuellen Funktionsfix nicht verändert. Empfohlen ist als separater Sicherheitsschritt:
+Im Repository wurde kein produktiver Kanbanize-API-Key, RDP-Passwort oder FEE-Passwort gefunden. Die produktive Ersteinrichtung legt diese Werte sowie den FEE-Benutzernamen als generische Einträge im Windows Credential Manager des aktuellen Profils ab. Alte Benutzer-Umgebungsvariablen werden erst nach einem erfolgreichen Credential-Manager-Schreibzugriff gelöscht. Weitere Sicherheitsschritte:
 
-1. Windows Credential Manager oder DPAPI-geschützte Datei pro Benutzer.
+1. FEE-, RDP- und Kanbanize-Zugang regelmäßig nach Unternehmensvorgabe rotieren.
 2. Protokoll-Redaction für Header, Tokens und Kennwörter.
 3. Signierung von Setup und Binärdateien.
 4. Least-Privilege-Kanbanize-Key und dokumentierte Rotation.
@@ -100,8 +100,14 @@ Die WPF-Anwendung bleibt vorerst auf .NET 8, die TIA-Bridge auf .NET Framework 4
 1. Reale TIA-Abnahme mit PN/PN Coupler, dezentraler IO und GSD-Geräten aus V15–V22.
 2. Produktives FEE-SDK in einem privaten, versionierten NuGet-Feed bereitstellen.
 3. Setup signieren und über eine definierte Updatequelle verteilen.
-4. Secret-Speicherung auf Credential Manager/DPAPI migrieren.
+4. Windows-Profil-Abnahme für Speichern, Neustart, Löschen und Legacy-Migration durchführen.
 5. Legacy-Service-Locator strangweise durch Konstruktorinjektion ersetzen.
 6. Die vorhandenen synthetischen Container2FEE-Plan-/Sidecar- und PN/PN-Hardwaretests um freigegebene produktive Golden-Master-Snapshots ergänzen.
 7. Event-Lifecycle mit `IDisposable` oder View-Aktivierung vereinheitlichen.
 8. Den vorhandenen ZuLi-/Generator-Smoke-Test um eine freigegebene Requirements-Datei und erwartete vollständige Container-Ausgabe ergänzen; erst danach `ContainerGenerationPageVM` erneut aufteilen.
+
+## 9. Konservativer Cleanup- und Availability-Nachlauf
+
+Am 8. September 2026 wurde die Solution erneut über Projektdateien, C#-Referenzen, XAML-Bindings/Navigation, Serialisierungsmodelle und den Release-Build geprüft. Entfernt wurden ausschließlich wirkungslose auskommentierte UI-Elemente, vollständige Prototypblöcke sowie die nicht mehr navigierbare MiniTools-View samt ViewModel, deren vier Commands nachweislich nur `In progress` anzeigten. Dynamisch erreichbare Klassen, SDK-Adapter sowie auskommentierte Special-Device-Signalvarianten blieben erhalten: Letztere sind fachliche Katalognotizen und ohne freigegebenen Ersatz kein sicherer Löschkandidat. Es wurde keine Produktionsklasse allein aufgrund einer Textsuche entfernt.
+
+Ausführbare, zustandsabhängig deaktivierte Hauptaktionen in Navigation, ViCo, Kanbanize, Administration, SpecialDevices/TIA, ContainerGeneration sowie beiden Container2FEE-Oberflächen zeigen nun auch im deaktivierten Zustand einen konkreten Grund. Reine Formelemente wie abhängige Datums-, Adress- oder DB-Felder werden durch ihre jeweilige Auswahl gesteuert und sind nicht als eigenständige Aktionen bewertet. Der integrierte WPF-Smoke prüft weiterhin alle Views auf Initialisierungs- und Bindingfehler; die visuelle Hover-Prüfung bleibt Bestandteil der manuellen Release-Abnahme.

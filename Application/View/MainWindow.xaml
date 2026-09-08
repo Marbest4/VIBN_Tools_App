@@ -7,7 +7,6 @@
         xmlns:ux="http://Grob.com/wpf.ux"
         xmlns:uxb="http://Grob.com/wpf.ux.behaviors"
         xmlns:local="clr-namespace:VIBN_Tools.Application.View"
-        xmlns:vm="clr-namespace:VIBN_Tools.Application.VM"
         xmlns:p="clr-namespace:VIBN_Tools.Application.View"
         mc:Ignorable="d"
         Title="VIBN Tools"
@@ -17,14 +16,9 @@
         UseLayoutRounding="True"
         WindowStyle="None" AllowsTransparency="True">
 
-    <!--<Window.DataContext>
-        <vm:MainWindowVM/>
-    </Window.DataContext>-->
-
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!--<ResourceDictionary  Source="pack://application:,,,/Grob.UX;component/Styles/ScrollBarStyles.xaml"/>-->
                 <ResourceDictionary Source="pack://application:,,,/Grob.UX;component/Styles/General.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
@@ -34,7 +28,20 @@
                 <Setter Property="HeaderTemplate">
                     <Setter.Value>
                         <DataTemplate>
-                            <TextBlock MinWidth="145" Text="{Binding}" TextAlignment="Center" />
+                            <TextBlock Text="{Binding}" TextAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="MinWidth" Value="145" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                                                <Setter Property="MinWidth" Value="0" />
+                                                <Setter Property="MaxWidth" Value="0" />
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </DataTemplate>
                     </Setter.Value>
                 </Setter>
@@ -63,7 +70,16 @@
                 </ux:WindowBar>
 
                 <ux:AppHeader Grid.Row="1">
-                    <TextBlock Style="{StaticResource H2Style }" Text="Tools for Modeling and Virtual Commissioning" Margin="10"/>
+                    <DockPanel LastChildFill="True">
+                        <Button DockPanel.Dock="Right"
+                                Margin="8"
+                                MinWidth="155"
+                                Content="{Binding NavigationToggleText}"
+                                Command="{Binding ToggleNavigationCommand}"
+                                ToolTip="Blendet die Texte der linken Navigation ein oder aus. Alt+N aktiviert die Schaltfläche."
+                                ToolTipService.ShowOnDisabled="True" />
+                        <TextBlock Style="{StaticResource H2Style }" Text="Tools for Modeling and Virtual Commissioning" Margin="10"/>
+                    </DockPanel>
                 </ux:AppHeader>
 
                 <ux:NavigationBar Grid.Row="2" TabStripPlacement="Left">
@@ -79,6 +95,20 @@
 
                     <TabItem Header="ViCo" ux:Icon.Kind="TaskListAssigned">
                         <p:ViCoWorkspacePage/>
+                    </TabItem>
+
+                    <TabItem Header="Transfer" ux:Icon.Kind="FileSync">
+                        <p:ViCoCopyPage />
+                    </TabItem>
+
+                    <TabItem Header="TIA Portal" ux:Icon.Kind="Cad">
+                        <p:TiaPortalPage />
+                    </TabItem>
+
+                    <TabItem Header="Administration"
+                             ux:Icon.Kind="Settings"
+                             Visibility="{Binding CanUseLevel9Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:ViCoAdministrationPage />
                     </TabItem>
                     
                     <TabItem Header="CAD Wizard"
@@ -108,8 +138,20 @@
                              Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <p:ContainerToFeeVisualPage/>
                     </TabItem>
+
+                    <TabItem Header="FEE2Container"
+                             ux:Icon.Kind="WorkpieceStation"
+                             Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:Fee2ContainerPage />
+                    </TabItem>
+
+                    <TabItem Header="FEE2SpecialDevices"
+                             ux:Icon.Kind="DeviceVideoCamera"
+                             Visibility="{Binding CanUseLevel7Features, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <p:Fee2SpecialDevicesPage />
+                    </TabItem>
                     
-                    <TabItem Header="Special Devices" ux:Icon.Kind="DeviceVideoCamera">
+                    <TabItem Header="SpecialDevices2FEE" ux:Icon.Kind="DeviceVideoCamera">
                         <p:SpecialDevicePage/>
                     </TabItem>
                     
@@ -122,10 +164,6 @@
                         <p:ModelValidationPage/>
                     </TabItem>
                  
-                    <!--<TabItem Header="MiniTools" ux:Icon.Kind="Wipe">
-                        <p:MiniToolsPage/>
-                    </TabItem>-->
-
                     <TabItem Header="Model Control"
                              ux:Icon.Kind="RobotWorkpiece"
                              IsEnabled="{Binding Connection.CanUseFeeFeatures}"

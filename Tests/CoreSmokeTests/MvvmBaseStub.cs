@@ -14,6 +14,9 @@ public class MvvmBase : INotifyPropertyChanged
     public ICommand GetCommandBinding(Action executeAction) =>
         new CommandHandler(_ => executeAction());
 
+    public ICommand GetCommandBinding(Action<object> executeAction) =>
+        new CommandHandler(parameter => executeAction(parameter!));
+
     public ICommand GetCommandBindingAsync(Func<Task> executeAsync) =>
         new CommandHandler(async _ => await executeAsync());
 

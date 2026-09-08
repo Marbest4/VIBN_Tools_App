@@ -160,7 +160,10 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
             {
                 if (Guid == Guid.Empty)
                     throw new InvalidOperationException("Existing interface signal has no valid GUID.");
-                ParentInterface = tempInterface;
+                // Keep the interface in which the variable was resolved. The
+                // method parameter is only the create target for missing
+                // signals and must not rewrite existing provenance.
+                ParentInterface ??= tempInterface;
                 return true;
             }
 

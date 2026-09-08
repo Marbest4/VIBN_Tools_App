@@ -1,4 +1,5 @@
 using System.Security.Principal;
+using System.Windows.Input;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.Settings;
@@ -13,9 +14,38 @@ public sealed class MainWindowVM : MvvmBase
 {
     private bool _canUseLevel7Features;
     private bool _canUseLevel8Features;
+    private bool _canUseLevel9Features;
     private string _currentLevel = "Nicht erkannt";
+    private readonly INavigationPreferenceStore _navigationPreferences;
+    private bool _isNavigationExpanded = true;
+
+    public MainWindowVM(INavigationPreferenceStore? navigationPreferences = null)
+    {
+        _navigationPreferences = navigationPreferences ?? new JsonNavigationPreferenceStore();
+        _isNavigationExpanded = _navigationPreferences.LoadExpanded();
+        ToggleNavigationCommand = GetCommandBinding(ToggleNavigation);
+    }
 
     public FeeConnectionService Connection => Services.Connection;
+
+    public ICommand ToggleNavigationCommand { get; }
+
+    public bool IsNavigationExpanded
+    {
+        get => _isNavigationExpanded;
+        private set
+        {
+            if (_isNavigationExpanded == value)
+                return;
+            _isNavigationExpanded = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(NavigationToggleText));
+        }
+    }
+
+    public string NavigationToggleText => IsNavigationExpanded
+        ? "_Navigation einklappen"
+        : "_Navigation ausklappen";
 
     /// <summary>CAD Wizard, Container Generation and Container2Fee.</summary>
     public bool CanUseLevel7Features
@@ -35,6 +65,17 @@ public sealed class MainWindowVM : MvvmBase
         private set
         {
             _canUseLevel8Features = value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>Administration and other system-wide write operations.</summary>
+    public bool CanUseLevel9Features
+    {
+        get => _canUseLevel9Features;
+        private set
+        {
+            _canUseLevel9Features = value;
             OnPropertyChanged();
         }
     }
@@ -102,8 +143,24 @@ public sealed class MainWindowVM : MvvmBase
     private void ApplyRole(string level)
     {
         CurrentLevel = level;
-        var numericLevel = ViCoRolePolicy.ParseLevel(level);
-        CanUseLevel7Features = numericLevel >= 7;
-        CanUseLevel8Features = numericLevel >= 8;
+        CanUseLevel7Features = ViCoRolePolicy.HasMinimumLevel(level, 7);
+        CanUseLevel8Features = ViCoRolePolicy.HasMinimumLevel(level, 8);
+        CanUseLevel9Features = ViCoRolePolicy.HasMinimumLevel(level, 9);
+    }
+
+    private void ToggleNavigation()
+    {
+        IsNavigationExpanded = !IsNavigationExpanded;
+        try
+        {
+            _navigationPreferences.SaveExpanded(IsNavigationExpanded);
+        }
+        catch (Exception exception)
+        {
+            ApplicationLogService.Instance.Error(
+                "Navigation",
+                "Die Navigationsbreite konnte nicht als Benutzerpräferenz gespeichert werden.",
+                exception);
+        }
     }
 }

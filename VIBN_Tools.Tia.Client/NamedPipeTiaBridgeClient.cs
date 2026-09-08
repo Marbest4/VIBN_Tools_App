@@ -217,11 +217,19 @@ public sealed class NamedPipeTiaBridgeClient : ITiaBridgeClient
             new TiaFolderPayload { ParentPath = parentPath, Name = name },
             cancellationToken);
 
-    public async Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(
+    public async Task<IReadOnlyList<TiaAxisInfo>> ListAxesAsync(
         CancellationToken cancellationToken = default) =>
         await SendAsync<EmptyPayload, List<TiaAxisInfo>>(
-            TiaCommands.ConfigureAxes,
+            TiaCommands.ListAxes,
             EmptyPayload.Instance,
+            cancellationToken);
+
+    public async Task<IReadOnlyList<TiaAxisInfo>> ConfigureAxesAsync(
+        IReadOnlyCollection<string> axisIds,
+        CancellationToken cancellationToken = default) =>
+        await SendAsync<TiaAxisConfigurationPayload, List<TiaAxisInfo>>(
+            TiaCommands.ConfigureAxes,
+            new TiaAxisConfigurationPayload { AxisIds = axisIds?.ToList() ?? new List<string>() },
             cancellationToken);
 
     public Task SaveAsync(CancellationToken cancellationToken = default) =>

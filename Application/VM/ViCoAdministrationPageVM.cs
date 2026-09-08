@@ -75,6 +75,7 @@ public sealed class ViCoAdministrationPageVM : MvvmBase
             _selectedRole = value;
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanEditSelectedRole));
+            OnPropertyChanged(nameof(EditSelectedRoleUnavailableReason));
             if (value is not null)
                 SelectedLevel = value.Level;
         }
@@ -123,11 +124,17 @@ public sealed class ViCoAdministrationPageVM : MvvmBase
             OnPropertyChanged();
             OnPropertyChanged(nameof(CanManageUsers));
             OnPropertyChanged(nameof(CanEditSelectedRole));
+            OnPropertyChanged(nameof(ManageUsersUnavailableReason));
+            OnPropertyChanged(nameof(EditSelectedRoleUnavailableReason));
         }
     }
 
     /// <summary>Only Level9 may add, remove or change user roles.</summary>
     public bool CanManageUsers => ViCoRolePolicy.ParseLevel(CurrentLevel) >= 9;
+
+    public string ManageUsersUnavailableReason => CanManageUsers
+        ? "Benutzerrollen verwalten."
+        : "Benutzerrollen können ausschließlich mit Level 9 geändert werden.";
 
     /// <summary>
     /// The mandatory break-glass account is visible but its Level9 assignment
@@ -137,6 +144,14 @@ public sealed class ViCoAdministrationPageVM : MvvmBase
         CanManageUsers &&
         SelectedRole is not null &&
         !ViCoRolePolicy.IsMandatoryLevel9User(SelectedRole.UserName);
+
+    public string EditSelectedRoleUnavailableReason => CanEditSelectedRole
+        ? "Ändert die Rolle des ausgewählten Benutzers."
+        : !CanManageUsers
+            ? ManageUsersUnavailableReason
+            : SelectedRole is null
+                ? "Zuerst einen Benutzer auswählen."
+                : "Das verpflichtende Level-9-Notfallkonto kann nicht geändert oder entfernt werden.";
 
     public int Level9UserCount => RoleEntries
         .Where(role => string.Equals(role.Level, "Level9", StringComparison.OrdinalIgnoreCase))

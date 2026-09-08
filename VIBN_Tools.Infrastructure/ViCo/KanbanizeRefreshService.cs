@@ -309,6 +309,8 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
                 LaneId = TryGetScalar(card, "lane_id", out var laneId) ? laneId : string.Empty,
                 ColumnId = TryGetScalar(card, "column_id", out var columnId) ? columnId : string.Empty,
                 Title = TryGetScalar(card, "title", out var title) ? title : string.Empty,
+                StartDate = TryGetDate(card, "start_date"),
+                Deadline = TryGetDate(card, "deadline"),
                 Subtasks = GetSubtasks(card, isEndpointPayload: false)
             })
             .Where(card => card.Id > 0 && card.LaneId.Length > 0)
@@ -364,6 +366,21 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
             return number;
         }
         return 0;
+    }
+
+    private static DateTimeOffset? TryGetDate(JsonElement value, string name)
+    {
+        if (!TryGetScalar(value, name, out var raw) ||
+            !DateTimeOffset.TryParse(
+                raw,
+                System.Globalization.CultureInfo.InvariantCulture,
+                System.Globalization.DateTimeStyles.AssumeUniversal,
+                out var parsed))
+        {
+            return null;
+        }
+
+        return parsed;
     }
 
     private static string MapStatus(string columnId) => columnId switch

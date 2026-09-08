@@ -10,7 +10,9 @@ using VIBN_Tools.Application.View;
 using VIBN_Tools.Application.VM;
 using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
+using VIBN_Tools.ContainerGeneration.AI;
 using VIBN_Tools.ContainerToFeeVisual;
+using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.Settings;
 using VIBN_Tools.Tia.Contracts;
@@ -23,6 +25,7 @@ internal static class Program
     private static int Main()
     {
         _ = new System.Windows.Application();
+        Services.Initialize();
         var bindingTrace = PresentationTraceSources.DataBindingSource;
         var bindingErrors = new BindingErrorTraceListener();
         bindingTrace.Switch.Level = SourceLevels.Error;
@@ -36,8 +39,11 @@ internal static class Program
             if (string.Equals(feeVersionInfo.UsedSdkVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             VerifyInstalledFeeVersionRequiresSdk();
+            VerifyAutomationInstallationDiscovery();
+            VerifyNavigationPreferencePersistence();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
             VerifyExistingSignalReuseDoesNotCallUpdate();
+            VerifySignalResolutionPlanner();
             var projectPage = new ViCoPage();
             var projectViewModel = (ViCoPageVM)projectPage.DataContext;
             projectViewModel.Projects.Add(new ProjectLocation("GM1234/05-130", @"C:\Projects\GM1234\05-130"));
@@ -65,7 +71,16 @@ internal static class Program
                     new ViCoConfigurationField("STANDORT", "Werk 2", 712),
                     new ViCoConfigurationField("SW", "TIA V19 / Beckhoff TwinCAT 3", 713),
                     new ViCoConfigurationField("PROJEKT-IP", "10.20.30.40", 714),
-                    new ViCoConfigurationField("SONSTIGES", "Testdaten für die Anleitung", 715)));
+                    new ViCoConfigurationField("SONSTIGES", "Testdaten für die Anleitung", 715)),
+                ProjectCards: new[]
+                {
+                    new ViCoProjectCardInfo(
+                        901,
+                        "GM1234/05-130 Demo",
+                        "In Arbeit",
+                        new DateTimeOffset(2026, 8, 1, 0, 0, 0, TimeSpan.Zero),
+                        new DateTimeOffset(2026, 9, 30, 0, 0, 0, TimeSpan.Zero))
+                });
             var workstationRow = new ViCoWorkstationRowVM(workstation);
             workstationRow.SetOnline(true);
             workstationRow.SetRemoteSession(new ViCoRemoteSessionInfo(
@@ -75,6 +90,11 @@ internal static class Program
                 new DateTimeOffset(2026, 8, 25, 8, 30, 0, TimeSpan.Zero)));
             searchViewModel.Results.Add(workstationRow);
             searchViewModel.SelectedWorkstation = workstationRow;
+            if (searchViewModel.SelectedProjectStart != "01.08.2026" ||
+                searchViewModel.SelectedProjectEnd != "30.09.2026")
+            {
+                throw new InvalidOperationException("ViCo project dates must be displayed without a time component.");
+            }
 
             var administrationPage = new ViCoAdministrationPage();
             var administrationViewModel = (ViCoAdministrationPageVM)administrationPage.DataContext;
@@ -109,19 +129,69 @@ internal static class Program
             visualContainerViewModel.SelectedTreeNode = visualContainerViewModel.TreeRoots
                 .SelectMany(root => root.SelfAndDescendants())
                 .First(node => node.Kind == VisualNodeKind.Container);
-            if (visualContainerViewModel.SelectedTreeNode.StateBackground != "#FFFFC7CE" ||
-                visualContainerViewModel.CreateSignalsForSelection)
+            if (visualContainerViewModel.SelectedTreeNode.StateBackground != "#FFEF9A9A" ||
+                visualContainerViewModel.AvailableFeeInterfaces.All(item => !item.IsNone))
             {
                 throw new InvalidOperationException(
-                    "Visual container status or restored signal-creation selection is incorrect.");
+                    "Visual container status or explicit no-interface selection is incorrect.");
+            }
+            visualContainerViewModel.CollapseAllCommand.Execute(null);
+            if (visualContainerViewModel.TreeRoots
+                .SelectMany(root => root.SelfAndDescendants())
+                .Any(node => node.IsExpanded))
+            {
+                throw new InvalidOperationException("Visual collapse-all command left expanded nodes.");
+            }
+            visualContainerViewModel.ExpandAllCommand.Execute(null);
+            if (visualContainerViewModel.TreeRoots
+                .SelectMany(root => root.SelfAndDescendants())
+                .Any(node => !node.IsExpanded))
+            {
+                throw new InvalidOperationException("Visual expand-all command left collapsed nodes.");
             }
             var visualContainerPage = new ContainerToFeeVisualPage
             {
                 DataContext = visualContainerViewModel
             };
+            var fee2ContainerPage = new Fee2ContainerPage();
+            var fee2ContainerViewModel = (Fee2ContainerPageVM)fee2ContainerPage.DataContext;
+            if (fee2ContainerViewModel.CanExport ||
+                string.IsNullOrWhiteSpace(fee2ContainerViewModel.ExportUnavailableReason))
+            {
+                throw new InvalidOperationException(
+                    "FEE2Container export must explain why no root can be exported.");
+            }
+            var fee2SpecialDevicesPage = new Fee2SpecialDevicesPage();
+            var fee2SpecialDevicesViewModel =
+                (Fee2SpecialDevicesPageVM)fee2SpecialDevicesPage.DataContext;
+            if (fee2SpecialDevicesViewModel.CanExport ||
+                string.IsNullOrWhiteSpace(fee2SpecialDevicesViewModel.ExportUnavailableReason))
+            {
+                throw new InvalidOperationException(
+                    "FEE2SpecialDevices export must explain why no root can be exported.");
+            }
+            var aiTrainingPage = new AITrainingTestPage();
+            var aiTrainingViewModel = (AITrainingTestPageVM)aiTrainingPage.DataContext;
+            aiTrainingViewModel.RuleSuggestions.Add(new RuleSuggestion(
+                "test-rule",
+                "Testregel für WPF-Bindings",
+                "Cylinder",
+                "Ready",
+                "Slot",
+                "PLC_IN_Old",
+                "PLC_IN_New",
+                2,
+                3,
+                2d / 3d,
+                RuleSuggestionStatus.Pending));
 
             var kanbanizeCardPage = new KanbanizeCardPage();
             var kanbanizeViewModel = (KanbanizeCardPageVM)kanbanizeCardPage.DataContext;
+            if (!Uri.TryCreate(KanbanizeCardPageVM.PlanViewUrl, UriKind.Absolute, out var planUri) ||
+                planUri.Scheme != Uri.UriSchemeHttps || planUri.AbsolutePath != "/ctrl_plan/1541/")
+            {
+                throw new InvalidOperationException("Kanbanize plan-view URL is invalid.");
+            }
             // Populate the deferred DataGrid template as well: this catches
             // bindings in the coloured synchronization preview before release.
             var sourceCard = new KanbanizeCardInfo(
@@ -149,11 +219,32 @@ internal static class Program
                     sourceCard with { Id = 5712, BoardId = 1541 },
                     "UI-Prüfung einer vorhandenen Karte.",
                     schedule));
+            var relatedTargets = new[]
+            {
+                sourceCard with { Id = 6001, BoardId = 1541, CustomId = "4711", Title = "UI-Prüfung *[Gen]* CORE" },
+                sourceCard with { Id = 6002, BoardId = 1541, CustomId = "4711", Title = "UI-Prüfung - CLIENT" }
+            };
+            var relatedRow = new VibnWorkplaceSynchronizationRowVM(
+                new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.RelatedCards,
+                    sourceCard,
+                    relatedTargets[0],
+                    "Zwei Rollen gefunden.",
+                    schedule,
+                    relatedTargets));
             if (!createRow.IsSelected || deadlineRow.IsSelected)
                 throw new InvalidOperationException("Only new Kanbanize cards must be selected by default.");
+            if (createRow.SourceDeadline.Contains(':') ||
+                relatedRow.ActionText != "2 Karten gefunden" ||
+                relatedRow.ClientCount != 1 || relatedRow.CoreCount != 1 ||
+                relatedRow.ActionBackground != "#FF70AD47")
+            {
+                throw new InvalidOperationException("Kanbanize date or structured role presentation is incorrect.");
+            }
 
             kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(createRow);
             kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(deadlineRow);
+            kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Add(relatedRow);
             kanbanizeViewModel.WorkplaceSynchronization.SelectAllCommand.Execute(null);
             if (kanbanizeViewModel.WorkplaceSynchronization.PreviewItems.Any(item => item.CanSynchronize && !item.IsSelected))
                 throw new InvalidOperationException("Selecting all Kanbanize preview rows failed.");
@@ -173,6 +264,9 @@ internal static class Program
                 kanbanizeCardPage,
                 specialDevicePage,
                 visualContainerPage,
+                fee2ContainerPage,
+                aiTrainingPage,
+                new SettingsPage(),
                 new DiagnosticsPanel()
             ];
 
@@ -326,6 +420,69 @@ internal static class Program
         }
     }
 
+    private static void VerifySignalResolutionPlanner()
+    {
+        var generationInterface = new FeeInterface
+        {
+            Name = GrobGenerationInterfaceResolver.InterfaceName,
+            ProviderGuid = Defines.GrobGenerationInterfaceProviderGuid,
+            ProviderName = GrobGenerationInterfaceResolver.ProviderName,
+            Signals = []
+        };
+        var existingInterface = new FeeInterface
+        {
+            Name = "PLC Interface",
+            ProviderName = "Other.Provider",
+            Signals =
+            [
+                new FeeInterfaceSignal
+                {
+                    Guid = Guid.NewGuid(),
+                    Tag = "Ready",
+                    Address = "%I1.0"
+                }
+            ]
+        };
+        existingInterface.Signals[0].ParentInterface = existingInterface;
+        var ready = new FeeInterfaceSignal { Tag = "Ready", Address = "%I1.0" };
+        var missing = new FeeInterfaceSignal { Tag = "Missing", Address = "%I1.1" };
+        var duplicateMissing = new FeeInterfaceSignal { Tag = "Missing", Address = "%I1.1" };
+        var plan = SignalResolutionPlanner.Build(
+            [
+                new SignalResolutionRequest("container-1", "Sensor 1", ready),
+                new SignalResolutionRequest("container-2", "Sensor 2", missing),
+                new SignalResolutionRequest("container-3", "Sensor 3", duplicateMissing)
+            ],
+            [generationInterface, existingInterface]);
+        if (!plan.IsValid || plan.ExistingBindings.Count != 1 ||
+            plan.MissingSignals.Count != 1 || plan.MissingAliases.Count != 1)
+            throw new InvalidOperationException("Resolve-or-create signal planning is not deterministic.");
+
+        plan.ApplyExistingBindings();
+        if (!ready.ReuseExistingWithoutUpdate || ready.Guid != existingInterface.Signals[0].Guid ||
+            !ReferenceEquals(ready.ParentInterface, existingInterface))
+        {
+            throw new InvalidOperationException("Resolved signal identity or provenance was not retained.");
+        }
+
+        var conflict = SignalResolutionPlanner.Build(
+            [new SignalResolutionRequest(
+                "container-3",
+                "Sensor 3",
+                new FeeInterfaceSignal { Tag = "Ready", Address = "%I9.9" })],
+            [existingInterface]);
+        if (conflict.IsValid || conflict.Issues.Single().Code != "EXISTING_SIGNAL_IDENTITY_CONFLICT")
+            throw new InvalidOperationException("Conflicting tag/address identity must block before FEE writes.");
+
+        var generationResolution = GrobGenerationInterfaceResolver.Resolve(
+            [generationInterface, existingInterface]);
+        if (!generationResolution.IsValid ||
+            !ReferenceEquals(generationResolution.Interface, generationInterface))
+        {
+            throw new InvalidOperationException("Grob Generation Interface identity was not resolved strictly.");
+        }
+    }
+
     private static ContainerToFeeVisualPlanService VerifyContainerToFeeVisualPlan()
     {
         var directory = Path.Combine(
@@ -373,17 +530,31 @@ internal static class Program
                 throw new InvalidOperationException("Visual container-selection undo failed.");
             if (!service.Redo() || service.CurrentPlan!.IsGenerationSelected(container.Id))
                 throw new InvalidOperationException("Visual container-selection redo failed.");
-            if (!container.SupportsCreation || !service.SetCreationRequested(container.Id, true))
-                throw new InvalidOperationException("Visual creation request could not be enabled.");
-            if (!service.Undo() || service.CurrentPlan!.IsCreationRequested(container.Id))
+            if (!container.SupportsCreation || !service.CurrentPlan!.IsCreationRequested(container.Id))
+                throw new InvalidOperationException("Missing SimObjects must be created by default.");
+            if (!service.SetCreationRequested(container.Id, false))
+                throw new InvalidOperationException("Visual creation request could not be disabled.");
+            if (!service.Undo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
                 throw new InvalidOperationException("Visual creation-request undo failed.");
-            if (!service.Redo() || !service.CurrentPlan!.IsCreationRequested(container.Id))
+            if (!service.Redo() || service.CurrentPlan!.IsCreationRequested(container.Id))
                 throw new InvalidOperationException("Visual creation-request redo failed.");
-            if (!service.SetSignalCreation(container.Id, false) ||
-                service.CurrentPlan.ShouldCreateSignals(container.Id))
+            if (service.SetAllCreationRequested(true) != 1 ||
+                !service.CurrentPlan.IsCreationRequested(container.Id) ||
+                service.SetAllCreationRequested(false) != 1 ||
+                service.CurrentPlan.IsCreationRequested(container.Id))
             {
-                throw new InvalidOperationException("Visual signal-creation selection could not be disabled.");
+                throw new InvalidOperationException("Visual all/none creation selection is inconsistent.");
             }
+            service.SetGenerationSelected(container.Id, true);
+            var blocked = service.Validate();
+            if (!blocked.Issues.Any(issue => issue.Code == "SIM_OBJECT_TARGET_UNASSIGNED"))
+                throw new InvalidOperationException("A selected, unassigned target with creation disabled must block generation.");
+            service.SetCreationRequested(container.Id, true);
+            var creatable = service.Validate();
+            if (creatable.Issues.Any(issue => issue.Code == "SIM_OBJECT_TARGET_UNASSIGNED"))
+                throw new InvalidOperationException("A selected target with automatic creation enabled must not block generation.");
+            service.SetGenerationSelected(container.Id, false);
+            service.SetCreationRequested(container.Id, false);
             var selectedInterface = new VisualFeeInterface(
                 Guid.NewGuid().ToString("D"),
                 "Existing PLC Interface",
@@ -398,9 +569,8 @@ internal static class Program
                 .GetAwaiter()
                 .GetResult();
             if (!restoredResult.Success ||
-                restored.CurrentPlan?.IsCreationRequested(container.Id) != true ||
+                restored.CurrentPlan?.IsCreationRequested(container.Id) != false ||
                 restored.CurrentPlan.IsGenerationSelected(container.Id) ||
-                restored.CurrentPlan.ShouldCreateSignals(container.Id) ||
                 restored.CurrentPlan.ExistingInterfaceSelection?.InterfaceGuid != selectedInterface.GuidString)
                 throw new InvalidOperationException("Visual sidecar was not restored correctly.");
 
@@ -435,6 +605,87 @@ internal static class Program
             var incompleteOnly = new FeeVersionInfoProvider([incompleteNewer]).Read();
             if (!string.Equals(incompleteOnly.InstalledFeeVersion, "Nicht erkannt", StringComparison.Ordinal))
                 throw new InvalidOperationException("A FEE folder without Bin/FS.SDK.dll was accepted.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyAutomationInstallationDiscovery()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-installation-discovery-{Guid.NewGuid():N}");
+        var openness = Path.Combine(
+            directory,
+            "Siemens",
+            "Automation",
+            "Portal V20",
+            "PublicAPI",
+            "V20");
+        var twinCat = Path.Combine(directory, "Beckhoff", "TwinCAT", "3.1");
+        Directory.CreateDirectory(openness);
+        Directory.CreateDirectory(twinCat);
+        try
+        {
+            File.WriteAllText(Path.Combine(openness, "Siemens.Engineering.dll"), "fixture");
+            var discovery = new AutomationInstallationDiscovery(
+                [directory],
+                () =>
+                (
+                    [
+                        new InstalledProductEvidence(
+                            "SIMATIC WinCC Unified Runtime",
+                            "20.0.1",
+                            @"C:\Program Files\Siemens\WinCC",
+                            "fixture:wincc"),
+                        new InstalledProductEvidence(
+                            "Siemens Safety Advanced V20",
+                            "20.0",
+                            @"C:\Program Files\Siemens\Safety",
+                            "fixture:safety")
+                    ],
+                    []));
+            var inventory = discovery.Discover();
+            if (!inventory.TiaVersions.SequenceEqual(["V20"]) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TiaPortal) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TiaOpenness) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.WinCc) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.SiemensExtension) ||
+                !inventory.Components.Any(component => component.Kind == AutomationComponentKind.TwinCat))
+            {
+                throw new InvalidOperationException("Dynamic automation installation discovery missed fixture evidence.");
+            }
+            if (AutomationInstallationDiscovery.ClassifyInstalledProduct("Unrelated Editor") is not null)
+                throw new InvalidOperationException("An unrelated installed product was classified as automation software.");
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+                Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    private static void VerifyNavigationPreferencePersistence()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"vibn-navigation-{Guid.NewGuid():N}");
+        var path = Path.Combine(directory, "navigation.json");
+        try
+        {
+            var store = new JsonNavigationPreferenceStore(path);
+            if (!store.LoadExpanded())
+                throw new InvalidOperationException("A new navigation preference must default to expanded.");
+            store.SaveExpanded(false);
+            var reloaded = new JsonNavigationPreferenceStore(path);
+            if (reloaded.LoadExpanded())
+                throw new InvalidOperationException("The collapsed navigation preference was not persisted.");
+
+            var viewModel = new MainWindowVM(reloaded);
+            if (viewModel.IsNavigationExpanded)
+                throw new InvalidOperationException("MainWindowVM did not load the collapsed navigation preference.");
+            viewModel.ToggleNavigationCommand.Execute(null);
+            if (!viewModel.IsNavigationExpanded || !new JsonNavigationPreferenceStore(path).LoadExpanded())
+                throw new InvalidOperationException("The navigation toggle did not persist its updated state.");
         }
         finally
         {

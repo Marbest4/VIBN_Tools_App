@@ -18,7 +18,9 @@ public enum VibnWorkplaceSynchronizationAction
 {
     Create,
     UpdateDeadline,
+    UpdatePrimaryTitle,
     Unchanged,
+    RelatedCards,
     Conflict
 }
 
@@ -34,7 +36,9 @@ public sealed record VibnWorkplaceSynchronizationItem(
     KanbanizeCardInfo SourceCard,
     KanbanizeCardInfo? TargetCard,
     string Message,
-    VibnWorkplaceSchedule? Schedule = null);
+    VibnWorkplaceSchedule? Schedule = null,
+    IReadOnlyList<KanbanizeCardInfo>? RelatedTargetCards = null,
+    string? ProposedTitle = null);
 
 /// <summary>
 /// Read-only result of comparing virtual-commissioning cards with generated
@@ -48,11 +52,15 @@ public sealed record VibnWorkplaceSynchronizationPreview(
 
     public int DeadlineUpdateCount => Items.Count(item => item.Action == VibnWorkplaceSynchronizationAction.UpdateDeadline);
 
+    public int TitleUpdateCount => Items.Count(item => item.Action == VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle);
+
     public int UnchangedCount => Items.Count(item => item.Action == VibnWorkplaceSynchronizationAction.Unchanged);
+
+    public int RelatedCardsCount => Items.Count(item => item.Action == VibnWorkplaceSynchronizationAction.RelatedCards);
 
     public int ConflictCount => Items.Count(item => item.Action == VibnWorkplaceSynchronizationAction.Conflict);
 
-    public bool HasChanges => CreateCount > 0 || DeadlineUpdateCount > 0;
+    public bool HasChanges => CreateCount > 0 || DeadlineUpdateCount > 0 || TitleUpdateCount > 0;
 }
 
 /// <summary>Outcome of an explicit write operation, including isolated per-card failures.</summary>
@@ -60,6 +68,7 @@ public sealed record VibnWorkplaceSynchronizationResult(
     VibnWorkplaceSynchronizationPreview Preview,
     int CreatedCount,
     int DeadlineUpdateCount,
+    int TitleUpdateCount,
     IReadOnlyList<string> Failures);
 
 /// <summary>
@@ -92,7 +101,8 @@ public static class VibnWorkplaceSynchronizationPolicy
     public const int DefaultSourceBoardId = 1392;
     public const int DefaultTargetBoardId = 1541;
     public const int ExcludedArchiveColumnId = 25236;
-    public const string RequiredSourceTitleFragment = "Grundinbetriebnahme";
+    public const string CommissioningSourceTitleFragment = "Grundinbetriebnahme";
+    public const string MaintenanceSourceTitleFragment = "Nachpflege";
     public const string ExcludedSourceTitleFragment = "Vorlage";
     /// <summary>
     /// Existing start-date custom field of the workplace board. The value is
@@ -106,18 +116,35 @@ public static class VibnWorkplaceSynchronizationPolicy
     /// <summary>Only genuine virtual-commissioning cards from active source columns are synchronized.</summary>
     public static bool IsEligibleSourceCard(KanbanizeCardInfo card) =>
         card.ColumnId != ExcludedArchiveColumnId &&
-        card.Title.Contains(RequiredSourceTitleFragment, StringComparison.OrdinalIgnoreCase) &&
+        (card.Title.Contains(CommissioningSourceTitleFragment, StringComparison.OrdinalIgnoreCase) ||
+         card.Title.Contains(MaintenanceSourceTitleFragment, StringComparison.OrdinalIgnoreCase)) &&
         !card.Title.Contains(ExcludedSourceTitleFragment, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Retains the recognizable title convention of the preceding tool without
     /// ever changing an existing target title during later synchronizations.
     /// </summary>
-    public static string GetGeneratedTitle(string sourceTitle) =>
-        sourceTitle.Replace(
-            "[VIBN] Grundinbetriebnahme",
-            "*[Gen]*",
-            StringComparison.OrdinalIgnoreCase);
+    public static string GetGeneratedTitle(string sourceTitle)
+    {
+        var title = sourceTitle.Trim();
+        foreach (var prefix in new[]
+                 {
+                     $"[VIBN] {CommissioningSourceTitleFragment}",
+                     $"[VIBN] {MaintenanceSourceTitleFragment}"
+                 })
+        {
+            if (title.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                title = title[prefix.Length..].Trim(' ', '-', ':');
+                break;
+            }
+        }
+
+        return string.IsNullOrWhiteSpace(title) ? "*[Gen]*" : $"{title} *[Gen]*";
+    }
+
+    public static GeneratedCardTitleInfo ParseGeneratedTitle(string title) =>
+        GeneratedCardTitleInfo.Parse(title);
 
     /// <summary>
     /// Compares the local calendar date only. Kanbanize may return different
@@ -183,6 +210,60 @@ public static class VibnWorkplaceSynchronizationPolicy
 }
 
 /// <summary>
+/// Structured interpretation of generated and copied workplace-card titles.
+/// It supports the current trailing *[Gen]* marker, the historical leading
+/// marker, and extensible trailing role names such as CLIENT or ROBOTER.
+/// </summary>
+public sealed record GeneratedCardTitleInfo(
+    string BaseTitle,
+    string Role,
+    bool HasGeneratedMarker)
+{
+    public const string DefaultRole = "GEN";
+
+    public static GeneratedCardTitleInfo Parse(string title)
+    {
+        var value = (title ?? string.Empty).Trim();
+        var markerIndex = value.LastIndexOf("[Gen]", StringComparison.OrdinalIgnoreCase);
+        if (markerIndex >= 0)
+        {
+            var before = value[..markerIndex].Trim(' ', '-', '*');
+            var after = value[(markerIndex + "[Gen]".Length)..].Trim(' ', '-', '*');
+            if (string.IsNullOrWhiteSpace(before))
+                return new GeneratedCardTitleInfo(after, DefaultRole, true);
+            return new GeneratedCardTitleInfo(
+                before,
+                string.IsNullOrWhiteSpace(after) ? DefaultRole : NormalizeRole(after),
+                true);
+        }
+
+        var separator = value.LastIndexOf(" - ", StringComparison.Ordinal);
+        if (separator > 0)
+        {
+            var possibleRole = value[(separator + 3)..].Trim();
+            if (IsRoleToken(possibleRole))
+            {
+                return new GeneratedCardTitleInfo(
+                    value[..separator].Trim(),
+                    NormalizeRole(possibleRole),
+                    false);
+            }
+        }
+
+        return new GeneratedCardTitleInfo(value, DefaultRole, false);
+    }
+
+    public string IdentityKey => BaseTitle.Trim().ToUpperInvariant();
+
+    private static bool IsRoleToken(string value) =>
+        value.Length is > 0 and <= 32 &&
+        value.All(character => char.IsUpper(character) || char.IsDigit(character) ||
+                               character is '_' or '-' || char.IsWhiteSpace(character));
+
+    private static string NormalizeRole(string value) => value.Trim().ToUpperInvariant();
+}
+
+/// <summary>
 /// Core orchestrator for the VIBN workplace synchronization. It takes a fresh
 /// snapshot for every explicit run, serializes local runs and touches external
 /// state through <see cref="IKanbanizeCardService"/> only.
@@ -226,6 +307,7 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
             var preview = await BuildPreviewAsync(settings, cancellationToken);
             var createdCount = 0;
             var deadlineUpdateCount = 0;
+            var titleUpdateCount = 0;
             var failures = new List<string>();
 
             foreach (var item in preview.Items.Where(item => selectedIds.Contains(item.SourceCard.Id)))
@@ -256,6 +338,14 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
                                 cancellationToken);
                             deadlineUpdateCount++;
                             break;
+
+                        case VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle:
+                            await _cards.UpdateGeneratedTitleAsync(
+                                item.TargetCard!.Id,
+                                item.ProposedTitle!,
+                                cancellationToken);
+                            titleUpdateCount++;
+                            break;
                     }
                 }
                 catch (OperationCanceledException)
@@ -272,6 +362,7 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
                 preview,
                 createdCount,
                 deadlineUpdateCount,
+                titleUpdateCount,
                 failures);
         }
         finally
@@ -307,6 +398,12 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
             .Where(card => !string.IsNullOrWhiteSpace(card.Title))
             .GroupBy(card => card.Title.Trim(), StringComparer.OrdinalIgnoreCase)
             .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.OrdinalIgnoreCase);
+        var targetCardsByIdentity = targetCards
+            .Where(card => !string.IsNullOrWhiteSpace(card.Title))
+            .GroupBy(
+                card => VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(card.Title).IdentityKey,
+                StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.ToArray(), StringComparer.Ordinal);
         var items = new List<VibnWorkplaceSynchronizationItem>(eligibleSourceCards.Length);
 
         foreach (var sourceCard in eligibleSourceCards)
@@ -326,8 +423,16 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
 
             var sourceId = sourceCard.Id.ToString(System.Globalization.CultureInfo.InvariantCulture);
             var generatedTitle = VibnWorkplaceSynchronizationPolicy.GetGeneratedTitle(sourceCard.Title).Trim();
-            if (!targetCardsBySourceId.TryGetValue(sourceId, out var matchingTargets) &&
-                !targetCardsByTitle.TryGetValue(generatedTitle, out matchingTargets))
+            targetCardsBySourceId.TryGetValue(sourceId, out var targetsBySourceId);
+            var generatedIdentity = VibnWorkplaceSynchronizationPolicy
+                .ParseGeneratedTitle(generatedTitle)
+                .IdentityKey;
+            targetCardsByIdentity.TryGetValue(generatedIdentity, out var targetsByIdentity);
+            var matchingTargets = (targetsBySourceId ?? Array.Empty<KanbanizeCardInfo>())
+                .Concat(targetsByIdentity ?? Array.Empty<KanbanizeCardInfo>())
+                .DistinctBy(card => card.Id)
+                .ToArray();
+            if (matchingTargets.Length == 0)
             {
                 items.Add(new VibnWorkplaceSynchronizationItem(
                     VibnWorkplaceSynchronizationAction.Create,
@@ -338,14 +443,95 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
                 continue;
             }
 
-            if (matchingTargets.Length != 1)
+            var sameTitleDifferentSourceId = matchingTargets.Any(target =>
+                targetCardsByTitle.TryGetValue(target.Title.Trim(), out var equalTitles) &&
+                equalTitles
+                    .Select(card => card.CustomId?.Trim())
+                    .Where(customId => !string.IsNullOrWhiteSpace(customId))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .Count() > 1);
+            if (sameTitleDifferentSourceId)
             {
                 items.Add(new VibnWorkplaceSynchronizationItem(
                     VibnWorkplaceSynchronizationAction.Conflict,
                     sourceCard,
                     null,
-                    $"{matchingTargets.Length} Zielkarten verwenden dieselbe Quellkarten-ID oder denselben generierten Titel; keine Änderung durchgeführt.",
-                    schedule));
+                    "Mindestens zwei Zielkarten besitzen denselben Namen, aber unterschiedliche Quellkarten-IDs; keine Änderung durchgeführt.",
+                    schedule,
+                    matchingTargets));
+                continue;
+            }
+
+            var roleGroups = matchingTargets
+                .GroupBy(card => VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(card.Title).Role)
+                .ToDictionary(group => group.Key, group => group.Count(), StringComparer.OrdinalIgnoreCase);
+            if (roleGroups.TryGetValue("CORE", out var coreCount) && coreCount > 1)
+            {
+                items.Add(new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.Conflict,
+                    sourceCard,
+                    null,
+                    $"CORE ist für dieselbe Quellkarte {coreCount}-mal vorhanden; keine Änderung durchgeführt.",
+                    schedule,
+                    matchingTargets));
+                continue;
+            }
+
+            var conflictingSchedules = matchingTargets
+                .GroupBy(card => new { card.LaneId, Title = card.Title.Trim().ToUpperInvariant() })
+                .Any(group => group.Count() > 1 && group
+                    .Select(card => new
+                    {
+                        Start = card.StartDate?.ToLocalTime().Date,
+                        End = card.Deadline?.ToLocalTime().Date
+                    })
+                    .Distinct()
+                    .Count() > 1);
+            if (conflictingSchedules)
+            {
+                items.Add(new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.Conflict,
+                    sourceCard,
+                    null,
+                    "Karten mit derselben Quellkarten-ID liegen auf derselben Lane, heißen gleich, besitzen aber unterschiedliche Start- oder Endtermine.",
+                    schedule,
+                    matchingTargets));
+                continue;
+            }
+
+            if (matchingTargets.Length > 1)
+            {
+                var primaryWithoutRole = matchingTargets.FirstOrDefault(card =>
+                {
+                    var parsed = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(card.Title);
+                    return parsed.HasGeneratedMarker && parsed.Role == GeneratedCardTitleInfo.DefaultRole;
+                });
+                if (primaryWithoutRole is not null && !roleGroups.ContainsKey("CORE"))
+                {
+                    var parsed = VibnWorkplaceSynchronizationPolicy.ParseGeneratedTitle(primaryWithoutRole.Title);
+                    var proposedTitle = $"{parsed.BaseTitle} *[Gen]* CORE";
+                    items.Add(new VibnWorkplaceSynchronizationItem(
+                        VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle,
+                        sourceCard,
+                        primaryWithoutRole,
+                        $"{matchingTargets.Length} zugehörige Karten gefunden; die Hauptkarte erhält zur eindeutigen Rollenkennzeichnung den Zusatz CORE.",
+                        schedule,
+                        matchingTargets,
+                        proposedTitle));
+                    continue;
+                }
+
+                var roles = string.Join(
+                    ", ",
+                    roleGroups.OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
+                        .Select(group => $"{group.Key}: {group.Value}"));
+                items.Add(new VibnWorkplaceSynchronizationItem(
+                    VibnWorkplaceSynchronizationAction.RelatedCards,
+                    sourceCard,
+                    matchingTargets[0],
+                    $"{matchingTargets.Length} zugehörige Karten gefunden ({roles}); kein Konflikt und keine automatische Änderung.",
+                    schedule,
+                    matchingTargets));
                 continue;
             }
 

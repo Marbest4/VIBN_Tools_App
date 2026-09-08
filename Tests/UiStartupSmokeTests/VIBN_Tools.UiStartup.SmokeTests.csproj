@@ -11,4 +11,12 @@
   <ItemGroup>
     <ProjectReference Include="..\..\VIBN_Tools.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- WPF startup and FEE-version discovery exercise vendor-backed types.
+         Direct DLL references are not transitive through ProjectReference. -->
+    <Content Include="..\..\SDK\FS.*.dll"
+             Link="%(Filename)%(Extension)"
+             CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

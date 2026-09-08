@@ -10,11 +10,12 @@ Die Solution verbindet die bestehende VIBN-Tools-Oberfläche mit ViCo, Kanbanize
 | --- | --- | --- |
 | Project Settings | FEE-PC wählen, Verbindung bestätigen, Projektbasis anlegen | `SettingsPageVM`, `FeeConnectionService`, `WorkstationDirectory` |
 | ViCo Übersicht | Arbeitsplätze, Belegung, Projekte, Konfiguration, RDP und Pfade | `ViCoSearchPageVM`, `ViCoWorkstationRowVM`, `LegacyWorkstationCatalog` |
-| ViCo Projekte/Transfer | Projekte öffnen, Favoriten speichern, Dateien übertragen | `ViCoPageVM`, `ViCoCopyPageVM`, `BoundedFileCopyService` |
-| ViCo TIA | PLC-, Bibliotheks- und Achsenfunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
-| ViCo Verwaltung | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
+| ViCo Projekte | Projekte öffnen und Favoriten speichern | `ViCoPageVM` |
+| Transfer | Dateien und Ordner übertragen | `ViCoCopyPageVM`, `BoundedFileCopyService` |
+| TIA Portal | PLC-, Bibliotheks- und Achsenfunktionen | `TiaPortalPageVM`, TIA Client/Bridge |
+| Administration | Rollen, Outlook-Termine, Versionen | `ViCoAdministrationPageVM`, `JsonViCoUserRoleStore` |
 | Kanbanize | sichere VIBN-Übernahme und eigene Karten | `VibnWorkplaceSynchronizationService`, `KanbanizeCardApiService` |
-| Special Devices | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
+| SpecialDevices2FEE | manuelle und TIA-basierte Geräteerzeugung; einzige Hardwareansicht | `SpecialDevicePageVM`, `SpecialDeviceHardwareImportVM`, `DeviceFactory` |
 | Container2FEE Visual | zusätzlicher XML-Plan, Sidecar und typgeprüftes Drag-and-drop bei unverändertem Executor | `ContainerToFeeVisual/*`, `ContainerToFeeVisualPageVM` |
 | IBN Remote | getrennte schreibgeschützte Arbeitsplatz-/RDP-Einzeldatei ohne Volltool und Hersteller-SDKs | `VIBN_Tools.IbnRemote`, `VIBN_Tools.IbnRemote.Infrastructure` |
 | bestehende VIBN-Reiter | CAD, Zuli, Container, Modell und Schnittstellen | bestehende ViewModels und FEE-Services |

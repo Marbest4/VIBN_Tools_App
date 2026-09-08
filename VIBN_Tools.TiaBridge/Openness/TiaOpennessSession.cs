@@ -351,11 +351,32 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         CreateFolder(ResolveGroup(software.TypeGroup, payload.ParentPath), payload.Name);
     }
 
-    public IReadOnlyList<TiaAxisInfo> ConfigureAxes()
+    public IReadOnlyList<TiaAxisInfo> ListAxes()
     {
         dynamic software = RequireSelectedSoftware();
         var axes = new List<TiaAxisInfo>();
-        ProcessTechnologyGroup(software.TechnologicalObjectGroup, axes);
+        ProcessTechnologyGroup(software.TechnologicalObjectGroup, string.Empty, axes, null);
+        return axes;
+    }
+
+    public IReadOnlyList<TiaAxisInfo> ConfigureAxes(TiaAxisConfigurationPayload payload)
+    {
+        if (payload == null)
+            throw new ArgumentNullException(nameof(payload));
+
+        var selectedIds = new HashSet<string>(
+            payload.AxisIds.Where(id => !string.IsNullOrWhiteSpace(id)),
+            StringComparer.OrdinalIgnoreCase);
+        if (selectedIds.Count == 0)
+            return Array.Empty<TiaAxisInfo>();
+
+        dynamic software = RequireSelectedSoftware();
+        var axes = new List<TiaAxisInfo>();
+        ProcessTechnologyGroup(software.TechnologicalObjectGroup, string.Empty, axes, selectedIds);
+        var foundIds = axes.Select(axis => axis.Id).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var missing = selectedIds.Where(id => !foundIds.Contains(id)).OrderBy(id => id).ToArray();
+        if (missing.Length > 0)
+            throw new InvalidOperationException($"Ausgewählte TIA-Achsen wurden nicht gefunden: {string.Join(", ", missing)}");
         return axes;
     }
 
@@ -675,8 +696,17 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         parent.Groups.Create(name);
     }
 
-    private static void ProcessTechnologyGroup(dynamic group, ICollection<TiaAxisInfo> axes)
+    private static void ProcessTechnologyGroup(
+        dynamic group,
+        string parentPath,
+        ICollection<TiaAxisInfo> axes,
+        ISet<string>? selectedIds)
     {
+        var groupName = ReadStringMember(group, "Name");
+        var groupPath = string.IsNullOrWhiteSpace(groupName)
+            ? parentPath
+            : string.IsNullOrWhiteSpace(parentPath) ? groupName : $"{parentPath}/{groupName}";
+
         if (HasProperty(group, "TechnologicalObjects"))
         {
             foreach (dynamic technologyObject in group.TechnologicalObjects)
@@ -686,8 +716,20 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
                     continue;
 
                 var name = Convert.ToString(technologyObject.Name) ?? string.Empty;
-                axes.Add(new TiaAxisInfo { Name = name, TechnologyType = technologyType });
-                ConfigureAxisParameters(technologyObject, name);
+                var id = string.IsNullOrWhiteSpace(groupPath) ? name : $"{groupPath}/{name}";
+                if (selectedIds is not null && !selectedIds.Contains(id))
+                    continue;
+
+                var axis = new TiaAxisInfo
+                {
+                    Id = id,
+                    Name = name,
+                    TechnologyType = technologyType,
+                    GroupPath = groupPath
+                };
+                if (selectedIds is not null)
+                    axis.ParameterResults.AddRange(ConfigureAxisParameters(technologyObject, name));
+                axes.Add(axis);
             }
         }
 
@@ -695,10 +737,10 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             return;
 
         foreach (dynamic child in group.Groups)
-            ProcessTechnologyGroup(child, axes);
+            ProcessTechnologyGroup(child, groupPath, axes, selectedIds);
     }
 
-    private static void ConfigureAxisParameters(dynamic technologyObject, string axisName)
+    private static IReadOnlyList<TiaAxisParameterResult> ConfigureAxisParameters(dynamic technologyObject, string axisName)
     {
         var linear = axisName.IndexOf("X", StringComparison.OrdinalIgnoreCase) >= 0 ||
                      axisName.IndexOf("Y", StringComparison.OrdinalIgnoreCase) >= 0 ||
@@ -719,20 +761,43 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
             ["PositionControl.EnableDSC"] = 0
         };
 
+        var results = new List<TiaAxisParameterResult>();
+
         foreach (dynamic parameter in technologyObject.Parameters)
         {
+            var name = string.Empty;
+            object? value = null;
             try
             {
-                var name = Convert.ToString(parameter.GetAttribute("Name"));
-                object value = null!;
-                if (name != null && parameterValues.TryGetValue(name, out value))
-                    parameter.Value = value;
+                name = Convert.ToString(parameter.GetAttribute("Name")) ?? string.Empty;
+                if (!parameterValues.TryGetValue(name, out value))
+                    continue;
+
+                parameter.Value = value;
+                results.Add(new TiaAxisParameterResult
+                {
+                    Name = name,
+                    Value = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    Success = true
+                });
             }
             catch (Exception exception)
             {
-                Console.Error.WriteLine($"Could not configure axis parameter: {exception.Message}");
+                if (value is null)
+                    continue;
+                var root = Unwrap(exception);
+                results.Add(new TiaAxisParameterResult
+                {
+                    Name = name,
+                    Value = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty,
+                    Success = false,
+                    Error = root.Message
+                });
+                Console.Error.WriteLine($"Could not configure axis parameter '{name}' on '{axisName}': {root.Message}");
             }
         }
+
+        return results;
     }
 
     private static object GetProperty(object target, string propertyName)

@@ -280,7 +280,7 @@
                         </Grid.ColumnDefinitions>
 
                         <ux:TextBox Grid.Column="0" Margin="5,5,5,25" Watermark="Path to Robot CSV File" Text="{Binding FileNameRobotCsv}" IsReadOnly="True"/>
-                        <ux:Button Grid.Column="1" Margin="5,5,5,25" Content="Open Robot CSV" Command="{Binding OpenRobotCsv}" IsEnabled="{Binding EnableOpenRobotCsv}" DebounceInterval="150"/>
+                        <ux:Button Grid.Column="1" Margin="5,5,5,25" Content="Open Robot CSV" Command="{Binding OpenRobotCsv}" IsEnabled="{Binding EnableOpenRobotCsv}" DebounceInterval="150" ToolTip="Die Datei kann während der laufenden Roboterverarbeitung nicht gewechselt werden." ToolTipService.ShowOnDisabled="True"/>
                     </Grid>
 
                     <UniformGrid Grid.Row="1" Rows="2" Columns="2" Grid.ColumnSpan="3">
@@ -466,7 +466,7 @@
                         </Grid.ColumnDefinitions>
 
                         <ux:TextBox Grid.Column="0" Margin="5,5,5,25" Watermark="Path to Axis Composition File" Text="{Binding FileNameAxisCompositionCsv}" IsReadOnly="True"/>
-                        <ux:Button Grid.Column="1" Margin="5,5,5,25" Content="Open Axis File" Command="{Binding OpenAxisCompositionCsv}" IsEnabled="{Binding EnableOpenAxisCompositionCsv}" DebounceInterval="150"/>
+                        <ux:Button Grid.Column="1" Margin="5,5,5,25" Content="Open Axis File" Command="{Binding OpenAxisCompositionCsv}" IsEnabled="{Binding EnableOpenAxisCompositionCsv}" DebounceInterval="150" ToolTip="Die Datei kann während der laufenden Achsverarbeitung nicht gewechselt werden." ToolTipService.ShowOnDisabled="True"/>
                     </Grid>
 
                     <!--Axis Composition Selection (Row 1, Column 0)-->

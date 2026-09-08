@@ -47,6 +47,9 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
         SelectPlcCommand = GetCommandBindingAsync(SelectPlcAsync);
         LoadBlocksCommand = GetCommandBindingAsync(LoadBlocksAsync);
         LoadDataTypesCommand = GetCommandBindingAsync(LoadDataTypesAsync);
+        LoadAxesCommand = GetCommandBindingAsync(LoadAxesAsync);
+        SelectAllAxesCommand = GetCommandBinding(() => SetAllAxesSelected(true));
+        SelectNoAxesCommand = GetCommandBinding(() => SetAllAxesSelected(false));
         ConfigureAxesCommand = GetCommandBindingAsync(ConfigureAxesAsync);
         SaveCommand = GetCommandBindingAsync(SaveAsync);
         BrowseImportCommand = GetCommandBinding(BrowseImport);
@@ -61,7 +64,7 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     public ObservableCollection<TiaProgramItemInfo> ProgramItems { get; } = new();
 
-    public ObservableCollection<TiaAxisInfo> Axes { get; } = new();
+    public ObservableCollection<TiaAxisSelectionRowVM> Axes { get; } = new();
 
     public ICommand ConnectCommand { get; }
 
@@ -70,6 +73,12 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
     public ICommand LoadBlocksCommand { get; }
 
     public ICommand LoadDataTypesCommand { get; }
+
+    public ICommand LoadAxesCommand { get; }
+
+    public ICommand SelectAllAxesCommand { get; }
+
+    public ICommand SelectNoAxesCommand { get; }
 
     public ICommand ConfigureAxesCommand { get; }
 
@@ -246,12 +255,58 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     private async Task ConfigureAxesAsync()
     {
+        var selectedIds = Axes.Where(axis => axis.IsSelected).Select(axis => axis.Id).ToArray();
+        if (selectedIds.Length == 0)
+        {
+            StatusText = "Keine Achse ausgewählt. Es wurden keine TIA-Parameter geändert.";
+            _log.Warning("TIA Portal", StatusText);
+            return;
+        }
+
         await RunBusyAsync("Achsen werden für die Simulation konfiguriert …", async () =>
         {
-            var axes = await _client.ConfigureAxesAsync();
-            Replace(Axes, axes);
-            StatusText = $"{axes.Count} Achse(n) konfiguriert.";
+            var configured = await _client.ConfigureAxesAsync(selectedIds);
+            foreach (var result in configured)
+                Axes.FirstOrDefault(axis => string.Equals(axis.Id, result.Id, StringComparison.OrdinalIgnoreCase))
+                    ?.ApplyConfigurationResult(result);
+
+            var successfulParameters = configured.Sum(axis => axis.ParameterResults.Count(result => result.Success));
+            var failedParameters = configured.Sum(axis => axis.ParameterResults.Count(result => !result.Success));
+            StatusText = $"{configured.Count} Achse(n) verarbeitet: {successfulParameters} Parameter gesetzt, {failedParameters} fehlgeschlagen.";
+            _log.Information("TIA Portal", StatusText);
+            foreach (var axis in configured)
+            {
+                var details = axis.ParameterResults.Count == 0
+                    ? "keine unterstützten Parameter gefunden"
+                    : string.Join(", ", axis.ParameterResults.Select(result =>
+                        result.Success
+                            ? $"{result.Name}={result.Value}"
+                            : $"{result.Name} FEHLER: {result.Error}"));
+                if (axis.ParameterResults.Count == 0 || axis.ParameterResults.Any(result => !result.Success))
+                    _log.Warning("TIA Achsenkonfiguration", $"{axis.Id}: {details}");
+                else
+                    _log.Information("TIA Achsenkonfiguration", $"{axis.Id}: {details}");
+            }
         });
+    }
+
+    private async Task LoadAxesAsync()
+    {
+        await RunBusyAsync("Achsen werden schreibgeschützt gelesen …", async () =>
+        {
+            var axes = await _client.ListAxesAsync();
+            Replace(Axes, axes.Select(axis => new TiaAxisSelectionRowVM(axis)));
+            StatusText = $"{Axes.Count} Achse(n) gelesen. Das TIA-Projekt wurde nicht verändert.";
+        });
+    }
+
+    private void SetAllAxesSelected(bool selected)
+    {
+        foreach (var axis in Axes)
+            axis.IsSelected = selected;
+        StatusText = selected
+            ? $"Alle {Axes.Count} Achse(n) zur Konfiguration ausgewählt."
+            : "Keine Achse ausgewählt. Die Konfiguration würde nichts ändern.";
     }
 
     private async Task SaveAsync()
@@ -362,5 +417,61 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
         target.Clear();
         foreach (var value in values)
             target.Add(value);
+    }
+}
+
+public sealed class TiaAxisSelectionRowVM : MvvmBase
+{
+    private bool _isSelected = true;
+    private string _result = "Nur gelesen";
+
+    public TiaAxisSelectionRowVM(TiaAxisInfo axis)
+    {
+        Axis = axis ?? throw new ArgumentNullException(nameof(axis));
+    }
+
+    public TiaAxisInfo Axis { get; private set; }
+
+    public string Id => Axis.Id;
+
+    public string Name => Axis.Name;
+
+    public string TechnologyType => Axis.TechnologyType;
+
+    public string GroupPath => Axis.GroupPath;
+
+    public bool IsSelected
+    {
+        get => _isSelected;
+        set
+        {
+            if (_isSelected == value)
+                return;
+            _isSelected = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public string Result
+    {
+        get => _result;
+        private set
+        {
+            _result = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public void ApplyConfigurationResult(TiaAxisInfo result)
+    {
+        Axis = result;
+        var successful = result.ParameterResults.Count(parameter => parameter.Success);
+        var failed = result.ParameterResults.Count - successful;
+        Result = result.ParameterResults.Count == 0
+            ? "Keine unterstützten Parameter gefunden"
+            : failed == 0
+                ? $"{successful} Parameter gesetzt"
+                : $"{successful} gesetzt, {failed} fehlgeschlagen";
+        OnPropertyChanged(nameof(Axis));
     }
 }

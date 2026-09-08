@@ -58,7 +58,7 @@ sequenceDiagram
     end
 ```
 
-Die alternative Schaltfläche „RDP mit Anmeldedaten“ ruft denselben RDP-Adapter mit `prompt for credentials:i:1` ohne temporären Eintrag auf. Project Settings beziehungsweise die IBN-Konfiguration schreibt oder löscht `VIBN_RDP_PASSWORD` für den aktuellen Windows-Benutzer, ohne eine Shell zu starten. Der normale Start liest diesen Wert, erzeugt `TERMSRV/<PC>` unmittelbar vor `mstsc` und löscht den Eintrag nach 20 Sekunden. Das Kennwort landet nie im `.rdp`-Profil, Cache oder Log.
+Die alternative Schaltfläche „RDP mit Anmeldedaten“ ruft denselben RDP-Adapter mit `prompt for credentials:i:1` ohne temporären Eintrag auf. Project Settings beziehungsweise die IBN-Konfiguration schreibt oder löscht das RDP-Passwort im lokalen Windows Credential Manager des aktuellen Benutzers. Der normale Start liest diesen Wert über den zentralen Credential-Service, erzeugt `TERMSRV/<PC>` unmittelbar vor `mstsc` und löscht den temporären RDP-Eintrag nach 20 Sekunden; der dauerhafte VIBN-Tools-Eintrag bleibt bestehen. Das Kennwort landet nie im `.rdp`-Profil, Cache oder Log.
 
 ## Kanbanize VIBN → Arbeitsplätze
 
@@ -77,7 +77,7 @@ flowchart TD
 
 Die Formel ist Start = Quell-Deadline − 14 Tage, Ende = Deadline derselben Quellkarte + 56 Tage. Eine fehlende Quell-Deadline oder mehrere passende Zielkarten sind Konflikte ohne Schreiboperation.
 
-## TIA-Hardware und Special Devices
+## TIA-Hardware und SpecialDevices2FEE
 
 ```mermaid
 flowchart LR
@@ -99,8 +99,7 @@ flowchart LR
     J[Windows-Benutzer] --> R[roles.json]
     R --> P[ViCoRolePolicy]
     P --> M[MainWindowVM]
-    P --> V[ViCoWorkspacePageVM]
     P --> A[ViCoAdministrationPageVM]
 ```
 
-Die gleiche Policy regelt Hauptreiter, Verwaltungsreiter und Schreibrecht. Beim Speichern validiert sie `lutzma` als Level9 und mindestens zwei unterschiedliche Level9-Benutzer.
+Die gleiche Policy regelt die Hauptreiter und das Schreibrecht. Administration ist nur mit Level9 sichtbar. Beim Speichern validiert die Policy `lutzma` als Level9 und mindestens zwei unterschiedliche Level9-Benutzer.

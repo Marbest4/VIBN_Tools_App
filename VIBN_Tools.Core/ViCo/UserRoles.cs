@@ -29,6 +29,13 @@ public static class ViCoRolePolicy
     /// </summary>
     public const int MinimumLevel9Users = 2;
 
+    /// <summary>
+    /// Evaluates a normalized or persisted role without duplicating numeric
+    /// parsing rules in individual navigation view models.
+    /// </summary>
+    public static bool HasMinimumLevel(string? level, int minimumLevel) =>
+        ParseLevel(level) >= minimumLevel;
+
     public static string GetEffectiveLevel(string userName, string? persistedLevel) =>
         IsMandatoryLevel9User(userName) ? "Level9" : NormalizeLevel(persistedLevel);
 

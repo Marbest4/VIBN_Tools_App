@@ -20,8 +20,9 @@
 | Workplace card schedule | VIBN source + single VIBN template deadline | source −14 days, template +56 days |
 | Authorization | central `roles.json` | `lutzma` is Level9; at least two Level9 users on save |
 | TIA hardware | all project devices via Openness; selected PLC is sorted first | read-only device/module tree, GSD/network metadata, slot/subslot and byte address data before FEE creation |
-| ViCo refresh interval | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes, default 5; atomic local write |
-| Kanbanize/RDP configuration | current Windows user's environment | UI writes/deletes values; live adapters resolve the API key per request |
+| ViCo refresh/display preferences | `%LOCALAPPDATA%/GROB/VIBN_Tools/ViCo/user-preferences.json` | 1–1440 minutes plus optional-column visibility; atomic local write |
+| FEE/Kanbanize/RDP configuration | current Windows user's Credential Manager | UI writes/deletes generic credentials; live adapters resolve values only for the action |
+| Navigation width | `%LOCALAPPDATA%/GROB/VIBN_Tools/navigation-preferences.json` | expanded/collapsed boolean only; atomic local write |
 
 ## Reliability and performance
 
@@ -32,7 +33,8 @@
 - TIA stays outside the WPF process and bridge failures are caught at view-model boundaries.
 - WPF grids use virtualization and deferred tab templates are covered by a UI startup test.
 - The main window uses practical minimum dimensions; data grids keep their own virtualization/scrolling and detail panels scroll independently.
+- `MainWindowVM` owns the navigation-width state; only TabItem header text is collapsed, while icons, content and role visibility remain intact.
 
 ## Remote Desktop credential boundary
 
-The `.rdp` profile contains only host, Kanbanize-selected user, monitor selection and prompt mode. The automatic action reads `VIBN_RDP_PASSWORD` from the signed-in user's environment, creates `TERMSRV/<host>` through `cmdkey`, launches `mstsc`, and removes that entry after 20 seconds. Project Settings and the IBN UI manage the same per-user environment value without starting a shell and never log or display it. This removes manual setup, but an environment variable is not a dedicated secrets vault. The password is never part of source, cache, role data, RDP file or Kanbanize payloads. The prompted action does not create a credential entry.
+The `.rdp` profile contains only host, Kanbanize-selected user, monitor selection and prompt mode. Project Settings stores FEE credentials, the API key and RDP password as generic entries in the signed-in user's Windows Credential Manager; the IBN UI uses the same API/RDP entries. The automatic action reads the password through the credential service, creates `TERMSRV/<host>` through `cmdkey`, launches `mstsc`, and removes only that transient RDP entry after 20 seconds. Former `VIBN_VICO_KANBANIZE_API_KEY`, `VIBN_RDP_PASSWORD`, `VIBN_FEE_USERNAME` and `VIBN_FEE_PASSWORD` user variables are migrated on first successful read and then deleted. Secret values are never logged or exposed as bindable status. The prompted action does not create a credential entry.

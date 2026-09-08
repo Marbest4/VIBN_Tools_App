@@ -43,10 +43,10 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
     public IbnRemoteMainViewModel(IUserCredentialConfigurationService? credentialConfiguration = null)
     {
         _credentialConfiguration = credentialConfiguration ??
-            new UserEnvironmentCredentialConfigurationService();
+            new SecureUserCredentialConfigurationService();
         _remoteDesktop = new WindowsRemoteDesktopService(
             _options.WorkingDirectory,
-            new WindowsTemporaryRemoteCredentialStore());
+            new WindowsTemporaryRemoteCredentialStore(_credentialConfiguration.GetRemoteDesktopPassword));
         RefreshCommand = new AsyncRelayCommand(RefreshAsync, () => !IsBusy);
         ConnectAutomaticCommand = new RelayCommand<IbnRemoteWorkstationRow>(
             row => Connect(row, promptForCredentials: false),
@@ -384,7 +384,7 @@ public sealed class IbnRemoteMainViewModel : NotifyObject, IDisposable
             RemoteDesktopPasswordInput = string.Empty;
             RefreshCredentialStatus();
             CredentialStatus = changed
-                ? "Eingegebene Werte wurden für diesen Windows-Benutzer gespeichert."
+                ? "Eingegebene Werte wurden geschützt im Windows Credential Manager gespeichert."
                 : "Keine neuen Werte eingegeben; vorhandene Konfiguration bleibt erhalten.";
             _log.Information("Konfiguration", CredentialStatus);
             if (apiKeyChanged)

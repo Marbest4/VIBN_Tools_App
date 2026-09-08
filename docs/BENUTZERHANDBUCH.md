@@ -12,13 +12,19 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | --- | --- | --- |
 | Project Settings | Online-FEE-PC wählen, Verbindung prüfen, Projektbasis anlegen | alle |
 | Kanbanize Karten | VIBN-Karten ins Arbeitsplätze-Board synchronisieren; eigene Karten erstellen | Level8 |
-| ViCo | PC-/Projektsuche, Transfer, TIA Portal und Verwaltung | alle; Verwaltung ab Level8 |
+| ViCo | PC-/Projektsuche sowie Projekte und Favoriten | alle |
+| Transfer | Dateien und Ordner zwischen Projektpfaden übertragen | alle |
+| TIA Portal | PLC-, Bibliotheks- und Achsenfunktionen über die isolierte TIA-Bridge | alle |
+| Administration | Rollen, Termine und verfügbare Versionen verwalten | Level9 |
 | CAD Wizard | Joints, Sensoren, Templates und CAD-Hilfen | Level7 |
 | Zuli Converter | Zuli-Datei einlesen und Interface-Datei erzeugen | alle |
 | Container Generation | Container aus Interface- und Requirements-Dateien prüfen und generieren | Level7 |
 | Container2Fee | Container XML mit FEE-Simulationsobjekten verbinden | Level7 |
 | Container2FEE Visual | zusätzliche Planansicht mit Drag-and-drop; nutzt denselben Generator | Level7 |
-| Special Devices | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
+| FEE2Container | exportiert ContainerFiles aus künftig durch Container2FEE erzeugten Roots | Level7 + FEE-Verbindung |
+| AI-Test / Regelvorschläge | analysiert protokollierte Slotkorrekturen; geprüfte exakte Regeln mit Vorschau und Backup übernehmen | Level8 |
+| SpecialDevices2FEE | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
+| FEE2SpecialDevices | künftig erzeugte Special Devices über Provenienz aus FEE als JSON rücklesen | Level 7 oder höher |
 | Model Validation | Modell-/FEE-Daten prüfen | alle |
 | Model Control | Roboter, Achsen, Objekte und Simulation steuern | alle |
 | Interface Operation | Schnittstellen und Signale laden, verbinden und bearbeiten | alle |
@@ -26,15 +32,19 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 
 Die Berechtigungen sind im Detail in der [Rollenverwaltung](ROLLENVERWALTUNG.md) beschrieben.
 
+Mit **Navigation einklappen** im Kopfbereich werden die Texte der linken Navigation ausgeblendet; Symbole und ausgewählter Arbeitsbereich bleiben erhalten. **Alt+N** schaltet denselben Zustand um. Die Auswahl wird im lokalen Benutzerprofil gespeichert und beim nächsten Start wiederhergestellt.
+
 ## Empfohlener Arbeitsablauf
 
 1. In **Project Settings** den gewünschten Online-PC filtern, auswählen und die FEE-Verbindung aufbauen.
-2. In **ViCo → Übersicht & Verbindung** den Arbeitsplatz oder das Projekt suchen und Kanbanize-Daten aktualisieren, falls notwendig.
+2. In **ViCo → PC-/Projektsuche** den Arbeitsplatz oder das Projekt suchen und Kanbanize-Daten aktualisieren, falls notwendig.
 3. Falls eine Karte benötigt wird, im Hauptreiter **Kanbanize Karten** zuerst die Vorschau ausführen und erst danach bewusst synchronisieren.
-4. Für TIA-nahe Schritte **ViCo → TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **Special Devices** verwenden.
+4. Für TIA-nahe Schritte den Hauptreiter **TIA Portal** oder den TIA-Hardwarebereich auf der gemeinsamen Seite **SpecialDevices2FEE** verwenden.
 5. Änderungen, Fehler und externe Zugriffe am unteren Rand im Diagnoseprotokoll nachvollziehen.
 
 ## Project Settings
+
+Der Bereich **Lokale Automatisierungsinstallationen** erkennt TIA Portal und die zugehörige Openness-DLL dynamisch sowie erkennbare WinCC-, Siemens-/SIMATIC- und TwinCAT-Komponenten. **Neu erkennen** aktualisiert ausschließlich das lokale Inventar. Installationspfad und Nachweis helfen bei der Diagnose; eine erkannte TIA-Version garantiert noch keine Openness-Berechtigung des angemeldeten Windows-Benutzers. Technische Details stehen in [INSTALLATION_DISCOVERY.md](INSTALLATION_DISCOVERY.md).
 
 Das editierbare Dropdown **Online-PC eingeben oder auswählen** ist Auswahl und Filter in einem Feld. Es filtert sofort nach Namen und enthält ausschließlich erreichbare PCs aus dem gemeinsamen ViCo-Arbeitsplatzverzeichnis. Offline-PCs werden absichtlich nicht angeboten.
 
@@ -47,48 +57,47 @@ Scheitert die Verbindung oder läuft der Timeout ab, bleibt `Connected to: ---` 
 
 Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Version. Bei mehreren lokalen Versionsordnern wird nur eine Installation berücksichtigt, in deren eigenem Pfad `Bin\FS.SDK.dll` existiert. Dadurch werden neuere, aber unvollständige Installationsreste nicht mehr als aktive FEE-Version angezeigt. Eine Abweichung zwischen verwendetem SDK und vollständiger lokaler Installation bleibt rot markiert.
 
-Im Bereich **Kanbanize- und Remote-Konfiguration** werden API-Key und RDP-Passwort verdeckt für den aktuellen Windows-Benutzer hinterlegt. **Eingaben speichern** ändert nur ausgefüllte Felder; die beiden **Löschen**-Buttons entfernen die Werte einzeln. Die Statusfelder zeigen, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart.
+Im Bereich **Geschützte Zugangsdaten** werden FEE-Benutzer/-Passwort, API-Key und RDP-Passwort für den aktuellen Windows-Benutzer im Windows Credential Manager hinterlegt. **Eingaben speichern** ändert nur ausgefüllte Passwort-/Key-Felder; die Löschen-Schaltflächen entfernen jeweils nur den zugehörigen Eintrag. Die Statusfelder zeigen lediglich, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart. Ohne konfigurierte FEE-Zugangsdaten wird kein Verbindungsversuch gestartet.
 
 ## ViCo
 
-### Übersicht & Verbindung
+### PC-/Projektsuche
 
 Die Unterseite **PC-/Projektsuche** besitzt ein gemeinsames Suchfeld. Es durchsucht ausschließlich die sichtbaren Betriebsdaten PC, Projekt, Software, Standort, Projekt-IP, Sonstiges und Benutzer. Status-, RDP- und ausgeblendete Diagnosedaten erzeugen keine unerwarteten Treffer.
 
 ![ViCo-Arbeitsplatzsuche mit Konfiguration und Remote-Informationen](screenshots/vico-search.png)
 
-Die Tabelle zeigt:
+Die Haupttabelle ist auf die Arbeitsplanung reduziert und zeigt in dieser Reihenfolge:
 
 | Spalte | Bedeutung |
 | --- | --- |
 | Belegung | **Frei** (grün), wenn nur Backlog/Erledigt vorliegt; **Belegt** (rot), sobald Planung oder In Arbeit vorliegt |
 | PC | dynamischer Arbeitsplatzname |
+| Online | Grün für erreichbar, Rot für offline |
 | Projekt(e) | ausschließlich Karten in Planung oder In Arbeit; Backlog und Erledigt stehen unter **Alle Kanbanize-Informationen** |
 | Software | ausschließlich der Wert der Unteraufgabe `SW:` |
-| Standort, Projekt-IP, Sonstiges | Werte aus der Karte `KONFIGURATION` und ihren Unteraufgaben |
-| RDP-Sitzung | aktiver Remote-Benutzer oder „Keine aktive Sitzung“ |
-| Letzte Anmeldung | zuletzt ermittelte Anmeldung mit Benutzer und Zeit |
 | Benutzer | bevorzugter Remote-Benutzer aus der KONFIGURATION-Karte |
-| Online | Grün für erreichbar, Rot für offline |
-| Konfiguration | **Vorhanden** (grün) oder **Konfigurationskarte fehlt!** (rot) |
+| Standort | Wert der Unteraufgabe `STANDORT:` |
+| Sonstiges, Projekt-IP | optionale Werte der `KONFIGURATION`-Karte |
 
-Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. Der ausklappbare Bereich **Alle Kanbanize-Informationen** enthält weiterhin sämtliche Lane-Karten.
+Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. **Projekt-IP und Sonstiges anzeigen** blendet die zwei Zusatzspalten ein und speichert diese Wahl pro Windows-Benutzer. RDP-Sitzung, letzte Anmeldung und Konfigurationsstatus stehen im Detailbereich. Der ausklappbare Bereich zeigt relevante Projektkarten; Robotik- und KONFIGURATION-Daten bleiben in ihren eigenen strukturierten Detailbereichen und werden dort nicht doppelt dargestellt.
 
 Unter dem Suchfeld zeigt ein Countdown den nächsten automatischen Kanbanize-Abruf. Das Intervall kann zwischen 1 und 1440 Minuten eingetragen und mit **Übernehmen** pro Windows-Benutzer gespeichert werden. Ohne konfigurierten API-Key steht der Zähler auf **pausiert**; sobald der Key in Project Settings gespeichert wurde, beginnt der Countdown ohne Neustart. **Daten aktualisieren** bleibt für eine sofortige manuelle Aktualisierung erhalten und startet den Zähler anschließend neu.
 
-Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt.
+Wenn Windows die Abfrage einer Remote-Sitzung nicht erlaubt, stehen RDP-Sitzung und letzte Anmeldung im Detailbereich auf **Nicht abrufbar**. Dies ist kein Offline-Status. Bei Start unter einem Konto mit ausreichender Remote-Abfrageberechtigung werden die Informationen normal angezeigt. Die ausgewählte Projektkarte zeigt Start und Ende ohne Uhrzeit; fehlen diese Werte in Kanbanize, erscheint **nicht angegeben**.
 
 ### Remote Desktop und Pfade
 
-Nach Auswahl eines Online-PCs stehen bis zu vier lokale Monitore sowie diese Aktionen bereit:
+Nach Auswahl eines PCs stehen bis zu vier lokale Monitore sowie diese Aktionen bereit. Dieselben Aktionen sind über einen Rechtsklick auf die Tabellenzeile verfügbar:
 
-- **Remote Desktop** verwendet den priorisierten Kanbanize-Benutzer. Unmittelbar vor dem Start wird das Kennwort aus der lokalen Benutzervariable `VIBN_RDP_PASSWORD` temporär für `TERMSRV/<PC>` eingetragen und nach 20 Sekunden entfernt.
+- **Remote Desktop** verwendet den priorisierten Kanbanize-Benutzer. Unmittelbar vor dem Start wird das Kennwort aus dem lokalen Windows Credential Manager temporär für `TERMSRV/<PC>` eingetragen und dieser kurzlebige RDP-Eintrag nach 20 Sekunden entfernt.
 - **RDP mit Anmeldedaten** startet dieselbe Remote-Verbindung ohne temporären Eintrag und zeigt bewusst den Windows-Anmeldedialog.
-- **PC-Projektordner**, **Simulation**, **PLC-Projekt** und **Planung** öffnen den zugehörigen Pfad für das ausgewählte Projekt.
+- **PC-Projektordner** öffnet den Pfad auf dem Arbeitsplatz und erfordert deshalb einen Online-PC.
+- **Simulation**, **PLC-Projekt** und **Planung** öffnen Serverpfade und bleiben auch bei einem Offline-PC verfügbar, sofern der Pfad aufgelöst werden konnte.
 
-Bei einem Offline-PC sind diese Buttons nicht sichtbar. Dadurch kann keine fehlerhafte Remote- oder UNC-Aktion ausgelöst werden.
+Bei einem Offline-PC bleiben die Aktionen sichtbar: Nur RDP, RDP mit Anmeldedialog und der PC-Projektordner werden mit einem konkreten Tooltip deaktiviert. Die angezeigten Pfade stehen in einem schreibgeschützten Textfeld und können markiert sowie mit **Strg+C** kopiert werden.
 
-Das RDP-Passwort wird einmalig unter **Project Settings → Kanbanize- und Remote-Konfiguration** gespeichert. Es steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
+Das RDP-Passwort wird einmalig unter **Project Settings → Geschützte Zugangsdaten** geschützt im Windows Credential Manager des angemeldeten Benutzers gespeichert. Es steht weder im Quellcode noch im Kanbanize-Cache oder Rollenbestand. Auf einem weiteren Rechner beziehungsweise in einem anderen Windows-Profil muss es einmalig erneut eingerichtet oder über ein freigegebenes Unternehmens-Secretsystem verteilt werden. Der separate Dialog-Button bleibt für abweichende Zugangsdaten verfügbar.
 
 ### Arbeitsplatz-Konfiguration bearbeiten
 
@@ -102,26 +111,35 @@ Die rechte Seite enthält die vorhandenen Unteraufgaben einer Kanbanize-Karte mi
 
 Bei vorhandener Karte Werte bearbeiten und **Speichern** drücken oder im Wertefeld **Enter** betätigen. Enter übernimmt zuerst den aktuellen Text, speichert alle geänderten Standardwerte direkt über die Kanbanize-API und aktualisiert anschließend Tabellenzeile, Benutzerzuordnung und Cache-Projektion. Bestehende Unteraufgaben werden aktualisiert, fehlende Standard-Unteraufgaben werden ergänzt. Fehlt die Karte vollständig, zeigt die letzte Tabellenspalte dies rot an; **Standardkarte anlegen** erzeugt nach ausdrücklicher Bestätigung genau eine `KONFIGURATION`-Karte mit den fünf Standard-Unteraufgaben. Normale Projektkarten bleiben unverändert.
 
-### Projekte & Favoriten und Transfer
+### Projekte & Favoriten
 
-**Projekte & Favoriten** durchsucht Simulationsprojekte, öffnet die Auswahl und verwaltet kompatible ViCo-Favoriten. **Transfer** kopiert ausgewählte Dateien/Ordner mit begrenzter Parallelität. Diese Begrenzung hält die Desktop-Oberfläche auch bei größeren Übertragungen reaktionsfähig.
+**Projekte & Favoriten** durchsucht Simulationsprojekte, öffnet die Auswahl und verwaltet kompatible ViCo-Favoriten.
 
-### TIA Portal
+## Transfer
+
+Der eigene Hauptreiter **Transfer** kopiert ausgewählte Dateien/Ordner mit begrenzter Parallelität. Diese Begrenzung hält die Desktop-Oberfläche auch bei größeren Übertragungen reaktionsfähig.
+
+## TIA Portal
 
 1. lokale TIA-Version wählen;
 2. **Verbinden** drücken und die gefundene PLC auswählen;
-3. optional Programmbereiche, Datentypen oder Achsen laden;
-4. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
+3. optional Programmbereiche oder Datentypen laden; **Achsen nur lesen** ermittelt Achsen ausdrücklich ohne Projektänderung;
+4. Achsen einzeln oder über **Alle**/**Keine** auswählen und erst dann **Auswahl konfigurieren** verwenden;
+5. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
+
+Die Achsenkonfiguration setzt bei den ausgewählten Achsen folgende Parameter und protokolliert jeden tatsächlich gefundenen Schreibzugriff mit Wert und Ergebnis: `_Properties.MotionType`, `Modulo.Enable`, `Actor.DataAdaption`, `Sensor[1].DataAdaption`, `Sensor[1].MountingMode`, `Simulation.Mode`, `Sensor[1].Type`, `TorqueLimiting.PositionBasedMonitorings`, `FollowingError.EnableMonitoring` und `PositionControl.EnableDSC`. Die bisherige Namensheuristik behandelt X/Y/Z als linear und alle anderen Namen als rotatorisch; dies muss am realen Projekt fachlich geprüft werden. **Projekt speichern** persistiert Änderungen im geöffneten TIA-Projekt und ist von der Konfiguration getrennt.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
 
-Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **Special Devices**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
+Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **SpecialDevices2FEE**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
-### Verwaltung
+## Administration
 
-Der Reiter ist ab Level8 sichtbar. Level9 kann Benutzer anlegen, entfernen und die Stufe ändern. `lutzma` ist stets Level9 und es müssen immer mindestens zwei verschiedene Level9-Benutzer bestehen. Details: [Rollenverwaltung](ROLLENVERWALTUNG.md).
+Der Hauptreiter ist ausschließlich mit Level9 sichtbar. Level9 kann Benutzer anlegen, entfernen und die Stufe ändern. `lutzma` ist stets Level9 und es müssen immer mindestens zwei verschiedene Level9-Benutzer bestehen. Details: [Rollenverwaltung](ROLLENVERWALTUNG.md).
 
 ## Kanbanize Karten
+
+Die VIBN-Synchronisierung berücksichtigt aktive Quellkarten mit **Grundinbetriebnahme** und **Nachpflege**. Zusammengehörige CORE-/CLIENT-/weitere Rollenkarten werden dunkelgrün gruppiert; Konflikte werden nur nach den dokumentierten Quell-ID-, Titel-, Lane-, Termin- und CORE-Regeln gemeldet. Termine erscheinen ohne Uhrzeit. Wenn zu einer bisherigen `*[Gen]*`-Hauptkarte eine Rollenkarte kopiert wurde, kann die Vorschau gezielt nur den Zusatz `CORE` an der Hauptkarte ergänzen. **Planansicht anzeigen** öffnet das Arbeitsplätze-Board im Standardbrowser. Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
 
 ![Kanbanize-Vorschau für die sichere VIBN-Synchronisierung](screenshots/kanbanize-cards.png)
 
@@ -149,7 +167,7 @@ Im zweiten Unterreiter kann weiterhin freiwillig eine normale Kanbanize-Karte er
 
 Weitere Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
 
-## Special Devices
+## SpecialDevices2FEE
 
 ![TIA-Hardware wird vor dem Erzeugen in einer Warteschlange geprüft](screenshots/special-devices.png)
 
@@ -162,7 +180,7 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 1. Auf der gemeinsamen Seite zum Bereich **Hardware aus geöffnetem TIA-Projekt lesen** wechseln.
 2. TIA-Version wählen, **Mit TIA verbinden** und PLC auswählen.
 3. **Hardware auslesen** drücken.
-4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp in einem blauen Gruppenkopf sowie GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
+4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp im Gruppenkopf sowie Traversierungsindex, Hierarchietiefe, Modul, Parent, Slot/Subslot, Pfad, konkrete Openness-Objektklasse, Hardware-ID, GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik, Zuordnungskandidat und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
 5. Erforderlichenfalls Logik, Präfix und Byteadressen korrigieren. Das vorgeschlagene Präfix stammt vom Gerätenamen (Fallback: PROFINET-/Modulname), nicht mehr vom einzelnen Modulnamen.
 6. **Zuordnung speichern** legt die geprüften Werte lokal ab und stellt sie beim nächsten Auslesen wieder her.
 7. Gewünschte Zeilen markieren und **Ausgewählte Geräte in Warteschlange übernehmen** drücken.
@@ -172,6 +190,12 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 
 Die FEE-Erzeugung ist absichtlich serialisiert. Fehlgeschlagene Geräte bleiben in der Warteschlange, damit sie geprüft und erneut ausgeführt werden können.
 
+Vollständig erzeugte Geräte erhalten am Ende des erfolgreichen FEE-Schreibvorgangs eine versionierte Provenienz am BasicFrame. Teilweise oder fehlerhaft erzeugte Geräte werden nicht als gültige Reverse-Quelle markiert.
+
+## FEE2SpecialDevices
+
+Der eigene Hauptreiter liest ausschließlich diese markierten Special-Device-Roots. Nach Auswahl können Präfix, Hersteller, Gerätetyp, Startadressen sowie aktuelle und fehlende Signale geprüft und atomar als `*.specialdevice.json` exportiert werden. **SpecialDevices2FEE → FEE2-JSON laden** prüft diese Datei und übernimmt bekannte Geräte über denselben Gerätekatalog in die vorhandene Warteschlange. Bei Signalabweichungen wird gewarnt, weil eine erneute Erzeugung weiterhin die freigegebene Katalogdefinition verwendet. Ältere oder manuelle FEE-Objekte werden bewusst ignoriert, weil eine Rekonstruktion allein aus Namen fachlich unsicher wäre. Details und Grenzen stehen in [FEE2SpecialDevices](FEE2SPECIALDEVICES.md).
+
 ## Bestehende VIBN-Werkzeuge
 
 ### CAD Wizard
@@ -179,6 +203,8 @@ Die FEE-Erzeugung ist absichtlich serialisiert. Fehlgeschlagene Geräte bleiben 
 Für die gewählte FEE-/Projektvorlage werden Joints, Sensoren und Templates erzeugt; anschließend lassen sich leere Nodes entfernen oder Markierungen in Namen schreiben. Vor einer generierenden Aktion immer die richtige Projektverbindung und Vorlage prüfen.
 
 Ohne bestätigte FEE-Verbindung sind alle FEE-schreibenden Aktionen, Container2Fee-Start, Special-Device-Erzeugung, Model Control, Model Validation sowie Interface-Merge/-Connect deaktiviert. Der Tooltip lautet **Keine Verbindung zu FEE vorhanden.** Project Settings zeigt außerdem verwendete SDK- und lokal installierte FEE-Version; eine Abweichung ist rot markiert.
+
+Auch andere deaktivierte Aktionsbuttons erklären beim Darüberfahren die erste fehlende Voraussetzung, beispielsweise fehlende Eingangsdaten, noch nicht geprüfte Kanbanize-Änderungen, eine fehlende PLC-Auswahl, Level 9 oder einen laufenden Vorgang. Abhängige Eingabefelder – etwa ein Deadline-Feld ohne aktivierte Deadline – sind keine eigenständigen Aktionen.
 
 ### Zuli Converter
 
@@ -192,6 +218,8 @@ Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File
 4. In der Containerliste Filter und Prüfstatus verwenden. Orange oder anders markierte Einträge erfordern eine fachliche Entscheidung.
 5. Bei erneut importierten Daten den **Reimport-Vergleich** prüfen, einzelne Änderungen übernehmen oder verwerfen.
 6. Erst danach die Generierung starten und Status/Zuordnungen kontrollieren.
+
+Mit **ContainerFiles vergleichen** wird zuerst das bisherige und danach das neu erzeugte ContainerFile gewählt. Voraussetzung ist die dazu passende geladene Requirements-XML, damit Slots und Typen korrekt validiert werden. Der Vergleich verwendet denselben feldgenauen Dialog wie der Reimport und erkennt neue, entfernte und geänderte Signale sowie Container-/Typ-/Slotänderungen. Die Dateien selbst bleiben unverändert; erst **Auswahl anwenden** ersetzt den sichtbaren Arbeitsstand durch das selektiv überlagerte Ergebnis. **Vorschau verwerfen** lässt den Arbeitsstand unangetastet.
 
 `Strg+Z` macht die letzte bearbeitbare Aktion rückgängig, `Strg+Y` bzw. `Strg+Umschalt+Z` wiederholt sie.
 
@@ -207,9 +235,21 @@ Container XML öffnen, Simulationsobjekte suchen und die vorgeschlagenen FEE-Obj
 
 Dieser zusätzliche Reiter verändert den bisherigen Ablauf nicht. Nach **XML öffnen** zeigt er Container, Logiken, Signale, technische Hilfsobjekte, SimObject-Ziele und ihre Verknüpfungen. Die Vorschau funktioniert ohne FEE. Nach einer bestätigten Verbindung lädt **FEE aktualisieren** die vorhandenen SimObjects und ordnet eindeutige Treffer mit gleichem Komponentenname und passendem Typ automatisch zu.
 
-SimObjects können von rechts auf kompatible Ziele gezogen werden. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt; ein Objekt kann nur einem Container gehören. Grün bedeutet erkannt/zugeordnet, gelb bedeutet „bei Generation erzeugen“, rot bedeutet „Zuordnung fehlt“. Über die Checkboxen in der linken Struktur werden vollständige Container ausgewählt; **Alle selektieren** und **Alle deselektieren** helfen bei großen Plänen. Einzelne Signale oder Hilfsobjekte können nicht unabhängig deaktiviert werden, weil der unveränderte Legacy-Executor sie als abhängige Einheit erzeugt. **Rückgängig/Wiederholen** gilt auch für die Containerselektion.
+SimObjects können von rechts auf kompatible Ziele gezogen werden. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt; ein Objekt kann nur einem Container gehören. Grün bedeutet erkannt/zugeordnet, hellrot bedeutet „wird bei Generation erzeugt“, dunkelrot bedeutet „fehlt und Erzeugung ist deaktiviert“. Fehlende SimObjects sind standardmäßig zur Erzeugung ausgewählt; **Alle/Keine** ändert diese Einstellung gesammelt. Über die Checkboxen in der linken Struktur werden vollständige Container ausgewählt; **Alle selektieren** und **Alle deselektieren** helfen bei großen Plänen. **Alles aufklappen/Alles zuklappen** steuert die kombinierte Container-/Objektstruktur. Einzelne Signale oder Hilfsobjekte können nicht unabhängig deaktiviert werden. **Rückgängig/Wiederholen** gilt auch für die Containerselektion.
 
-**Plan speichern** legt neben der unveränderten XML eine Datei `*.container2fee.visual.json` ab. Sie wird nur wieder angewendet, wenn der Fingerabdruck der XML unverändert ist. **Start Generation** ruft nach erfolgreicher Validierung den bestehenden Container2FEE-Executor auf. **Nur SimObjects verknüpfen** erzeugt dagegen nichts neu und verbindet zugeordnete SimObjects nur mit bereits vorhandenen, gleichnamigen LogicObjects. Dafür zuvor **Model Validation → Update Objects** ausführen. Details und Grenzen stehen in [CONTAINER2FEE_VISUAL.md](CONTAINER2FEE_VISUAL.md).
+**Plan speichern** legt neben der unveränderten XML eine Datei `*.container2fee.visual.json` ab. Sie wird nur wieder angewendet, wenn der Fingerabdruck der XML unverändert ist. Eine separate Auswahl **Signale erzeugen** gibt es nicht mehr: **Start Generation** sucht jedes benötigte Signal in allen vorhandenen Interfaces, verwendet eindeutige Treffer unverändert und erzeugt nur fehlende Signale im eindeutig erkannten **Grob Generation Interface**. Die optionale Interfaceauswahl enthält ausdrücklich **Keins**. Ein fehlendes SimObject blockiert genau dann, wenn sein Container ausgewählt, kein Objekt zugeordnet und die automatische Erzeugung ausgeschaltet ist; andernfalls ist es ein sichtbarer Hinweis. Deaktivierte FEE-, Start- und Link-Aktionen nennen im Tooltip die erste konkrete fehlende Voraussetzung.
+
+**Nur SimObjects verknüpfen** erzeugt nichts neu und verbindet zugeordnete SimObjects nur mit bereits vorhandenen, gleichnamigen LogicObjects. Eine Interface-Auswahl ist dafür technisch nicht erforderlich, weil dieser Modus keine Signale liest, anlegt oder verändert. Er benötigt aber mindestens eine Zuordnung in einem ausgewählten Container und zuvor vollständig gelesene FEE-Modelldaten über **Model Validation → Update Objects**. Details und Grenzen stehen in [CONTAINER2FEE_VISUAL.md](CONTAINER2FEE_VISUAL.md).
+
+Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbindet dann jedes Signal über ein eigenes Move-Objekt. Doppelte `PLC_OUT_`- oder sonstige Slots werden bereits beim Einlesen mit einer konkreten Fehlermeldung abgewiesen. Dadurch beginnt bei einer erkennbar ungültigen Datei keine teilweise FEE-Erzeugung.
+
+### FEE2Container
+
+Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und zeigt nur Roots mit gültiger, versionierter Container2FEE-Provenienz. Wählen Sie einen Root und exportieren Sie dessen ContainerFile. Signalname, Adresse/Pfad, Datentyp und Signal-ID werden dabei über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen; fehlende Variablen werden gemeldet. Ältere und manuell erstellte Modelle werden nicht heuristisch rekonstruiert; beschädigte Metadaten erscheinen als konkrete Diagnose. Details, Slot-Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
+
+### AI-Test / Regelvorschläge
+
+Der Unterreiter **Regelvorschläge** wertet strukturierte manuelle Slotkorrekturen aus. Häufigkeit, Zahl unterschiedlicher Fälle und die daraus berechnete Konfidenz bleiben sichtbar. **Annehmen** oder **Ablehnen** speichert zunächst nur den Prüfstatus. **XML-Vorschau** prüft die angenommenen Regeln und zeigt jede Slotänderung; **XML übernehmen** verlangt nochmals eine Bestätigung, prüft zwischenzeitliche Dateiänderungen und legt eine `.vibn-backup`-Sicherung an. Über **Aktionslogs öffnen** gelangen Sie direkt zur JSONL-Datenbasis. Details stehen in [AI_REGELVORSCHLAEGE.md](AI_REGELVORSCHLAEGE.md).
 
 ### Model Validation, Model Control und Interface Operation
 
@@ -221,6 +261,6 @@ Für Inbetriebnehmer steht `VIBN_Tools_IBN.exe` bereit. Die kompakte Standardans
 
 ## Diagnose und Fehlerbehebung
 
-Das Log-Fenster am unteren Fensterrand sammelt Informationen, Warnungen und Fehler aus Project Settings, ViCo, Kanbanize, TIA und Special Devices. Bei einer Rückfrage bitte Zeitpunkt, Bereich, Statusmeldung und – wenn zulässig – die Fehlerdetails aus dem Protokoll angeben. Keine Kennwörter oder API-Schlüssel in Tickets, Screenshots oder Logs aufnehmen.
+Das Log-Fenster am unteren Fensterrand sammelt Informationen, Warnungen und Fehler aus Project Settings, ViCo, Kanbanize, TIA und SpecialDevices2FEE. Bei einer Rückfrage bitte Zeitpunkt, Bereich, Statusmeldung und – wenn zulässig – die Fehlerdetails aus dem Protokoll angeben. Keine Kennwörter oder API-Schlüssel in Tickets, Screenshots oder Logs aufnehmen.
 
 Die detaillierte Fehlerliste ist in [KONFIGURATION_UND_BETRIEB.md](KONFIGURATION_UND_BETRIEB.md) enthalten. Die Screenshots dieses Handbuchs verwenden ausschließlich synthetische Testdaten.

@@ -37,18 +37,22 @@ internal sealed class TiaHardwareReader
                 result,
                 identities,
                 parentPath: string.Empty,
+                parentName: context.DeviceName,
                 depth: 0,
                 parentSlot: -1,
                 inheritedNetwork: ReadNetworkMetadata(device));
         }
 
-        return result
+        var ordered = result
             .OrderBy(module => module.DeviceIndex == selectedDeviceIndex ? 0 : 1)
             .ThenBy(module => module.DeviceName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(module => module.ModulePath, StringComparer.OrdinalIgnoreCase)
             .ThenBy(module => module.Slot < 0 ? int.MaxValue : module.Slot)
             .ThenBy(module => module.Subslot < 0 ? int.MaxValue : module.Subslot)
             .ToArray();
+        for (var index = 0; index < ordered.Length; index++)
+            ordered[index].TraversalIndex = index + 1;
+        return ordered;
     }
 
     /// <summary>
@@ -110,6 +114,7 @@ internal sealed class TiaHardwareReader
         ICollection<TiaHardwareModuleInfo> result,
         ISet<string> identities,
         string parentPath,
+        string parentName,
         int depth,
         int parentSlot,
         NetworkMetadata inheritedNetwork)
@@ -179,6 +184,10 @@ internal sealed class TiaHardwareReader
                 result.Add(new TiaHardwareModuleInfo
                 {
                     DeviceIndex = effectiveDevice.DeviceIndex,
+                    HierarchyDepth = depth,
+                    ParentName = parentName,
+                    ObjectClass = item.GetType().FullName ?? item.GetType().Name,
+                    HardwareIdentifier = ReadString(item, "HardwareIdentifier", "HardwareId", "HwIdentifier", "ID"),
                     DeviceName = effectiveDevice.DeviceName,
                     DeviceType = deviceType,
                     Manufacturer = manufacturer,
@@ -216,6 +225,7 @@ internal sealed class TiaHardwareReader
                 result,
                 identities,
                 modulePath,
+                moduleName,
                 depth + 1,
                 nextParentSlot,
                 network);

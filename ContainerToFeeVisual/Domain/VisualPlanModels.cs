@@ -206,8 +206,8 @@ public sealed record VisualAssignment(
     string FeeObjectTypeName);
 
 /// <summary>
-/// Requests the unchanged legacy container to create its default simulation
-/// object when no existing object is assigned.
+/// Per-container override for creating a missing default simulation object.
+/// Missing entries mean <c>true</c>; only opt-outs are persisted.
 /// </summary>
 public sealed record VisualCreationRequest(string ContainerId, bool IsRequested);
 
@@ -303,8 +303,8 @@ public sealed class VisualPlan
         Targets.FirstOrDefault(target => string.Equals(target.Id, id, StringComparison.Ordinal));
 
     public bool IsCreationRequested(string containerId) =>
-        _creationRequests.Any(request =>
-            request.IsRequested &&
+        !_creationRequests.Any(request =>
+            !request.IsRequested &&
             string.Equals(request.ContainerId, containerId, StringComparison.Ordinal));
 
     public bool IsGenerationSelected(string containerId) =>
@@ -327,7 +327,7 @@ public sealed class VisualPlan
     internal void ReplaceCreationRequests(IEnumerable<VisualCreationRequest> requests)
     {
         _creationRequests.Clear();
-        _creationRequests.AddRange(requests.Where(request => request.IsRequested));
+        _creationRequests.AddRange(requests.Where(request => !request.IsRequested));
     }
 
     internal void ReplaceGenerationSelections(IEnumerable<VisualGenerationSelection> selections)

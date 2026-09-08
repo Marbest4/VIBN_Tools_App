@@ -24,6 +24,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 `TiaHardwareModuleInfo` enthält:
 
 - DeviceName, DeviceType
+- TraversalIndex, HierarchyDepth, ParentName, ObjectClass, HardwareIdentifier
 - Manufacturer, OrderNumber, FirmwareVersion
 - GsdName, GsdType
 - ProfinetName, IpAddress, NetworkRole
@@ -31,7 +32,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 - ModuleName, ModulePath, ModuleType, TypeIdentifier
 - InputStartByte/InputLengthBits/InputLength und OutputStartByte/OutputLengthBits/OutputLength
 
-Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter Special Devices werden adressierbare beziehungsweise eindeutig einer Logik zuordenbare Module als Kandidaten angezeigt. Zeilen mit demselben Gerätenamen werden in einer aufklappbaren Gerätegruppe zusammengefasst. Sichtbar bleiben nur GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik und Status. E-/A-Startadressen sind weiterhin editierbar.
+Nicht vorhandene numerische Werte sind `-1`, nicht vorhandene Texte leer. Unter SpecialDevices2FEE werden adressierbare beziehungsweise eindeutig einer Logik zuordenbare Module als Kandidaten angezeigt. Zeilen mit demselben Gerätenamen werden in einer aufklappbaren Gerätegruppe zusammengefasst. Die Diagnosefelder Index, Tiefe, Parent, Pfad, Objektklasse und Hardware-ID bleiben neben GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik, Zuordnungskandidat und Status sichtbar. E-/A-Startadressen sind weiterhin editierbar.
 
 ## Gespeicherte Logikzuordnung
 
@@ -80,6 +81,8 @@ Ein automatisches Öffnen, Konvertieren oder Speichern des Projekts wurde bewuss
 Die Bridge akzeptiert V15 bis V22 und lädt die zur gewählten Installation gehörende `Siemens.Engineering.dll` dynamisch. Die App selbst referenziert keine konkrete PublicAPI-Assembly. Für jede installierte Version gelten weiterhin Siemens-Voraussetzungen: Benutzer in der Openness-Gruppe, gestartetes TIA, unterstützter Projekttyp und ein geöffnetes Projekt.
 
 ## Live-Abnahme
+
+Das Repository enthält `Projekt1.7z` mit dem TIA-V20-Projekt `Projekt1/Projekt1.ap20` und zugehörigen GSD-Dateien als kleines reales Testartefakt. Archiv und Projektversion wurden geprüft. TIA Portal V20 und die passende `Siemens.Engineering.dll` sind auf dem Prüfhost vorhanden; die Bridge baut dagegen. Das Projekt wurde in einen ignorierten Testartefaktordner entpackt, aber noch nicht über Openness angefügt: Die lokale Gruppe `Siemens TIA Openness` ist vorhanden und leer. Vor der Live-Abnahme muss der aktuelle Windows-Benutzer hinzugefügt und Windows neu angemeldet werden.
 
 Für einen PN/PN-Coupler ist mindestens zu prüfen:
 

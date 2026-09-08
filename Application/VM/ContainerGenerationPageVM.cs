@@ -3,6 +3,8 @@ using System.Collections;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Security.Cryptography;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
@@ -45,6 +47,7 @@ namespace VIBN_Tools.Application.VM
         public ICommand GenerateContainers => GetCommandBindingAsync(Generate_Containers);
         public ICommand ValidateWorkspace => GetCommandBinding(Validate_Workspace);
         public ICommand ExportContainers => GetCommandBinding(Export_Containers);
+        public ICommand CompareContainerFiles => GetCommandBinding(Compare_ContainerFiles);
 
         public ICommand LoadData => GetCommandBinding(Load_Data);
 
@@ -71,6 +74,14 @@ namespace VIBN_Tools.Application.VM
         /// </summary>
         public bool CanGenerate => Zuli.Items.Count > 0 && RequirementsFile.IsInitialized && !WasGenerated;
 
+        public string GenerateUnavailableReason => CanGenerate
+            ? "Erzeugt Container aus den geladenen Eingangsdaten."
+            : Zuli.Items.Count == 0
+                ? "Zuerst eine Interface-/ZuLi-Datei mit erkannten Signalen laden."
+                : !RequirementsFile.IsInitialized
+                    ? "Zuerst eine gültige Requirements-XML laden."
+                    : "Die Container wurden bereits erzeugt; Eingangsdaten ändern oder neu laden, bevor erneut generiert wird.";
+
 
         private bool _wasgenerated;
         public bool WasGenerated
@@ -80,6 +91,7 @@ namespace VIBN_Tools.Application.VM
             {
                 _wasgenerated = value;
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
             }
         }
 
@@ -97,6 +109,10 @@ namespace VIBN_Tools.Application.VM
         /// Validate if a loading data is possible. Causes the corresponding button to be enabled or not.
         /// </summary>
         public bool CanLoadData => RequirementsFile.IsInitialized;
+
+        public string LoadDataUnavailableReason => CanLoadData
+            ? "Lädt einen gespeicherten Bearbeitungsstand."
+            : "Zuerst die zum Bearbeitungsstand gehörende Requirements-XML laden.";
 
 
 
@@ -333,6 +349,7 @@ namespace VIBN_Tools.Application.VM
         private List<ContainerEntry>? _pendingGeneratedUnassigned;
         private List<ContainerEntry>? _pendingGeneratedFiltered;
         private ReimportSummary? _pendingReimportSummary;
+        private bool _pendingComparisonIsContainerFile;
 
         public ObservableCollection<ReimportDifference> PendingReimportChanges { get; } = [];
         public ObservableCollection<WorkspaceActivityLogEntry> ActivityLog { get; } = [];
@@ -349,6 +366,10 @@ namespace VIBN_Tools.Application.VM
                 ? $"Wiederholen: {_redoHistory[^1].Description}"
                 : "Keine Änderung zum Wiederholen";
         public bool HasActivityLog => ActivityLog.Count > 0;
+
+        public string ClearActivityLogUnavailableReason => HasActivityLog
+            ? "Löscht die sichtbare Sitzungshistorie; das strukturierte Lernprotokoll bleibt erhalten."
+            : "In dieser Sitzung sind noch keine protokollierten Aktionen vorhanden.";
         public string ActivityLogHeader =>
             $"Aktivitätsprotokoll ({ActivityLog.Count})";
         public string PendingReimportSelectionSummary =>
@@ -511,7 +532,9 @@ namespace VIBN_Tools.Application.VM
             {
                 _requirementsFile = value ?? throw new ArgumentNullException(nameof(value));
                 OnPropertyChanged(nameof(CanLoadData));
+                OnPropertyChanged(nameof(LoadDataUnavailableReason));
                 OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
             }
         }
 
@@ -635,6 +658,7 @@ namespace VIBN_Tools.Application.VM
             Settings.PathZuli = filePath;
             CommitSuccessfulImport(importMode, "ZuLi");
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
         private async Task Open_RequirementsXml(object parameter)
@@ -671,6 +695,7 @@ namespace VIBN_Tools.Application.VM
             }
 
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
 
@@ -732,6 +757,7 @@ namespace VIBN_Tools.Application.VM
 
             CommitSuccessfulImport(importMode, "Projekt-Einstellungen");
             OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
         }
 
 
@@ -980,6 +1006,83 @@ namespace VIBN_Tools.Application.VM
             }
         }
 
+        private void Compare_ContainerFiles(object parameter)
+        {
+            if (!RequirementsFile.IsInitialized)
+            {
+                StatusText = "Vor dem ContainerFile-Vergleich muss die zugehörige Requirements-XML geladen sein.";
+                return;
+            }
+
+            var filter = "Container XML (*.xml)|*.xml";
+            var baseDialog = new OpenFileDialog
+            {
+                Title = "Bisheriges ContainerFile auswählen",
+                Filter = filter,
+                RestoreDirectory = true
+            };
+            if (baseDialog.ShowDialog() != true)
+                return;
+
+            var candidateDialog = new OpenFileDialog
+            {
+                Title = "Neues ContainerFile auswählen",
+                Filter = filter,
+                RestoreDirectory = true
+            };
+            if (candidateDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var baseline = ContainerFileWorkspaceReader.Read(baseDialog.FileName);
+                var candidate = ContainerFileWorkspaceReader.Read(candidateDialog.FileName);
+                var baselineContainers = baseline.Containers.ToList();
+                var baselineUnassigned = baseline.UnassignedSignals.ToList();
+                var candidateContainers = candidate.Containers.ToList();
+                var candidateUnassigned = candidate.UnassignedSignals.ToList();
+                var candidateFiltered = new List<ContainerEntry>();
+                var snapshot = GenerationWorkspaceReconciler.Capture(
+                    baselineContainers,
+                    baselineUnassigned,
+                    []);
+                var summary = GenerationWorkspaceReconciler.Reconcile(
+                    snapshot,
+                    candidateContainers,
+                    candidateUnassigned,
+                    candidateFiltered,
+                    RequirementsFile);
+
+                ClearPendingReimportResult();
+                _pendingGeneratedContainers = candidateContainers;
+                _pendingGeneratedUnassigned = candidateUnassigned;
+                _pendingGeneratedFiltered = candidateFiltered;
+                _pendingReimportSummary = summary;
+                _pendingComparisonIsContainerFile = true;
+                foreach (var difference in summary.Differences)
+                {
+                    PendingReimportChanges.Add(difference);
+                    difference.PropertyChanged += PendingReimportChange_PropertyChanged;
+                }
+
+                OnPropertyChanged(nameof(HasPendingReimportChanges));
+                OnPropertyChanged(nameof(ShowReimportNotice));
+                OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+                ReimportNotice =
+                    $"ContainerFile-Vergleich: {Path.GetFileName(baseDialog.FileName)} → " +
+                    $"{Path.GetFileName(candidateDialog.FileName)}; {summary.Differences.Count} Unterschiede erkannt.";
+                StatusText = summary.Differences.Count == 0
+                    ? "Die beiden ContainerFiles sind semantisch gleich."
+                    : "ContainerFile-Vorschau erstellt. Jede Änderung kann einzeln übernommen oder verworfen werden.";
+                AddActivity("Container-Vergleich", "A/B-Vorschau erstellt", ReimportNotice);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+            {
+                Logger.Error(ex, "ContainerFile comparison failed.");
+                StatusText = $"ContainerFile-Vergleich fehlgeschlagen: {ex.Message}";
+            }
+        }
+
         private void Validate_Workspace(object parameter)
         {
             var summary = CreateValidationSummary();
@@ -1206,7 +1309,8 @@ namespace VIBN_Tools.Application.VM
                 return;
             }
 
-            CaptureUndo("Reimport-Auswahl anwenden");
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
+            CaptureUndo($"{comparisonLabel}-Auswahl anwenden");
             var decisions = PendingReimportChanges.ToList();
             var accepted = PendingReimportChanges.Count(change => change.IsAccepted);
             var rejected = PendingReimportChanges.Count - accepted;
@@ -1245,7 +1349,7 @@ namespace VIBN_Tools.Application.VM
             foreach (var decision in decisions)
             {
                 AddActivity(
-                    "Reimport",
+                    comparisonLabel,
                     decision.IsAccepted
                         ? $"{decision.Category} übernommen"
                         : $"{decision.Category}: bisherigen Stand beibehalten",
@@ -1253,17 +1357,17 @@ namespace VIBN_Tools.Application.VM
                     $"Auswirkung: {decision.DecisionEffect}.");
             }
             AddActivity(
-                "Reimport",
+                comparisonLabel,
                 "Auswahl angewendet",
                 $"{accepted} Änderungen übernommen; {rejected} Änderungen nicht übernommen. " +
                 $"{ContainerList.Count} Container und {AssignedSignals} zugeordnete Signale im resultierenden Arbeitsstand.");
 
             ReimportNotice =
-                $"Arbeitsstand wurde am {DateTime.Now:dd.MM.yyyy HH:mm} durch den Reimport geändert: " +
+                $"Arbeitsstand wurde am {DateTime.Now:dd.MM.yyyy HH:mm} durch {comparisonLabel} geändert: " +
                 $"{newSignals} neue und {changedSignals} in der Quelle geänderte Signale erkannt; " +
                 $"{accepted} Änderungen übernommen, {rejected} Änderungen nicht übernommen.";
             StatusText =
-                $"Reimport übernommen: {newSignals} neue, {changedSignals} geänderte Signale; " +
+                $"{comparisonLabel} übernommen: {newSignals} neue, {changedSignals} geänderte Signale; " +
                 $"{accepted} Änderungen angenommen, " +
                 $"{rejected} Änderungen verworfen beziehungsweise bisheriger Stand beibehalten.";
         }
@@ -1271,13 +1375,14 @@ namespace VIBN_Tools.Application.VM
         private void Cancel_ReimportSelection(object parameter)
         {
             var differenceCount = PendingReimportChanges.Count;
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
             ClearPendingReimportResult();
             WasGenerated = false;
             ReimportNotice =
-                $"Reimport-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
+                $"{comparisonLabel}-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
                 "der Arbeitsstand wurde nicht verändert.";
             AddActivity(
-                "Reimport",
+                comparisonLabel,
                 "Vorschau verworfen",
                 $"{differenceCount} erkannte Unterschiede; keine Änderung am Arbeitsstand.");
             StatusText =
@@ -1304,6 +1409,7 @@ namespace VIBN_Tools.Application.VM
             _pendingGeneratedUnassigned = null;
             _pendingGeneratedFiltered = null;
             _pendingReimportSummary = null;
+            _pendingComparisonIsContainerFile = false;
             PendingReimportChanges.Clear();
             OnPropertyChanged(nameof(HasPendingReimportChanges));
             OnPropertyChanged(nameof(ShowReimportNotice));
@@ -1506,6 +1612,7 @@ namespace VIBN_Tools.Application.VM
         private void NotifyActivityLogChanged()
         {
             OnPropertyChanged(nameof(HasActivityLog));
+            OnPropertyChanged(nameof(ClearActivityLogUnavailableReason));
             OnPropertyChanged(nameof(ActivityLogHeader));
         }
 
@@ -2196,7 +2303,11 @@ namespace VIBN_Tools.Application.VM
 
                 if (sourceContainer != null && sourceContainer != targetData)
                 {
-                    _actionLogger.LogRemoved(sourceContainer.Component, sourceContainer.Type, data);
+                    _actionLogger.LogRemoved(
+                        sourceContainer.Component,
+                        sourceContainer.Type,
+                        data,
+                        GetActionLogSourceKey());
                 }
 
                 GenerationWorkspaceEditor.MoveToContainer(
@@ -2216,7 +2327,8 @@ namespace VIBN_Tools.Application.VM
                     entry: data,
                     ruleSuggestion: data.Slot,
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
 
             }
             else if (targetRow.Item == CollectionView.NewItemPlaceholder)
@@ -2238,7 +2350,8 @@ namespace VIBN_Tools.Application.VM
                     entry: data,
                     ruleSuggestion: data.Slot,
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
 
             }
         }
@@ -2355,6 +2468,31 @@ namespace VIBN_Tools.Application.VM
                         : $"{args.PropertyName}: „{FormatActivityValue(args.PreviousValue)}“ → " +
                           $"„{FormatActivityValue(args.NewValue)}“";
                 AddActivity("Direkte Änderung", description, details);
+
+                if (sender is ContainerEntry changedEntry &&
+                    args.PropertyName != nameof(ContainerEntry.Slot))
+                {
+                    var changedOwner = ContainerList.FirstOrDefault(
+                        container => container.DataList.Contains(changedEntry));
+                    _actionLogger.LogPropertyChange(
+                        changedOwner?.Component ?? string.Empty,
+                        changedOwner?.Type ?? string.Empty,
+                        changedEntry,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
+                else if (sender is ContainerData changedContainer)
+                {
+                    _actionLogger.LogContainerPropertyChange(
+                        changedContainer.Component,
+                        changedContainer.Type,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
             }
 
             var previousSuppression = _suppressUndoCapture;
@@ -2387,6 +2525,17 @@ namespace VIBN_Tools.Application.VM
         {
             var text = value?.ToString();
             return string.IsNullOrWhiteSpace(text) ? "leer" : text.Trim();
+        }
+
+        private string GetActionLogSourceKey()
+        {
+            var identity = string.Join(
+                "\u001f",
+                Settings.PathZuli ?? string.Empty,
+                Settings.PathRequirementsXml ?? string.Empty,
+                WorkspaceDataPath ?? string.Empty);
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))
+                .ToLowerInvariant();
         }
 
         /// <summary>
@@ -2489,7 +2638,8 @@ namespace VIBN_Tools.Application.VM
                     entry: entry,
                     oldSlot: oldSlot ?? "",
                     mlTop1: null,
-                    mlScore: null);
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
             }
             }
             finally
