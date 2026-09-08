@@ -83,6 +83,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] **Nur SimObjects verknüpfen** verbindet nach Model Validation → Update Objects vorhandene SimObjects mit genau einer gleichnamigen vorhandenen Logik und erzeugt kein Modellobjekt neu.
 - [ ] Container2FEE Visual erzeugt mit denselben Zuordnungen fachlich dasselbe Ergebnis wie der bestehende Executor; Erzeugen und Überspringen sind geprüft.
 - [ ] Container2FEE Visual erzeugt in FEE einen BasicFrame mit `vibn.container2fee.schema`-Tag; nach FEE-Speichern, Schließen und Öffnen findet FEE2Container denselben Root und exportiert ein semantisch gleiches ContainerFile.
+- [ ] Eine direkte Slotänderung und eine PLC_IN-Änderung über MoveBit werden nach Save/Reload als eindeutige Route innerhalb des Roots exportiert; externe oder mehrdeutige Routen bleiben unverändert und erscheinen als Diagnose.
 - [ ] Model Validation, Model Control und Interface Operation funktionieren mit dem Testmodell; Update Objects protokolliert Objektzahl und Laufzeit und ist gegenüber dem Referenzmodell nicht langsamer.
 - [ ] Keine bestehende Funktion wurde durch ViCo-/Kanbanize-Aufrufe verändert.
 

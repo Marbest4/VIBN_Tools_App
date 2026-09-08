@@ -367,8 +367,14 @@ internal static class Program
                 [
                     new(variableA, "HomeA_Renamed", "%I7.0", string.Empty, "Bool", "A-NEW"),
                     new(variableB, "HomeB", string.Empty, "GVL_IO.HomeB", "Bool", "B"),
-                ]);
-            if (projection.UpdatedEntries != 2 || projection.MissingVariableGuids.Count != 0)
+                ],
+                new Dictionary<Guid, string>
+                {
+                    [variableA] = "PLC_IN_InWorkPos",
+                    [variableB] = "PLC_IN_InWorkPos"
+                });
+            if (projection.UpdatedEntries != 2 || projection.MissingVariableGuids.Count != 0 ||
+                projection.UpdatedSlots != 2 || projection.UnresolvedSlotVariableGuids.Count != 0)
                 throw new InvalidOperationException("Current FEE variable values were not projected completely.");
 
             FeeContainerProvenanceCodec.SaveAtomically(projection.Snapshot, exportedPath);
@@ -376,11 +382,11 @@ internal static class Program
             var cylinder = (GrobCylinder_Container)containers.Single();
             if (unknownSignals.Count != 0 ||
                 cylinder.ComponentName != "FanInCylinder" ||
-                cylinder.Signals_InHomePos.Count != 2 ||
-                cylinder.Signals_InHomePos[0].Tag != "HomeA_Renamed" ||
-                cylinder.Signals_InHomePos[0].Address != "%I7.0" ||
-                cylinder.Signals_InHomePos[0].Comment != "A-NEW" ||
-                cylinder.Signals_InHomePos[1].Path != "GVL_IO.HomeB")
+                cylinder.Signals_InWorkPos.Count != 2 ||
+                cylinder.Signals_InWorkPos[0].Tag != "HomeA_Renamed" ||
+                cylinder.Signals_InWorkPos[0].Address != "%I7.0" ||
+                cylinder.Signals_InWorkPos[0].Comment != "A-NEW" ||
+                cylinder.Signals_InWorkPos[1].Path != "GVL_IO.HomeB")
             {
                 throw new InvalidOperationException(
                     "Container → provenance → Container lost the selected container or PLC_IN fan-in.");

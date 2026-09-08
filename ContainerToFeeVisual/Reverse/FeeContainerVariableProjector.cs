@@ -13,13 +13,16 @@ public sealed record FeeContainerVariableState(
 public sealed record FeeContainerVariableProjectionResult(
     FeeContainerProvenanceSnapshot Snapshot,
     int UpdatedEntries,
-    IReadOnlyList<Guid> MissingVariableGuids);
+    IReadOnlyList<Guid> MissingVariableGuids,
+    int UpdatedSlots,
+    IReadOnlyList<Guid> UnresolvedSlotVariableGuids);
 
 public static class FeeContainerVariableProjector
 {
     public static FeeContainerVariableProjectionResult Apply(
         FeeContainerProvenanceSnapshot snapshot,
-        IEnumerable<FeeContainerVariableState> variables)
+        IEnumerable<FeeContainerVariableState> variables,
+        IReadOnlyDictionary<Guid, string>? slotsByVariable = null)
     {
         ArgumentNullException.ThrowIfNull(snapshot);
         ArgumentNullException.ThrowIfNull(variables);
@@ -30,7 +33,9 @@ public static class FeeContainerVariableProjector
         var containers = document.Descendants()
             .Where(element => element.Name.LocalName == "Container").ToArray();
         var missing = new HashSet<Guid>();
+        var unresolvedSlots = new HashSet<Guid>();
         var updated = 0;
+        var updatedSlots = 0;
 
         foreach (var binding in snapshot.SignalBindings)
         {
@@ -48,13 +53,28 @@ public static class FeeContainerVariableProjector
                 string.IsNullOrWhiteSpace(variable.Path) ? variable.Address : variable.Path);
             SetChild(entry, "DataType", variable.DataType);
             SetChild(entry, "ID", variable.Comment);
+            if (slotsByVariable is not null)
+            {
+                if (slotsByVariable.TryGetValue(binding.VariableGuid, out var slot) &&
+                    !string.IsNullOrWhiteSpace(slot))
+                {
+                    SetChild(entry, "Slot", slot);
+                    updatedSlots++;
+                }
+                else
+                {
+                    unresolvedSlots.Add(binding.VariableGuid);
+                }
+            }
             updated++;
         }
 
         return new FeeContainerVariableProjectionResult(
             snapshot with { ContainerDocument = document },
             updated,
-            missing.OrderBy(guid => guid).ToArray());
+            missing.OrderBy(guid => guid).ToArray(),
+            updatedSlots,
+            unresolvedSlots.OrderBy(guid => guid).ToArray());
     }
 
     private static void SetChild(XElement parent, string localName, string? value)

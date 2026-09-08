@@ -51,6 +51,8 @@
                 <DataGridTextColumn Header="Signale" Binding="{Binding SignalCount}" Width="*" />
                 <DataGridTextColumn Header="Aktuell gelesen" Binding="{Binding UpdatedSignalCount}" Width="*" />
                 <DataGridTextColumn Header="Fehlend" Binding="{Binding MissingSignalCount}" Width="*" />
+                <DataGridTextColumn Header="Slotrouten" Binding="{Binding UpdatedSlotCount}" Width="*" />
+                <DataGridTextColumn Header="Slot ungeklärt" Binding="{Binding UnresolvedSlotCount}" Width="*" />
                 <DataGridTextColumn Header="Quellfingerprint" Binding="{Binding Provenance.SourceFingerprint}" Width="2*" />
             </DataGrid.Columns>
         </DataGrid>

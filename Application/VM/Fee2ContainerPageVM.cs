@@ -105,6 +105,8 @@ public sealed class Fee2ContainerPageVM : MvvmBase
         : $"{SelectedRoot.ContainerCount} Container, {SelectedRoot.SignalCount} Signale; " +
           $"{SelectedRoot.UpdatedSignalCount} aus aktuellem FEE gelesen, " +
           $"{SelectedRoot.MissingSignalCount} fehlend; " +
+          $"{SelectedRoot.UpdatedSlotCount} Slotrouten gelesen, " +
+          $"{SelectedRoot.UnresolvedSlotCount} ungeklärt; " +
           $"Quellfingerprint {Shorten(SelectedRoot.Provenance.SourceFingerprint)}";
 
     private async Task RefreshAsync()
