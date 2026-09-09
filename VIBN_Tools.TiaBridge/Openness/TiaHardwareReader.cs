@@ -30,7 +30,10 @@ internal sealed class TiaHardwareReader
         for (var deviceIndex = 0; deviceIndex < devices.Count; deviceIndex++)
         {
             var device = devices[deviceIndex];
-            var context = ReadDeviceContext(device, deviceIndex);
+            var discovery = DiscoverDevice(device);
+            discovery.AddNetwork(ReadNetworkMetadata(device));
+            var context = ReadDeviceContext(device, deviceIndex)
+                .WithDiscovery(discovery);
             Traverse(
                 device,
                 context,
@@ -40,10 +43,21 @@ internal sealed class TiaHardwareReader
                 parentName: context.DeviceName,
                 depth: 0,
                 parentSlot: -1,
-                inheritedNetwork: ReadNetworkMetadata(device));
+                inheritedNetwork: discovery.Network);
         }
 
-        var ordered = result
+        // TIA may expose one GSD submodule both below the rack and below the
+        // logical device head. These are not two physical modules when device,
+        // module type and the complete process-image ranges are identical.
+        // Keep the representation carrying the most precise slot metadata.
+        var physicalModules = result
+            .GroupBy(CreatePhysicalModuleIdentity, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group
+                .OrderByDescending(GetRepresentationQuality)
+                .ThenBy(module => module.ModulePath, StringComparer.OrdinalIgnoreCase)
+                .First())
+            .ToArray();
+        var ordered = physicalModules
             .OrderBy(module => module.DeviceIndex == selectedDeviceIndex ? 0 : 1)
             .ThenBy(module => module.DeviceName, StringComparer.OrdinalIgnoreCase)
             .ThenBy(module => module.ModulePath, StringComparer.OrdinalIgnoreCase)
@@ -125,12 +139,13 @@ internal sealed class TiaHardwareReader
             var position = ReadInt(item, "PositionNumber", "Slot");
             var explicitSlot = ReadInt(item, "SlotNumber", "Slot");
             var explicitSubslot = ReadInt(item, "SubslotNumber", "Subslot", "SubPositionNumber");
+            var zeroPositionSubmodule = depth >= 2 && position == 0 && parentSlot > 0;
             var slot = explicitSlot >= 0
                 ? explicitSlot
-                : depth >= 3 && parentSlot >= 0 ? parentSlot : position;
+                : zeroPositionSubmodule || depth >= 3 && parentSlot >= 0 ? parentSlot : position;
             var subslot = explicitSubslot >= 0
                 ? explicitSubslot
-                : depth >= 3 ? position : -1;
+                : zeroPositionSubmodule ? 0 : depth >= 3 ? position : -1;
             // A directly nested module owns its PositionNumber as slot. Only
             // deeper submodules inherit that slot and use their position as a
             // best-effort subslot when the API exposes no explicit attribute.
@@ -146,11 +161,11 @@ internal sealed class TiaHardwareReader
             var effectiveDevice = depth == 0
                 ? device.WithHeadIdentity(moduleName, moduleType, network)
                 : device;
-            var deviceType = depth == 0 && moduleType.Length > 0
+            var deviceType = depth == 0 && moduleType.Length > 0 && !IsInfrastructureName(moduleName)
                 ? moduleType
                 : effectiveDevice.DeviceType;
             var manufacturer = FirstNotEmpty(
-                ReadString(item, "Author", "Manufacturer"),
+                ReadString(item, "Manufacturer", "VendorName", "Vendor"),
                 effectiveDevice.Manufacturer);
             var orderNumber = FirstNotEmpty(
                 ReadString(item, "OrderNumber"),
@@ -244,13 +259,65 @@ internal sealed class TiaHardwareReader
                 ? semanticIdentity
                 : $"UNNAMED-DEVICE-{deviceIndex}",
             ReadString(device, "TypeName", "Classification"),
-            ReadString(device, "Author", "Manufacturer"),
+            ReadString(device, "Manufacturer", "VendorName", "Vendor"),
             FirstNotEmpty(ReadString(device, "OrderNumber"), ParseOrderNumber(typeIdentifier)),
             FirstNotEmpty(
                 ReadString(device, "FirmwareVersion", "Firmware", "Version"),
                 ParseFirmware(typeIdentifier)),
             ReadGsdMetadata(device, "Siemens.Engineering.HW.Features.GsdDevice"));
     }
+
+    /// <summary>
+    /// GSD stations can expose the actual device head and its NetworkInterface
+    /// in a sibling branch next to the rack that owns the addressed modules.
+    /// A pure ancestor-only traversal then loses the station name and network
+    /// data. Pre-scanning one device keeps metadata scoped to that device while
+    /// making it available to every addressed branch.
+    /// </summary>
+    private DeviceDiscovery DiscoverDevice(object device)
+    {
+        var state = new DeviceDiscovery();
+        DiscoverDeviceItems(device, parentItem: null, state);
+        return state;
+    }
+
+    private void DiscoverDeviceItems(object parent, object? parentItem, DeviceDiscovery state)
+    {
+        foreach (var item in ReadDeviceItems(parent))
+        {
+            var localNetwork = ReadNetworkMetadata(item);
+            state.AddNetwork(localNetwork);
+
+            var typeIdentifier = ReadString(item, "TypeIdentifier");
+            var gsd = ReadGsdMetadata(item, "Siemens.Engineering.HW.Features.GsdDeviceItem");
+            if (!localNetwork.IsEmpty)
+            {
+                var candidate = parentItem is not null &&
+                                !IsInfrastructureName(ReadString(parentItem, "Name"))
+                    ? parentItem
+                    : item;
+                state.ConsiderHead(candidate, score: 100);
+            }
+            else if (IsGsdDeviceHead(typeIdentifier, gsd.Type))
+            {
+                state.ConsiderHead(item, score: 80);
+            }
+
+            DiscoverDeviceItems(item, item, state);
+        }
+    }
+
+    private static bool IsGsdDeviceHead(string typeIdentifier, string gsdType) =>
+        typeIdentifier.IndexOf("/HM_", StringComparison.OrdinalIgnoreCase) >= 0 ||
+        string.Equals(gsdType, "IM", StringComparison.OrdinalIgnoreCase) ||
+        gsdType.StartsWith("IM.", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsInfrastructureName(string value) =>
+        string.IsNullOrWhiteSpace(value) || Regex.IsMatch(
+            value,
+            @"^(BAUGRUPPENTRÄGER|BAUGRUPPENTRAEGER|RACK|RAIL|HEAD|PORT(?:\s*\d+)?|" +
+            @"PN[-_/ ]?IO(?:[-_/ ]?\d+)?|PROFINET(?:[-_/ ]?INTERFACE)?(?:[-_/ ]?\d+)?)$",
+            RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
     private AddressMetadata ReadAddresses(object item)
     {
@@ -512,6 +579,24 @@ internal sealed class TiaHardwareReader
         addressSet.Output?.StartByte ?? -1,
         addressSet.Output?.RawLengthBits ?? 0);
 
+    private static string CreatePhysicalModuleIdentity(TiaHardwareModuleInfo module) => string.Join("|",
+        module.DeviceIndex,
+        NormalizeIdentityPart(module.DeviceName),
+        NormalizeIdentityPart(module.ModuleName),
+        NormalizeIdentityPart(module.ModuleType),
+        NormalizeIdentityPart(module.TypeIdentifier),
+        module.InputStartByte,
+        module.InputLengthBits,
+        module.OutputStartByte,
+        module.OutputLengthBits);
+
+    private static int GetRepresentationQuality(TiaHardwareModuleInfo module) =>
+        (module.Slot > 0 ? 16 : 0) +
+        (module.Subslot >= 0 ? 8 : 0) +
+        (module.HardwareIdentifier.Length > 0 ? 4 : 0) +
+        (module.IpAddress.Length > 0 ? 2 : 0) +
+        (module.ProfinetName.Length > 0 ? 1 : 0);
+
     private static string NormalizeIdentityPart(string value) =>
         Regex.Replace(value ?? string.Empty, @"\s+", " ").Trim().ToUpperInvariant();
 
@@ -566,10 +651,13 @@ internal sealed class TiaHardwareReader
             string headType,
             NetworkMetadata network)
         {
-            var name = ShouldPreferHeadName(DeviceName, headName)
+            var preferHead = ShouldPreferHeadName(DeviceName, headName);
+            var name = preferHead
                 ? headName
                 : FirstNotEmpty(DeviceName, headName, network.ProfinetName);
-            var type = FirstNotEmpty(headType, DeviceType);
+            var type = preferHead && !IsInfrastructureName(headName)
+                ? FirstNotEmpty(headType, DeviceType)
+                : FirstNotEmpty(DeviceType, headType);
             return new DeviceContext(
                 DeviceIndex,
                 name,
@@ -595,6 +683,32 @@ internal sealed class TiaHardwareReader
             orderNumber,
             firmwareVersion,
             gsd);
+
+        public DeviceContext WithDiscovery(DeviceDiscovery discovery)
+        {
+            if (discovery.Head is null)
+                return this;
+
+            var head = discovery.Head;
+            var typeIdentifier = ReadString(head, "TypeIdentifier");
+            var headGsd = ReadGsdMetadataForDiscovery(head);
+            return new DeviceContext(
+                DeviceIndex,
+                FirstNotEmpty(ReadString(head, "Name"), discovery.Network.ProfinetName, DeviceName),
+                SemanticIdentity,
+                FirstNotEmpty(ReadString(head, "TypeName", "Classification"), DeviceType),
+                FirstNotEmpty(ReadString(head, "Manufacturer", "VendorName", "Vendor"), Manufacturer),
+                FirstNotEmpty(ReadString(head, "OrderNumber"), ParseOrderNumber(typeIdentifier), OrderNumber),
+                FirstNotEmpty(
+                    ReadString(head, "FirmwareVersion", "Firmware", "Version"),
+                    ParseFirmware(typeIdentifier),
+                    FirmwareVersion),
+                headGsd.IsEmpty ? Gsd : headGsd);
+        }
+
+        private static GsdMetadata ReadGsdMetadataForDiscovery(object target) => new(
+            ReadString(target, "GsdName"),
+            ReadString(target, "GsdType"));
 
         private static bool ShouldPreferHeadName(string deviceName, string headName)
         {
@@ -638,6 +752,37 @@ internal sealed class TiaHardwareReader
         public string IpAddress { get; }
         public string Role { get; }
         public bool IsEmpty => ProfinetName.Length == 0 && IpAddress.Length == 0 && Role.Length == 0;
+    }
+
+    private sealed class DeviceDiscovery
+    {
+        private int _headScore;
+
+        public object? Head { get; private set; }
+        public NetworkMetadata Network { get; private set; } = NetworkMetadata.Empty;
+
+        public void AddNetwork(NetworkMetadata candidate)
+        {
+            if (candidate.IsEmpty)
+                return;
+            Network = new NetworkMetadata(
+                FirstNotEmpty(Network.ProfinetName, candidate.ProfinetName),
+                FirstNotEmpty(Network.IpAddress, candidate.IpAddress),
+                FirstNotEmpty(Network.Role, candidate.Role));
+        }
+
+        public void ConsiderHead(object candidate, int score)
+        {
+            if (score <= _headScore || IsInfrastructureName(ReadString(candidate, "Name")))
+                return;
+
+            // Ensure that a proxy really exposes at least a name before using
+            // it to replace the generic rack identity.
+            if (ReadString(candidate, "Name").Length == 0)
+                return;
+            Head = candidate;
+            _headScore = score;
+        }
     }
 
     private sealed class AddressRange

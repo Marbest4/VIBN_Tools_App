@@ -9,6 +9,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] `Tests/ContainerGenerationSmokeTests` liest alle sieben bereitgestellten Interface-/Container-Paare, bilanziert jedes Signal, hält die verifizierten Zuordnungs-/Slot-Untergrenzen ein und meldet `SixLabors.Fonts 1.0.1.0`.
 - [ ] `Tests/UiStartupSmokeTests` ist erfolgreich und meldet keine Binding-Fehler.
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
+- [ ] `Tests/TiaLiveRead` liest aus dem geöffneten `Projekt1.ap20` genau eine PLC, drei Teilnehmer und sechs eindeutige adressführende Modulzeilen, ohne das Projekt zu speichern.
 - [ ] Anwendung startet ohne XamlParseException.
 
 ## Rollen und Navigation
@@ -69,6 +70,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Abweichende FEE-Signale erzeugen beim Queue-Import einen sichtbaren Prüfhinweis und überschreiben die katalogisierte Gerätedefinition nicht.
 - [ ] Eine geänderte Logik-/Adresszuordnung wird gespeichert und nach erneutem Auslesen wiederhergestellt.
 - [ ] Der reale PN/PN Coupler X2 zeigt genau zwei PROFIsafe-Zeilen, keine adresslosen Kopf-/Interfacezeilen und Byte-Längen 12/6 sowie 6/12.
+- [ ] Das verifizierte `Projekt1.ap20` zeigt `KRC4` unter `192.168.1.4`, `PN-PN-Coupler` unter `192.168.0.3` und `PN-PN-Coupler_1` unter `192.168.0.2`; kein Rack-/Gerätekopf-Proxypfad erzeugt eine doppelte Zeile.
 - [ ] Geräteüberschrift zeigt realen Gerätenamen und -typ; IP, PROFINET-Name und Firmware werden vom Geräte-/Interfaceknoten auf beide adressführenden Module übernommen.
 - [ ] `TIA trennen / abbrechen` beendet Attach/Session, leert Listen und beendet TIA Portal selbst nicht.
 - [ ] Special-Device-Hardwaretabelle übernimmt nur bewusst ausgewählte/validierte Zeilen.

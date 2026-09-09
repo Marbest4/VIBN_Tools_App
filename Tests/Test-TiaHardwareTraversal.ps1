@@ -170,23 +170,35 @@ function New-PnPnDevice() {
     $device.TypeName = 'GSD device'
     $device.TypeIdentifier = 'GSDML-V2.35-SIEMENS-PNPNIOC-20200924.XML'
 
+    # Real GSD stations can expose the device head/network interface in a
+    # sibling branch next to the rack containing the addressed modules.
+    $rack = [FakeTiaItem]::new()
+    $rack.Name = 'Baugruppentraeger'
+    $rack.TypeName = 'Rack'
+    $rack.PositionNumber = 0
+
     $head = [FakeTiaItem]::new()
     $head.Name = 'PN-PN-Coupler_1'
     $head.TypeName = 'PN/PN Coupler X2'
-    $head.IpAddress = '192.168.0.3'
-    $head.PnDeviceName = 'pn-pn-coupler-x2'
+    $head.TypeIdentifier = 'GSD:TEST/HM_DAP_X2_V3_0'
     $head.FirmwareVersion = 'V3.0'
     $head.PositionNumber = 0
 
     $interface = [FakeTiaItem]::new()
     $interface.Name = 'PN/PN Coupler Interface'
     $interface.TypeName = 'Interface'
+    $interface.IpAddress = '192.168.0.3'
+    $interface.PnDeviceName = 'pn-pn-coupler-x2'
     $interface.PositionNumber = 0
+
+    $slotOne = [FakeTiaItem]::new()
+    $slotOne.Name = 'PROFIsafe IN/OUT 12 Byte / 6 Byte_1'
+    $slotOne.PositionNumber = 1
 
     $safeTwelveSix = [FakeTiaItem]::new()
     $safeTwelveSix.Name = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
     $safeTwelveSix.TypeName = 'PROFIsafe IN/OUT 12 Byte / 6 Byte'
-    $safeTwelveSix.PositionNumber = 1
+    $safeTwelveSix.PositionNumber = 0
     $safeTwelveSix.HardwareIdentifier = 'HW-6201'
     $inputOne = [FakeTiaAddress]::new()
     $inputOne.IoType = 'Input'
@@ -199,10 +211,14 @@ function New-PnPnDevice() {
     $safeTwelveSix.Addresses.Add($inputOne)
     $safeTwelveSix.Addresses.Add($outputOne)
 
+    $slotTwo = [FakeTiaItem]::new()
+    $slotTwo.Name = 'PROFIsafe IN/OUT 6 Byte / 12 Byte_1'
+    $slotTwo.PositionNumber = 2
+
     $safeSixTwelve = [FakeTiaItem]::new()
     $safeSixTwelve.Name = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
     $safeSixTwelve.TypeName = 'PROFIsafe IN/OUT 6 Byte / 12 Byte'
-    $safeSixTwelve.PositionNumber = 2
+    $safeSixTwelve.PositionNumber = 0
     $safeSixTwelve.HardwareIdentifier = 'HW-7402'
     $inputTwo = [FakeTiaAddress]::new()
     $inputTwo.IoType = 'Input'
@@ -215,8 +231,8 @@ function New-PnPnDevice() {
     $safeSixTwelve.Addresses.Add($inputTwo)
     $safeSixTwelve.Addresses.Add($outputTwo)
 
-    $interface.DeviceItems.Add($safeTwelveSix)
-    $interface.DeviceItems.Add($safeSixTwelve)
+    $slotOne.DeviceItems.Add($safeTwelveSix)
+    $slotTwo.DeviceItems.Add($safeSixTwelve)
     # A second proxy/path with identical semantic data must not create a row.
     $duplicate = [FakeTiaItem]::new()
     $duplicate.Name = $safeTwelveSix.Name
@@ -232,9 +248,15 @@ function New-PnPnDevice() {
     $duplicateOutput.Length = 48
     $duplicate.Addresses.Add($duplicateInput)
     $duplicate.Addresses.Add($duplicateOutput)
+    # The same physical area is also reachable below the logical interface,
+    # but without the rack slot metadata. The reader must keep only the richer
+    # slot-aware representation.
     $interface.DeviceItems.Add($duplicate)
 
+    $rack.DeviceItems.Add($slotOne)
+    $rack.DeviceItems.Add($slotTwo)
     $head.DeviceItems.Add($interface)
+    $device.DeviceItems.Add($rack)
     $device.DeviceItems.Add($head)
     return $device
 }
@@ -290,23 +312,23 @@ if ($pnPnRows.Count -ne 2) {
 $firstSafe = $pnPnRows[0]
 if ($firstSafe.DeviceType -ne 'PN/PN Coupler X2' -or
     $firstSafe.TraversalIndex -lt 1 -or $firstSafe.HierarchyDepth -ne 2 -or
-    $firstSafe.ParentName -ne 'PN/PN Coupler Interface' -or
+    $firstSafe.ParentName -ne 'PROFIsafe IN/OUT 12 Byte / 6 Byte_1' -or
     $firstSafe.ObjectClass -notmatch 'FakeTiaItem' -or
     $firstSafe.HardwareIdentifier -ne 'HW-6201' -or
-    $firstSafe.ModulePath -ne 'PN-PN-Coupler_1/PN/PN Coupler Interface/PROFIsafe IN/OUT 12 Byte / 6 Byte' -or
+    $firstSafe.ModulePath -ne 'Baugruppentraeger/PROFIsafe IN/OUT 12 Byte / 6 Byte_1/PROFIsafe IN/OUT 12 Byte / 6 Byte' -or
     $firstSafe.IpAddress -ne '192.168.0.3' -or
     $firstSafe.ProfinetName -ne 'pn-pn-coupler-x2' -or
     $firstSafe.FirmwareVersion -ne 'V3.0' -or
-    $firstSafe.Slot -ne 1 -or
+    $firstSafe.Slot -ne 1 -or $firstSafe.Subslot -ne 0 -or
     $firstSafe.InputStartByte -ne 62 -or $firstSafe.InputLengthBits -ne 96 -or
     $firstSafe.InputLength -ne 12 -or $firstSafe.InputEndByte -ne 73 -or
     $firstSafe.OutputStartByte -ne 62 -or $firstSafe.OutputLengthBits -ne 48 -or
     $firstSafe.OutputLength -ne 6 -or $firstSafe.OutputEndByte -ne 67) {
-    throw "Erster PROFIsafe-Bereich falsch: Index=$($firstSafe.TraversalIndex), Tiefe=$($firstSafe.HierarchyDepth), Parent='$($firstSafe.ParentName)', Klasse='$($firstSafe.ObjectClass)', HW='$($firstSafe.HardwareIdentifier)', Pfad='$($firstSafe.ModulePath)', E=$($firstSafe.InputStartByte)/$($firstSafe.InputLengthBits), A=$($firstSafe.OutputStartByte)/$($firstSafe.OutputLengthBits)."
+    throw "Erster PROFIsafe-Bereich falsch: Gerät='$($firstSafe.DeviceName)', Typ='$($firstSafe.DeviceType)', IP='$($firstSafe.IpAddress)', PN='$($firstSafe.ProfinetName)', FW='$($firstSafe.FirmwareVersion)', Slot=$($firstSafe.Slot)/$($firstSafe.Subslot), Index=$($firstSafe.TraversalIndex), Tiefe=$($firstSafe.HierarchyDepth), Parent='$($firstSafe.ParentName)', Klasse='$($firstSafe.ObjectClass)', HW='$($firstSafe.HardwareIdentifier)', Pfad='$($firstSafe.ModulePath)', E=$($firstSafe.InputStartByte)/$($firstSafe.InputLengthBits)/$($firstSafe.InputLength)/$($firstSafe.InputEndByte), A=$($firstSafe.OutputStartByte)/$($firstSafe.OutputLengthBits)/$($firstSafe.OutputLength)/$($firstSafe.OutputEndByte)."
 }
 
 $secondSafe = $pnPnRows[1]
-if ($secondSafe.Slot -ne 2 -or
+if ($secondSafe.Slot -ne 2 -or $secondSafe.Subslot -ne 0 -or
     $secondSafe.InputStartByte -ne 74 -or $secondSafe.InputLengthBits -ne 48 -or
     $secondSafe.InputLength -ne 6 -or $secondSafe.InputEndByte -ne 79 -or
     $secondSafe.OutputStartByte -ne 68 -or $secondSafe.OutputLengthBits -ne 96 -or

@@ -56,6 +56,8 @@ try
     VerifyTiaAxisSelectionModel();
     Console.WriteLine("Running typed TIA pipe protocol smoke test...");
     await VerifyTypedTiaPipeProtocolAsync();
+    Console.WriteLine("Running typed TIA pipe timeout diagnostic smoke test...");
+    await VerifyTypedTiaPipeTimeoutDiagnosticAsync();
     Console.WriteLine("All ViCo core smoke tests passed.");
     return 0;
 }
@@ -1068,6 +1070,50 @@ static async Task VerifyTypedTiaPipeProtocolAsync()
         var configuredAxes = await client.ConfigureAxesAsync(new[] { axes[0].Id });
         Assert(configuredAxes.Count == 1 && configuredAxes[0].ParameterResults.Single().Success,
             "Selective TIA axis configuration results must survive the typed pipe boundary.");
+    }
+    finally
+    {
+        await client.DisposeAsync();
+    }
+
+    await serverTask.WaitAsync(TimeSpan.FromSeconds(5));
+}
+
+static async Task VerifyTypedTiaPipeTimeoutDiagnosticAsync()
+{
+    var pipeName = $"vibn-tia-timeout-test-{Guid.NewGuid():N}";
+    var serverTask = Task.Run(async () =>
+    {
+        await using var server = new NamedPipeServerStream(
+            pipeName,
+            PipeDirection.InOut,
+            1,
+            PipeTransmissionMode.Byte,
+            PipeOptions.Asynchronous);
+        await server.WaitForConnectionAsync();
+        using var reader = new StreamReader(server, leaveOpen: true);
+        _ = await reader.ReadLineAsync();
+        await Task.Delay(TimeSpan.FromMilliseconds(500));
+    });
+
+    var client = new NamedPipeTiaBridgeClient(new TiaBridgeClientOptions(
+        pipeName,
+        ConnectTimeout: TimeSpan.FromSeconds(5),
+        RequestTimeout: TimeSpan.FromMilliseconds(100)));
+    try
+    {
+        await client.ConnectAsync().WaitAsync(TimeSpan.FromSeconds(6));
+        try
+        {
+            _ = await client.PingAsync();
+            throw new InvalidOperationException("A silent TIA bridge must time out.");
+        }
+        catch (TimeoutException exception)
+        {
+            Assert(exception.Message.Contains(TiaCommands.Ping, StringComparison.Ordinal) &&
+                   exception.Message.Contains("Openness-Freigabedialog", StringComparison.Ordinal),
+                "TIA request timeout must name the blocked command and the likely Openness dialog.");
+        }
     }
     finally
     {

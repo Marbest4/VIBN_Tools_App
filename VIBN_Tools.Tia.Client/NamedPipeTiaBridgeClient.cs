@@ -345,8 +345,20 @@ public sealed class NamedPipeTiaBridgeClient : ITiaBridgeClient
             PayloadJson = JsonSerializer.Serialize(payload, JsonOptions)
         };
 
-        await _writer.WriteLineAsync(JsonSerializer.Serialize(request, JsonOptions).AsMemory(), timeout.Token);
-        var responseLine = await _reader.ReadLineAsync(timeout.Token);
+        string? responseLine;
+        try
+        {
+            await _writer.WriteLineAsync(JsonSerializer.Serialize(request, JsonOptions).AsMemory(), timeout.Token);
+            responseLine = await _reader.ReadLineAsync(timeout.Token);
+        }
+        catch (OperationCanceledException) when (
+            !cancellationToken.IsCancellationRequested &&
+            !connectionCancellation.IsCancellationRequested)
+        {
+            throw new TimeoutException(
+                $"TIA Bridge-Befehl '{command}' hat nach {_options.EffectiveRequestTimeout.TotalSeconds:0.#} Sekunden nicht geantwortet. " +
+                "TIA kann auf einen Openness-Freigabedialog oder den Abschluss des Projektladens warten.");
+        }
 
         if (responseLine is null)
             throw new IOException("TIA Bridge hat die Verbindung beendet.");

@@ -17,7 +17,7 @@ Die alte Routine lief rekursiv über `DeviceItems`, stellte aber jedes Hierarchi
 7. `GsdDevice`/`GsdDeviceItem` liefern GSD-Name und -Typ, soweit das jeweilige Objekt den Dienst anbietet.
 8. Dynamische Attribute ergänzen Typname, Hersteller, Bestellnummer und Firmware (`FirmwareVersion`, `Firmware` oder `Version`). Geräte-/Netzwerkmetadaten werden bis zum adressführenden Blattmodul vererbt.
 9. Adresslose Hierarchieknoten liefern Metadaten an ihre Kinder, erzeugen aber keine eigene Tabellenzeile.
-10. Eine semantische Identität aus Gerät, Modultyp, Slot/Subslot und exaktem E-/A-Satz verhindert doppelte Proxyzeilen, ohne zwei reale PROFIsafe-Module zusammenzufassen.
+10. Eine semantische Identität entfernt zunächst identische Proxyzeilen. Da TIA ein GSD-Submodul zusätzlich über Rack- und Gerätekopfpfad liefern kann, führt eine zweite physische Identität gleiche Teilnehmer-, Modul- und E-/A-Daten zusammen. Von diesen Darstellungen bleibt die Zeile mit den vollständigsten Slot-/Subslotdaten erhalten. Zwei Module mit verschiedenen Adressen bleiben getrennt.
 
 ## Ergebnisdaten
 
@@ -82,21 +82,48 @@ Die Bridge akzeptiert V15 bis V22 und lädt die zur gewählten Installation geh�
 
 ## Live-Abnahme
 
-Das Repository enthält `Projekt1.7z` mit dem TIA-V20-Projekt `Projekt1/Projekt1.ap20` und zugehörigen GSD-Dateien als kleines reales Testartefakt. Archiv und Projektversion wurden geprüft. TIA Portal V20 und die passende `Siemens.Engineering.dll` sind auf dem Prüfhost vorhanden; die Bridge baut dagegen. Das Projekt wurde in einen ignorierten Testartefaktordner entpackt, aber noch nicht über Openness angefügt: Die lokale Gruppe `Siemens TIA Openness` ist vorhanden und leer. Vor der Live-Abnahme muss der aktuelle Windows-Benutzer hinzugefügt und Windows neu angemeldet werden.
+Das Repository enthält `Projekt1.7z` mit dem TIA-V20-Projekt `Projekt1/Projekt1.ap20` und zugehörigen GSD-Dateien als kleines reales Testartefakt. Archiv und Projektversion wurden geprüft. TIA Portal V20 und die passende `Siemens.Engineering.dll` sind auf dem Prüfhost vorhanden; die Bridge baut dagegen. Das Projekt wird für die Live-Abnahme in einen ignorierten Testartefaktordner entpackt. Der interaktive Windows-Benutzer muss Mitglied der lokalen Gruppe `Siemens TIA Openness` sein und sich nach einer Gruppenänderung neu anmelden.
+
+Der wiederholbare, ausschließlich lesende Abnahmelauf liegt unter `Tests/TiaLiveRead`. Er verwendet dieselben öffentlichen Clientfunktionen wie die Oberfläche (`SelectVersionAsync`, `AttachAsync`, `ListPlcsAsync`, `SelectPlcAsync`, `ListHardwareAsync`), validiert Byte-/Bitlängen und semantische Duplikate und beendet anschließend seine eigene Bridge-Session. Er ruft weder `SaveAsync` noch einen Import- oder Konfigurationsbefehl auf. Beispiel nach dem Öffnen des Testprojekts in TIA V20:
+
+```powershell
+dotnet run --project Tests/TiaLiveRead/VIBN_Tools.TiaLiveRead.csproj --configuration Release -- "VIBN_Tools.TiaBridge/bin/Release/net48/VIBN_Tools.TiaBridge.exe" V20 "artifacts/tia-live/hardware.json"
+```
+
+Die Konsolentabelle und die optionale JSON-Datei enthalten die von Openness tatsächlich gemeldeten Geräte, Module, Slots/Subslots, E-/A-Bereiche, IP-Adressen und PROFINET-Namen. Das Resultat ist deshalb eine Live-Messung und keine fest codierte Erwartung.
+
+Antwortet ein Bridge-Befehl nicht innerhalb des konfigurierten Zeitfensters, nennt der Client jetzt den betroffenen Befehl und unterscheidet diesen internen Timeout von einem Benutzerabbruch. Bei `session.attach` ist zuerst ein sichtbarer Openness-Freigabedialog beziehungsweise ein noch laufender Projektladevorgang zu prüfen.
+
+### Verifiziertes Ergebnis mit TIA Portal V20
+
+Die Live-Abnahme wurde am 8. September 2026 mit dem geöffneten Projekt `Projekt1.ap20` unter dem interaktiven Benutzer `marce` durchgeführt. Dieser Benutzer ist Mitglied der lokalen Gruppe `Siemens TIA Openness`. Nach Bestätigung des Siemens-Openness-Dialogs meldete der Leseweg eine PLC, drei Teilnehmer und sechs eindeutige adressführende Module:
+
+| Teilnehmer | Modul | Slot/Subslot | Eingang | Ausgang | IP | PROFINET-Name |
+| --- | --- | --- | --- | --- | --- | --- |
+| `KRC4` | `64 sichere digitale Ein- und Ausgänge` | `1/0` | `E 18–29` (96 Bit) | `A 18–29` (96 Bit) | `192.168.1.4` | `krc4` |
+| `KRC4` | `256 digitale Ein- und Ausgänge` | `2/0` | `E 30–61` (256 Bit) | `A 30–61` (256 Bit) | `192.168.1.4` | `krc4` |
+| `PN-PN-Coupler` | `PROFIsafe IN/OUT 12 Byte / 6 Byte` | `1/0` | `E 62–73` (96 Bit) | `A 62–67` (48 Bit) | `192.168.0.3` | `pn-pn-coupler` |
+| `PN-PN-Coupler` | `PROFIsafe IN/OUT 6 Byte / 12 Byte` | `2/0` | `E 74–79` (48 Bit) | `A 68–79` (96 Bit) | `192.168.0.3` | `pn-pn-coupler` |
+| `PN-PN-Coupler_1` | `PROFIsafe IN/OUT 12 Byte / 6 Byte` | `1/0` | `E 0–11` (96 Bit) | `A 0–5` (48 Bit) | `192.168.0.2` | `pn-pn-coupler_1` |
+| `PN-PN-Coupler_1` | `PROFIsafe IN/OUT 6 Byte / 12 Byte` | `2/0` | `E 12–17` (48 Bit) | `A 6–17` (96 Bit) | `192.168.0.2` | `pn-pn-coupler_1` |
+
+Der Test bestätigt sechs physische Identitäten für sechs ausgegebene Zeilen; die doppelten Rack-/Gerätekopf-Proxypfade werden somit entfernt. Für KRC4 wurden `KRC4-ProfiNet_4.1`, Firmware `V4.1` und die GSDML-Datei `GSDML-V2.33-KUKA-KRC4-PROFINET_4.1-20170630.XML` gelesen. Für beide Koppler wurden Bestellnummer `6ES7 158-3AD01-0XA0`, Firmware `V3.0` und `GSDML-V2.35-SIEMENS-PNPNIOC-20200924.XML` gelesen. Das Herstellerattribut war auf diesen Live-Proxys nicht verfügbar und bleibt deshalb bewusst leer; es wird kein Wert erfunden.
+
+Der Dateizeitstempel von `Projekt1.ap20` blieb während des Laufs unverändert. Zusätzlich ruft der Harness weder `Save` noch eine Import- oder Konfigurationsfunktion auf. Damit ist der Test für dieses Beispielprojekt nachweislich read-only. Eine Abnahme mit einem großen Multiuser-/Project-Server-Projekt bleibt davon getrennt.
 
 Für einen PN/PN-Coupler ist mindestens zu prüfen:
 
 | Erwartung | Beispiel |
 | --- | --- |
-| Gerät | `PNPN-Koppler_1` |
+| Gerät | `PN-PN-Coupler` |
 | Typ | `PN/PN Coupler X2` |
 | Modul 1 | `PROFIsafe IN/OUT 12 Byte / 6 Byte`: Eingang `62–73` (96 Bit = 12 Byte), Ausgang `62–67` (48 Bit = 6 Byte) |
 | Modul 2 | `PROFIsafe IN/OUT 6 Byte / 12 Byte`: Eingang `74–79` (48 Bit = 6 Byte), Ausgang `68–79` (96 Bit = 12 Byte) |
 | Struktur | Kopfgerät → Modul → Submodul mit Slot/Subslot |
 
-Zusätzlich sind ein Siemens-Standardmodul, ein GSDML-Gerät, ein Gerät ohne Prozessabbild und ein großes Projekt zu testen. Die Bridge- und UI-Logs müssen bei nicht unterstützten Attributen weiterlaufen und dürfen das TIA-Projekt nicht speichern oder verändern.
+Für weitere Freigaben sind zusätzlich ein Siemens-Standardmodul, ein Gerät ohne Prozessabbild und ein großes Multiuser-/Project-Server-Projekt zu testen. GSDML-Geräte und der read-only Ablauf sind mit `Projekt1` live bestätigt. Die Bridge- und UI-Logs müssen bei nicht unterstützten Attributen weiterlaufen und dürfen das TIA-Projekt nicht speichern oder verändern.
 
-Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback, doppelte Proxyobjekte, eine Multiuser-Local-Session, Vererbung von IP/PROFINET-Name/Firmware und exakt die beiden oben genannten PN/PN-Adresszeilen. Er ersetzt nicht die Live-Abnahme mit Siemens Openness.
+Der automatisierte Strukturtest `Tests/Test-TiaHardwareTraversal.ps1` prüft Root-, Gruppen-, Untergruppen- und Ungrouped-Geräte, den `Items`-Fallback, doppelte Proxyobjekte, eine Multiuser-Local-Session, Vererbung von IP/PROFINET-Name/Firmware und exakt die beiden oben genannten PN/PN-Adresszeilen. Er ergänzt die oben dokumentierte Live-Abnahme, ersetzt aber keine Abnahme weiterer realer Projekttypen.
 
 ## Offizielle API-Grundlage
 
