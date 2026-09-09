@@ -104,7 +104,8 @@ public sealed record ViCoWorkstation(
     ViCoWorkstationConfiguration? Configuration = null,
     int KanbanizeLaneId = 0,
     int ConfigurationColumnId = 0,
-    IReadOnlyList<ViCoProjectCardInfo>? ProjectCards = null)
+    IReadOnlyList<ViCoProjectCardInfo>? ProjectCards = null,
+    IReadOnlyList<string>? Completed = null)
 {
     public IReadOnlyList<AutomationSoftwareInfo> AutomationSoftware { get; } =
         Software ?? Array.Empty<AutomationSoftwareInfo>();
@@ -117,7 +118,14 @@ public sealed record ViCoWorkstation(
 
     public string ProjectSummary => string.Join(" | ", Projects);
 
-    public string AdditionalProjects => string.Empty;
+    /// <summary>
+    /// Completed project cards assigned either through the Kanbanize
+    /// "Abgeschlossen" swimlane or through the legacy done status.
+    /// </summary>
+    public IReadOnlyList<string> CompletedProjects { get; } =
+        Completed ?? Array.Empty<string>();
+
+    public string AdditionalProjects => string.Join(" | ", CompletedProjects);
 
     /// <summary>Raw project states retained for diagnostic/detail displays.</summary>
     public string ProjectStatusSummary => string.Join(", ", Details

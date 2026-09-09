@@ -51,6 +51,11 @@
   </ItemGroup>
 
   <ItemGroup>
+	<!-- Keep the selected FEE SDK version visible at runtime. This is the same
+	     diagnostic metadata used by fdc85b1 and helps detect an accidental SDK
+	     switch without changing any vendor assembly. -->
+	<AssemblyMetadata Include="FeeSdkVersion" Value="$([System.IO.Path]::GetFileName('$(FeeScreenSimRoot)'))" />
+
 	<PackageReference Include="ClosedXML" Version="0.105.0" />
 	<PackageReference Include="Grob.UX" Version="1.8.93" />
 	<PackageReference Include="Microsoft.ML" Version="5.0.0" />

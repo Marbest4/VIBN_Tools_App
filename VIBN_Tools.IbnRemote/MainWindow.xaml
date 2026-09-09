@@ -62,7 +62,7 @@
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Auto">
             <StackPanel MinWidth="440">
-                <Expander Header="Erweiterte Anzeige und Verbindung">
+                <GroupBox Header="Erweiterte Anzeige und Verbindung">
                     <Border Margin="0,5,0,0" Padding="9" Background="#FFF3F5F7" CornerRadius="4">
                         <StackPanel>
                             <Grid>
@@ -118,15 +118,15 @@
                             </WrapPanel>
                         </StackPanel>
                     </Border>
-                </Expander>
+                </GroupBox>
 
-                <Expander Margin="0,7,0,0">
-                    <Expander.Header>
+                <GroupBox Margin="0,7,0,0">
+                    <GroupBox.Header>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock FontWeight="SemiBold" Text="Zugangsdaten" />
                             <TextBlock Margin="8,0,0,0" Foreground="#FF666666" Text="{Binding CredentialSummary}" />
                         </StackPanel>
-                    </Expander.Header>
+                    </GroupBox.Header>
                     <Border Margin="0,5,0,0" Padding="9" Background="#FFF3F5F7" CornerRadius="4">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold" Text="Kanbanize API-Key" />
@@ -150,7 +150,7 @@
                                        Text="{Binding CredentialStatus}" TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
-                </Expander>
+                </GroupBox>
             </StackPanel>
         </ScrollViewer>
 

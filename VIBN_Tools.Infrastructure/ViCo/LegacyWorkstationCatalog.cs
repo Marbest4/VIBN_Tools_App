@@ -32,7 +32,8 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                 robotColumns,
                 boardData.Configurations,
                 boardData.ConfigurationColumns,
-                boardData.ProjectCards),
+                boardData.ProjectCards,
+                boardData.CompletedProjectsByMachineKey),
             warnings);
     }
 
@@ -107,7 +108,37 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                         .ThenBy(card => card.Title, StringComparer.OrdinalIgnoreCase)
                         .ToArray(),
                     StringComparer.OrdinalIgnoreCase);
-            return new CachedBoardData(configurations, columns, projectCards);
+            var completedLaneIds = cache.Lanes
+                .Where(lane => string.Equals(
+                    lane.Name.Trim(),
+                    "Abgeschlossen",
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(lane => lane.Id)
+                .Where(id => id.Length > 0)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var completedProjectsByMachineKey = cache.Cards
+                .Where(card => completedLaneIds.Contains(card.LaneId))
+                .Where(card => !IsConfigurationTitle(card.Title))
+                .Select(card => new
+                {
+                    MachineKey = ProjectIdentity.MachineKey(card.Title),
+                    Title = ProjectIdentity.CleanDisplay(card.Title)
+                })
+                .Where(card => card.MachineKey.Length > 0 && card.Title.Length > 0)
+                .GroupBy(card => card.MachineKey, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    group => group.Key,
+                    group => (IReadOnlyList<string>)group
+                        .Select(card => card.Title)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .OrderBy(title => title, StringComparer.OrdinalIgnoreCase)
+                        .ToArray(),
+                    StringComparer.OrdinalIgnoreCase);
+            return new CachedBoardData(
+                configurations,
+                columns,
+                projectCards,
+                completedProjectsByMachineKey);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
         {
@@ -184,7 +215,8 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
         IReadOnlyList<string> robotColumns,
         IReadOnlyDictionary<string, ViCoWorkstationConfiguration> configurations,
         IReadOnlyDictionary<string, int> configurationColumns,
-        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> projectCards)
+        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> projectCards,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> completedProjectsByMachineKey)
     {
         var result = new List<ViCoWorkstation>();
         for (var index = 0; index < combined.Count; index++)
@@ -236,6 +268,17 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
             var projects = laneCards
                 .Where(card => ProjectIdentity.GetStatus(card) is "Planung" or "In Arbeit")
                 .ToArray();
+            var machineKey = ProjectIdentity.MachineKey(displayName);
+            var completedProjects = laneCards
+                .Where(card => ProjectIdentity.GetStatus(card) == "Erledigt")
+                .Select(ProjectIdentity.CleanDisplay)
+                .Concat(completedProjectsByMachineKey.TryGetValue(machineKey, out var completedLaneProjects)
+                    ? completedLaneProjects
+                    : Array.Empty<string>())
+                .Where(title => title.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(title => title, StringComparer.OrdinalIgnoreCase)
+                .ToArray();
             var robots = FindRobotInformation(laneCards, robotCards, robotNames, robotColumns);
             foreach (var robot in robots)
                 details.Add($"Robot: {robot.Name} – {robot.Status}");
@@ -258,7 +301,8 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
                     : 0,
                 projectCards.TryGetValue(laneId, out var laneProjectCards)
                     ? laneProjectCards
-                    : Array.Empty<ViCoProjectCardInfo>()));
+                    : Array.Empty<ViCoProjectCardInfo>(),
+                completedProjects));
         }
 
         return result;
@@ -469,12 +513,14 @@ public sealed class LegacyWorkstationCatalog : IViCoWorkstationCatalog
     private sealed record CachedBoardData(
         IReadOnlyDictionary<string, ViCoWorkstationConfiguration> Configurations,
         IReadOnlyDictionary<string, int> ConfigurationColumns,
-        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> ProjectCards)
+        IReadOnlyDictionary<string, IReadOnlyList<ViCoProjectCardInfo>> ProjectCards,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> CompletedProjectsByMachineKey)
     {
         public static CachedBoardData Empty { get; } = new(
             new Dictionary<string, ViCoWorkstationConfiguration>(StringComparer.OrdinalIgnoreCase),
             new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase),
-            new Dictionary<string, IReadOnlyList<ViCoProjectCardInfo>>(StringComparer.OrdinalIgnoreCase));
+            new Dictionary<string, IReadOnlyList<ViCoProjectCardInfo>>(StringComparer.OrdinalIgnoreCase),
+            new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase));
     }
 }
 
@@ -499,7 +545,9 @@ public sealed class ViCoWorkstationSearch : IViCoWorkstationSearch
     private static bool Matches(ViCoWorkstation workstation, string normalizedQuery, ViCoSearchMode mode)
     {
         if (mode == ViCoSearchMode.Project)
-            return workstation.Projects.Any(project => Normalize(project).Contains(normalizedQuery, StringComparison.Ordinal));
+            return workstation.Projects
+                .Concat(workstation.CompletedProjects)
+                .Any(project => Normalize(project).Contains(normalizedQuery, StringComparison.Ordinal));
         if (mode == ViCoSearchMode.Workstation)
             return Normalize(workstation.DisplayName + workstation.PcName + workstation.UserName)
                 .Contains(normalizedQuery, StringComparison.Ordinal);
@@ -512,6 +560,7 @@ public sealed class ViCoWorkstationSearch : IViCoWorkstationSearch
             workstation.PcName,
             workstation.UserName,
             string.Join(" ", workstation.Projects),
+            string.Join(" ", workstation.CompletedProjects),
             workstation.SoftwareInformation,
             workstation.WorkstationConfiguration.Software.Value,
             workstation.WorkstationConfiguration.Location.Value,

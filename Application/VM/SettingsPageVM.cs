@@ -1,5 +1,6 @@
 ﻿using System.Collections.ObjectModel;
 using System.Net.Http;
+using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
@@ -580,13 +581,80 @@ namespace VIBN_Tools.Application.VM
         // M E T H O D S   ( B U T T O N S )
         //===========================================================================================================================
 
-        private Task Connect_ToFee(object parameter)
+        private async Task Connect_ToFee(object parameter)
         {
+            if (string.IsNullOrWhiteSpace(SelectedServer))
+            {
+                ConnectionStatus = "Bitte zuerst einen PC auswählen.";
+                _log.Warning("Project Settings", ConnectionStatus);
+                return;
+            }
+
             _connectionService.LoadFeeDataOnConnect = LoadFeeData;
+            var stopwatch = Stopwatch.StartNew();
+            ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
+            ConnectedServer = "---";
+            _log.Information("Project Settings", ConnectionStatus);
+            try
+            {
+                if (Services.ApiInstance is null)
+                {
+                    stopwatch.Stop();
+                    ConnectionStatus = "Die FEE-Laufzeit ist nicht verfügbar. Bitte die zu fdc85b1 passende SDK-Installation bzw. SDK-Auswahl prüfen.";
+                    _log.Warning("Project Settings", ConnectionStatus);
+                    return;
+                }
 
-            Services.ApiInstance.Connect(SelectedServer, "admin", "admin");
+                if (_connectionService.IsConnected)
+                {
+                    Services.ApiInstance.Disconnect();
+                    if (!await _connectionService.WaitForDisconnectedAsync(TimeSpan.FromSeconds(3)))
+                    {
+                        stopwatch.Stop();
+                        ConnectionStatus = "Die bestehende FEE-Verbindung konnte nicht sauber getrennt werden.";
+                        _log.Warning("Project Settings", ConnectionStatus);
+                        return;
+                    }
+                }
 
-            return Task.CompletedTask;
+                // Preserve the fdc85b1 Connect call and its vendor defaults,
+                // while retaining the later optional Credential Manager
+                // integration. A newly typed password applies immediately;
+                // otherwise the saved pair or admin/admin is used.
+                var typedPassword = FeePasswordInput;
+                var feeUsername = string.IsNullOrEmpty(typedPassword)
+                    ? _credentialConfiguration.GetFeeUsername()
+                    : FeeUsernameInput;
+                var feePassword = string.IsNullOrEmpty(typedPassword)
+                    ? _credentialConfiguration.GetFeePassword()
+                    : typedPassword;
+                Services.ApiInstance.Connect(
+                    SelectedServer,
+                    string.IsNullOrWhiteSpace(feeUsername) ? "admin" : feeUsername,
+                    string.IsNullOrEmpty(feePassword) ? "admin" : feePassword);
+                var connected = await _connectionService.WaitForConnectedAsync(TimeSpan.FromSeconds(10));
+                stopwatch.Stop();
+                if (!connected)
+                {
+                    await DisconnectAfterFailedConnectionAsync();
+                    ConnectedServer = "---";
+                    ConnectionStatus = $"Verbindung zu {SelectedServer} konnte nicht bestätigt werden (Zeitüberschreitung).";
+                    _log.Warning("Project Settings", ConnectionStatus);
+                    return;
+                }
+
+                ConnectedServer = SelectedServer;
+                ConnectionStatus = $"Mit {SelectedServer} verbunden ({stopwatch.Elapsed.TotalSeconds:F1} s).";
+                _log.Information("Project Settings", ConnectionStatus);
+            }
+            catch (Exception exception)
+            {
+                stopwatch.Stop();
+                await DisconnectAfterFailedConnectionAsync();
+                ConnectedServer = "---";
+                ConnectionStatus = $"Verbindung zu {SelectedServer} fehlgeschlagen.";
+                _log.Error("Project Settings", ConnectionStatus, exception);
+            }
         }
 
 
@@ -865,9 +933,24 @@ namespace VIBN_Tools.Application.VM
 
         private void OnConnected()
         {
-            ConnectedServer = SelectedServer;
-            ConnectionStatus = $"Mit {SelectedServer} verbunden.";
-            _log.Information("Project Settings", ConnectionStatus);
+            // Connect_ToFee updates the UI only after the SDK state has been
+            // confirmed. Do not overwrite that result from the timer event.
+        }
+
+        private async Task DisconnectAfterFailedConnectionAsync()
+        {
+            if (Services.ApiInstance is null)
+                return;
+
+            try
+            {
+                Services.ApiInstance.Disconnect();
+                await _connectionService.WaitForDisconnectedAsync(TimeSpan.FromSeconds(2));
+            }
+            catch
+            {
+                // Preserve the original connection failure for the log.
+            }
         }
 
     }

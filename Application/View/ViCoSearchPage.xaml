@@ -73,7 +73,7 @@
                       EnableRowVirtualization="True"
                       EnableColumnVirtualization="True"
                       FontSize="13.5"
-                      RowHeight="34"
+                      MinRowHeight="34"
                       ColumnHeaderHeight="38"
                       HorizontalScrollBarVisibility="Auto"
                       FrozenColumnCount="2">
@@ -142,6 +142,25 @@
                                 <TextBlock Text="{Binding ProjectSummary, Mode=OneWay}"
                                            TextTrimming="CharacterEllipsis"
                                            ToolTip="{Binding ProjectSummary, Mode=OneWay}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Abgeschlossene Projekte" Width="230">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Expander Header="{Binding CompletedProjectHeader, Mode=OneWay}"
+                                          ToolTip="{Binding AdditionalProjects, Mode=OneWay}">
+                                    <ItemsControl Margin="4,3,2,4"
+                                                  ItemsSource="{Binding CompletedProjects, Mode=OneWay}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Margin="0,1"
+                                                           Text="{Binding}"
+                                                           TextWrapping="Wrap" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>

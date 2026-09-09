@@ -35,6 +35,13 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
 
     public string ProjectSummary => Model.ProjectSummary;
     public string AdditionalProjects => Model.AdditionalProjects;
+    public IReadOnlyList<string> CompletedProjects => Model.CompletedProjects;
+    public string CompletedProjectHeader => Model.CompletedProjects.Count switch
+    {
+        0 => "Keine",
+        1 => "1 Projekt",
+        var count => $"{count} Projekte"
+    };
     public string SoftwareInformation => Model.SoftwareInformation;
     public IReadOnlyList<AutomationSoftwareInfo> SoftwareDetails => Model.AutomationSoftware;
     public string FeeInformation => Model.FeeInformation;

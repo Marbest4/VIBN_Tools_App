@@ -62,8 +62,56 @@ namespace VIBN_Tools.Settings
             _timer.Start();
         }
 
+        /// <summary>
+        /// Waits for the state transition reported by the shared FEE client.
+        /// This mirrors the confirmed-connect behavior from fdc85b1.
+        /// </summary>
+        public async Task<bool> WaitForConnectedAsync(
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            var deadline = DateTimeOffset.UtcNow + timeout;
+            do
+            {
+                CheckConnection();
+                if (IsConnected)
+                    return true;
+                await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
+            }
+            while (DateTimeOffset.UtcNow < deadline);
+
+            CheckConnection();
+            return IsConnected;
+        }
+
+        /// <summary>Waits until the SDK no longer reports a live remote session.</summary>
+        public async Task<bool> WaitForDisconnectedAsync(
+            TimeSpan timeout,
+            CancellationToken cancellationToken = default)
+        {
+            var deadline = DateTimeOffset.UtcNow + timeout;
+            do
+            {
+                CheckConnection();
+                if (!IsConnected && !IsConnecting)
+                    return true;
+                await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
+            }
+            while (DateTimeOffset.UtcNow < deadline);
+
+            CheckConnection();
+            return !IsConnected && !IsConnecting;
+        }
+
         private void CheckConnection()
         {
+            if (Services.ApiInstance is null)
+            {
+                IsConnected = false;
+                IsConnecting = false;
+                return;
+            }
+
             // API Call for Connection State
             var state = Services.ApiInstance.ApiState;
 
