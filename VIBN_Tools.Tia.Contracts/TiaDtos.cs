@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 namespace VIBN_Tools.Tia.Contracts;
 
 public sealed class EmptyPayload
@@ -94,6 +96,44 @@ public sealed class TiaAxisParameterResult
     public bool Success { get; set; }
 
     public string Error { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Single source of truth for the parameters changed by the explicit axis
+/// configuration command. All values are integer Openness parameter values.
+/// </summary>
+public static class TiaAxisConfigurationPolicy
+{
+    public static IReadOnlyDictionary<string, int> CreateParameterValues(string axisName)
+    {
+        var motionType = IsLinearAxis(axisName) ? 0 : 1;
+        return new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["_Properties.MotionType"] = motionType,
+            ["Modulo.Enable"] = 0,
+            ["Actor.DataAdaption"] = 0,
+            ["Sensor[1].DataAdaption"] = 0,
+            ["Sensor[1].MountingMode"] = motionType,
+            ["Simulation.Mode"] = 1,
+            ["Sensor[1].Type"] = 2,
+            ["TorqueLimiting.PositionBasedMonitorings"] = 0,
+            ["FollowingError.EnableMonitoring"] = 0,
+            ["PositionControl.EnableDSC"] = 0
+        };
+    }
+
+    public static bool IsLinearAxis(string axisName)
+    {
+        var value = (axisName ?? string.Empty).Trim();
+        return Regex.IsMatch(
+                   value,
+                   @"(?:^|[_\-\s])(?:X|Y|Z)(?:$|[_\-\s])",
+                   RegexOptions.IgnoreCase | RegexOptions.CultureInvariant) ||
+               Regex.IsMatch(
+                   value,
+                   @"(?:AXIS|ACHSE)[_\-\s]*(?:X|Y|Z)\d*$",
+                   RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+    }
 }
 
 /// <summary>

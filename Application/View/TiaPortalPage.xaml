@@ -88,6 +88,7 @@
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
@@ -104,9 +105,19 @@
                                 Command="{Binding ConfigureAxesCommand}" />
                         <Button MinWidth="65" Margin="8,0,0,0" Content="Alle" Command="{Binding SelectAllAxesCommand}" />
                         <Button MinWidth="65" Margin="8,0,0,0" Content="Keine" Command="{Binding SelectNoAxesCommand}" />
+                        <Button MinWidth="145" Margin="8,0,0,0" Content="Was wird geändert?"
+                                Command="{Binding ToggleAxisConfigurationInfoCommand}" />
                     </WrapPanel>
 
-                    <DataGrid Grid.Row="1"
+                    <Border Grid.Row="1" Margin="0,0,0,8" Padding="8" Background="#FFF3F5F7" CornerRadius="3"
+                            Visibility="{Binding IsAxisConfigurationInfoVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <StackPanel>
+                            <TextBlock Text="{Binding AxisConfigurationInfo}" TextWrapping="Wrap" />
+                            <TextBlock Margin="0,6,0,0" FontWeight="SemiBold" Text="{Binding ProjectSaveInfo}" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <DataGrid Grid.Row="2"
                               ItemsSource="{Binding Axes}"
                               AutoGenerateColumns="False"
                               IsReadOnly="False"
@@ -120,12 +131,12 @@
                         </DataGrid.Columns>
                     </DataGrid>
 
-                    <Button Grid.Row="2"
+                    <Button Grid.Row="3"
                             MinWidth="150"
                             Margin="0,8,0,0"
                             HorizontalAlignment="Right"
-                            Content="Projekt speichern"
-                            ToolTip="Speichert das aktuell geöffnete TIA-Projekt. Ohne diesen Schritt bleiben Änderungen möglicherweise nur in der geöffneten Sitzung."
+                            Content="Gesamtes TIA-Projekt speichern"
+                            ToolTip="Ruft Project.Save() auf und speichert alle derzeit offenen Projektänderungen. Nur erforderlich, wenn diese dauerhaft erhalten bleiben sollen."
                             Command="{Binding SaveCommand}" />
                 </Grid>
             </GroupBox>

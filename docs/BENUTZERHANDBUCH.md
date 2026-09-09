@@ -32,7 +32,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 
 Die Berechtigungen sind im Detail in der [Rollenverwaltung](ROLLENVERWALTUNG.md) beschrieben.
 
-Mit **Navigation einklappen** im Kopfbereich werden die Texte der linken Navigation ausgeblendet; Symbole und ausgewählter Arbeitsbereich bleiben erhalten. **Alt+N** schaltet denselben Zustand um. Die Auswahl wird im lokalen Benutzerprofil gespeichert und beim nächsten Start wiederhergestellt.
+Mit **Navigation einklappen** im Kopfbereich wird die linke Navigation auf eine schmale Symbolleiste reduziert; Symbole und ausgewählter Arbeitsbereich bleiben erhalten. **Alt+N** schaltet denselben Zustand um. Die Auswahl wird im lokalen Benutzerprofil gespeichert und beim nächsten Start wiederhergestellt. Im eingeklappten Zustand nennt ein Tooltip den jeweiligen Bereich.
 
 ## Empfohlener Arbeitsablauf
 
@@ -44,7 +44,7 @@ Mit **Navigation einklappen** im Kopfbereich werden die Texte der linken Navigat
 
 ## Project Settings
 
-Der Bereich **Lokale Automatisierungsinstallationen** erkennt TIA Portal und die zugehörige Openness-DLL dynamisch sowie erkennbare WinCC-, Siemens-/SIMATIC- und TwinCAT-Komponenten. **Neu erkennen** aktualisiert ausschließlich das lokale Inventar. Installationspfad und Nachweis helfen bei der Diagnose; eine erkannte TIA-Version garantiert noch keine Openness-Berechtigung des angemeldeten Windows-Benutzers. Technische Details stehen in [INSTALLATION_DISCOVERY.md](INSTALLATION_DISCOVERY.md).
+Der Bereich **Lokale Automatisierungsinstallationen** befindet sich am unteren Ende der Seite. Er erkennt TIA Portal und die zugehörige Openness-DLL dynamisch sowie erkennbare WinCC-, Siemens-/SIMATIC- und TwinCAT-Komponenten. Gleiche Produkt-/Versionsfunde aus 32-/64-Bit-Registry und Dateisystem werden zu einem Eintrag zusammengeführt; der aussagekräftigste vorhandene Installationspfad wird angezeigt. **Neu erkennen** aktualisiert ausschließlich das lokale Inventar. Installationspfad und Nachweis helfen bei der Diagnose; eine erkannte TIA-Version garantiert noch keine Openness-Berechtigung des angemeldeten Windows-Benutzers. Technische Details stehen in [INSTALLATION_DISCOVERY.md](INSTALLATION_DISCOVERY.md).
 
 Das editierbare Dropdown **Online-PC eingeben oder auswählen** ist Auswahl und Filter in einem Feld. Es filtert sofort nach Namen und enthält ausschließlich erreichbare PCs aus dem gemeinsamen ViCo-Arbeitsplatzverzeichnis. Offline-PCs werden absichtlich nicht angeboten.
 
@@ -57,7 +57,9 @@ Scheitert die Verbindung oder läuft der Timeout ab, bleibt `Connected to: ---` 
 
 Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Version. Bei mehreren lokalen Versionsordnern wird nur eine Installation berücksichtigt, in deren eigenem Pfad `Bin\FS.SDK.dll` existiert. Dadurch werden neuere, aber unvollständige Installationsreste nicht mehr als aktive FEE-Version angezeigt. Eine Abweichung zwischen verwendetem SDK und vollständiger lokaler Installation bleibt rot markiert.
 
-Im Bereich **Geschützte Zugangsdaten** werden FEE-Benutzer/-Passwort, API-Key und RDP-Passwort für den aktuellen Windows-Benutzer im Windows Credential Manager hinterlegt. **Eingaben speichern** ändert nur ausgefüllte Passwort-/Key-Felder; die Löschen-Schaltflächen entfernen jeweils nur den zugehörigen Eintrag. Die Statusfelder zeigen lediglich, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart. Ohne konfigurierte FEE-Zugangsdaten wird kein Verbindungsversuch gestartet.
+Im Bereich **Geschützte Zugangsdaten** werden FEE-Benutzer/-Passwort, API-Key und RDP-Passwort für den aktuellen Windows-Benutzer im Windows Credential Manager hinterlegt. Die verdeckten Eingabefelder übertragen Eingaben in beide Richtungen korrekt. **Eingaben speichern** ändert nur ausgefüllte Passwort-/Key-Felder; die Löschen-Schaltflächen entfernen jeweils nur den zugehörigen Eintrag. Für einen unmittelbaren FEE-Verbindungsversuch werden gerade eingegebener Benutzer und Passwort bereits vor dem Speichern verwendet. Die Statusfelder zeigen lediglich, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart. Ohne konfigurierte oder aktuell eingegebene FEE-Zugangsdaten wird kein Verbindungsversuch gestartet.
+
+Beim Programmstart wird weder die FEE-API erzeugt noch eine Interface-Liste abgefragt. Die Initialisierung erfolgt erst durch **Connect**; Interfaces und Signale werden erst nach bestätigter Verbindung und einem ausdrücklichen Ladebefehl abgefragt. Ein Rechner ohne FEE-Verbindung startet deshalb ohne entsprechende Verbindungs- oder Interface-Fehlermeldung.
 
 ## ViCo
 
@@ -127,7 +129,9 @@ Der eigene Hauptreiter **Transfer** kopiert ausgewählte Dateien/Ordner mit begr
 4. Achsen einzeln oder über **Alle**/**Keine** auswählen und erst dann **Auswahl konfigurieren** verwenden;
 5. Änderungen erst über die dafür vorgesehene Speichern-/Importaktion durchführen.
 
-Die Achsenkonfiguration setzt bei den ausgewählten Achsen folgende Parameter und protokolliert jeden tatsächlich gefundenen Schreibzugriff mit Wert und Ergebnis: `_Properties.MotionType`, `Modulo.Enable`, `Actor.DataAdaption`, `Sensor[1].DataAdaption`, `Sensor[1].MountingMode`, `Simulation.Mode`, `Sensor[1].Type`, `TorqueLimiting.PositionBasedMonitorings`, `FollowingError.EnableMonitoring` und `PositionControl.EnableDSC`. Die bisherige Namensheuristik behandelt X/Y/Z als linear und alle anderen Namen als rotatorisch; dies muss am realen Projekt fachlich geprüft werden. **Projekt speichern** persistiert Änderungen im geöffneten TIA-Projekt und ist von der Konfiguration getrennt.
+Die Schaltfläche **Was wird geändert?** blendet die vollständige Wirkung ein. Die Achsenkonfiguration setzt ausschließlich bei den ausgewählten Achsen folgende Parameter und protokolliert jeden tatsächlich gefundenen Schreibzugriff mit Wert und Ergebnis: `_Properties.MotionType`, `Modulo.Enable`, `Actor.DataAdaption`, `Sensor[1].DataAdaption`, `Sensor[1].MountingMode`, `Simulation.Mode`, `Sensor[1].Type`, `TorqueLimiting.PositionBasedMonitorings`, `FollowingError.EnableMonitoring` und `PositionControl.EnableDSC`. X/Y/Z werden nur als getrennte Achskennung oder in Namen wie `AxisX`/`AchseX` als linear erkannt; alle anderen Namen gelten als rotatorisch. Die Konfiguration speichert nicht automatisch.
+
+**Gesamtes TIA-Projekt speichern** ruft anschließend `Project.Save()` auf. Dabei werden alle derzeit ungespeicherten Änderungen des geöffneten Projekts dauerhaft geschrieben – auch Änderungen, die außerhalb von VIBN Tools vorgenommen wurden. Der Button wird nur benötigt, wenn die Konfiguration dauerhaft bleiben soll; vor der Betätigung sollte der gesamte Projektstand geprüft werden. Die frühere Ausnahme beim Auswahlsatz wurde beseitigt, indem die Achsenauswahl vor dem dynamischen Openness-Zugriff statisch ausgewertet wird. Der reale Schreib- und Speichervorgang muss dennoch am Zielprojekt mit freigegebenem Openness-Zugriff abgenommen werden.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
 
@@ -139,7 +143,7 @@ Der Hauptreiter ist ausschließlich mit Level9 sichtbar. Level9 kann Benutzer an
 
 ## Kanbanize Karten
 
-Die VIBN-Synchronisierung berücksichtigt aktive Quellkarten mit **Grundinbetriebnahme** und **Nachpflege**. Zusammengehörige CORE-/CLIENT-/weitere Rollenkarten werden dunkelgrün gruppiert; Konflikte werden nur nach den dokumentierten Quell-ID-, Titel-, Lane-, Termin- und CORE-Regeln gemeldet. Termine erscheinen ohne Uhrzeit. Wenn zu einer bisherigen `*[Gen]*`-Hauptkarte eine Rollenkarte kopiert wurde, kann die Vorschau gezielt nur den Zusatz `CORE` an der Hauptkarte ergänzen. **Planansicht anzeigen** öffnet das Arbeitsplätze-Board im Standardbrowser. Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
+Die VIBN-Synchronisierung berücksichtigt im Quellboard **Virtuelle Inbetriebnahme** ausschließlich Karten aus dem Workflow **Team-Aufgaben** und darin aktive Quellkarten mit **Grundinbetriebnahme** und **Nachpflege**. Karten anderer Workflows werden nicht synchronisiert. Ist der Workflow nicht eindeutig auffindbar, bricht bereits die Vorschau mit einer verständlichen Meldung ab. Zusammengehörige CORE-/CLIENT-/weitere Rollenkarten werden dunkelgrün gruppiert; Konflikte werden nur nach den dokumentierten Quell-ID-, Titel-, Lane-, Termin- und CORE-Regeln gemeldet. Termine erscheinen ohne Uhrzeit. Wenn zu einer bisherigen `*[Gen]*`-Hauptkarte eine Rollenkarte kopiert wurde, kann die Vorschau gezielt nur den Zusatz `CORE` an der Hauptkarte ergänzen. **Planansicht anzeigen** öffnet das Arbeitsplätze-Board im Standardbrowser. Details stehen in [KANBANIZE_KARTEN.md](KANBANIZE_KARTEN.md).
 
 ![Kanbanize-Vorschau für die sichere VIBN-Synchronisierung](screenshots/kanbanize-cards.png)
 
@@ -219,7 +223,9 @@ Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File
 5. Bei erneut importierten Daten den **Reimport-Vergleich** prüfen, einzelne Änderungen übernehmen oder verwerfen.
 6. Erst danach die Generierung starten und Status/Zuordnungen kontrollieren.
 
-Mit **ContainerFiles vergleichen** wird zuerst das bisherige und danach das neu erzeugte ContainerFile gewählt. Voraussetzung ist die dazu passende geladene Requirements-XML, damit Slots und Typen korrekt validiert werden. Der Vergleich verwendet denselben feldgenauen Dialog wie der Reimport und erkennt neue, entfernte und geänderte Signale sowie Container-/Typ-/Slotänderungen. Die Dateien selbst bleiben unverändert; erst **Auswahl anwenden** ersetzt den sichtbaren Arbeitsstand durch das selektiv überlagerte Ergebnis. **Vorschau verwerfen** lässt den Arbeitsstand unangetastet.
+**ContainerFile laden** übernimmt ein bestehendes ContainerFile als aktiven sichtbaren Arbeitsstand. Zuvor muss die dazu passende Requirements-XML geladen sein, damit Slots und Typen korrekt validiert werden. **Aktiven Stand vergleichen** ist erst verfügbar, wenn ein solcher oder ein generierter Arbeitsstand existiert, und fragt anschließend genau ein Vergleichs-ContainerFile ab. Der Dialog vergleicht immer den aktiven Arbeitsstand mit diesem Kandidaten und erkennt neue, entfernte und geänderte Signale sowie Container-/Typ-/Slotänderungen. Die gewählte Datei selbst bleibt unverändert; erst **Auswahl anwenden** ersetzt den sichtbaren Arbeitsstand durch das selektiv überlagerte Ergebnis. **Vorschau verwerfen** lässt den aktiven Stand unangetastet. Damit kann ohne aktiven Containerstand kein scheinbarer Zwei-Dateien-Vergleich mehr entstehen.
+
+**Arbeitsstand speichern/laden** verwaltet dagegen den internen, fortsetzbaren Generator-Arbeitsstand (`*.vibn-workspace.xml`, ältere XML-Dateien bleiben lesbar). Diese Funktion ist nicht mit **ContainerFile laden** zu verwechseln.
 
 `Strg+Z` macht die letzte bearbeitbare Aktion rückgängig, `Strg+Y` bzw. `Strg+Umschalt+Z` wiederholt sie.
 

@@ -165,12 +165,15 @@ namespace VIBN_Tools.Application.VM
 
         public bool CanConnetInterfaces => Connection.CanUseFeeFeatures && IsInterfaceValid(Interface1) && IsInterfaceValid(Interface2);
 
+        public bool CanReloadFeeData => Connection.CanUseFeeFeatures;
+
         private void OnFeeConnectionPropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
         {
             if (eventArgs.PropertyName is nameof(FeeConnectionService.IsConnected) or
                 nameof(FeeConnectionService.CanUseFeeFeatures))
             {
                 OnPropertyChanged(nameof(CanConnetInterfaces));
+                OnPropertyChanged(nameof(CanReloadFeeData));
             }
         }
 
@@ -212,19 +215,23 @@ namespace VIBN_Tools.Application.VM
 
         private async Task LoadInterfacesAsync()
         {
+            if (!EnsureFeeConnection(nameof(ReloadFeeInterfaces)))
+                return;
+
             IsBusyReloadInterfaces = true;
-
-            AllInterfaces.Clear();
-
-            var interfaces = await FeeInterface.GetAllInterfacesAsync();
-
-            foreach (var item in interfaces)
-                AllInterfaces.Add(item);
-
-            InterfacesView1.Refresh();
-            InterfacesView2.Refresh();
-
-            IsBusyReloadInterfaces = false;
+            try
+            {
+                AllInterfaces.Clear();
+                var interfaces = await FeeInterface.GetAllInterfacesAsync();
+                foreach (var item in interfaces)
+                    AllInterfaces.Add(item);
+                InterfacesView1.Refresh();
+                InterfacesView2.Refresh();
+            }
+            finally
+            {
+                IsBusyReloadInterfaces = false;
+            }
         }
 
 
@@ -414,9 +421,18 @@ namespace VIBN_Tools.Application.VM
 
         public async Task Reload_FeeSignals()
         {
-            IsBusyUpdatingFeeData = true;
+            if (!EnsureFeeConnection(nameof(ReloadFeeSignals)))
+                return;
 
-            await Services.FeeObjects.UpdateFeeDataAsync();       
+            IsBusyUpdatingFeeData = true;
+            try
+            {
+                await Services.FeeObjects.UpdateFeeDataAsync();
+            }
+            finally
+            {
+                IsBusyUpdatingFeeData = false;
+            }
         }
 
 

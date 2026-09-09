@@ -44,34 +44,6 @@
                 </StackPanel>
             </GroupBox>
 
-            <GroupBox Margin="10">
-                <GroupBox.Header>
-                    <TextBlock Style="{StaticResource H3Style}" Text="Lokale Automatisierungsinstallationen" />
-                </GroupBox.Header>
-                <DockPanel Margin="8">
-                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,7">
-                        <Button MinWidth="130" Content="Neu erkennen"
-                                Command="{Binding RefreshAutomationInstallations}"
-                                ToolTip="Liest installierte TIA-/Openness-, WinCC-, Siemens- und TwinCAT-Komponenten erneut ein. Es werden keine Installationen verändert." />
-                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center"
-                                   Text="{Binding AutomationDiscoveryStatus}" TextWrapping="Wrap" />
-                    </StackPanel>
-                    <DataGrid MinHeight="130" MaxHeight="260"
-                              ItemsSource="{Binding InstalledAutomationComponents}"
-                              AutoGenerateColumns="False" IsReadOnly="True"
-                              CanUserAddRows="False" CanUserDeleteRows="False"
-                              EnableRowVirtualization="True">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Kategorie" Binding="{Binding KindLabel}" Width="145" />
-                            <DataGridTextColumn Header="Produkt / Erweiterung" Binding="{Binding Product}" Width="2*" />
-                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="105" />
-                            <DataGridTextColumn Header="Installationspfad" Binding="{Binding InstallLocation}" Width="3*" />
-                            <DataGridTextColumn Header="Nachweis" Binding="{Binding Evidence}" Width="2*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                </DockPanel>
-            </GroupBox>
-
             <!--<GroupBox Margin="10">
                 <GroupBox.Header>
                     <TextBlock Style="{StaticResource CheckBoxStyle}" Text="Remote &amp; Connection"/>
@@ -252,6 +224,34 @@
                     <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="4" Margin="0,7,0,0"
                                Foreground="#FF555555" Text="{Binding CredentialStatus}" TextWrapping="Wrap" />
                 </Grid>
+            </GroupBox>
+
+            <GroupBox Margin="10">
+                <GroupBox.Header>
+                    <TextBlock Style="{StaticResource H3Style}" Text="Lokale Automatisierungsinstallationen" />
+                </GroupBox.Header>
+                <DockPanel Margin="8">
+                    <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,7">
+                        <Button MinWidth="130" Content="Neu erkennen"
+                                Command="{Binding RefreshAutomationInstallations}"
+                                ToolTip="Liest installierte TIA-/Openness-, WinCC-, Siemens- und TwinCAT-Komponenten erneut ein. Es werden keine Installationen verändert." />
+                        <TextBlock Margin="10,0,0,0" VerticalAlignment="Center"
+                                   Text="{Binding AutomationDiscoveryStatus}" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <DataGrid MinHeight="130" MaxHeight="260"
+                              ItemsSource="{Binding InstalledAutomationComponents}"
+                              AutoGenerateColumns="False" IsReadOnly="True"
+                              CanUserAddRows="False" CanUserDeleteRows="False"
+                              EnableRowVirtualization="True">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Kategorie" Binding="{Binding KindLabel}" Width="145" />
+                            <DataGridTextColumn Header="Produkt / Erweiterung" Binding="{Binding Product}" Width="2*" />
+                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="105" />
+                            <DataGridTextColumn Header="Installationspfad" Binding="{Binding InstallLocation}" Width="3*" />
+                            <DataGridTextColumn Header="Nachweis" Binding="{Binding Evidence}" Width="2*" />
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </DockPanel>
             </GroupBox>
 
 

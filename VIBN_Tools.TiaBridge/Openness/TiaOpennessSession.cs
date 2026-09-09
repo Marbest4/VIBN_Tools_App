@@ -711,13 +711,13 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
         {
             foreach (dynamic technologyObject in group.TechnologicalObjects)
             {
-                var technologyType = Convert.ToString(technologyObject.OfSystemLibElement) ?? string.Empty;
+                string technologyType = Convert.ToString((object?)technologyObject.OfSystemLibElement) ?? string.Empty;
                 if (technologyType.IndexOf("Axis", StringComparison.OrdinalIgnoreCase) < 0)
                     continue;
 
-                var name = Convert.ToString(technologyObject.Name) ?? string.Empty;
-                var id = string.IsNullOrWhiteSpace(groupPath) ? name : $"{groupPath}/{name}";
-                if (selectedIds is not null && !selectedIds.Contains(id))
+                string name = Convert.ToString((object?)technologyObject.Name) ?? string.Empty;
+                string id = string.IsNullOrWhiteSpace(groupPath) ? name : $"{groupPath}/{name}";
+                if (!IsSelectedAxis(selectedIds, id))
                     continue;
 
                 var axis = new TiaAxisInfo
@@ -742,38 +742,22 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
     private static IReadOnlyList<TiaAxisParameterResult> ConfigureAxisParameters(dynamic technologyObject, string axisName)
     {
-        var linear = axisName.IndexOf("X", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                     axisName.IndexOf("Y", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                     axisName.IndexOf("Z", StringComparison.OrdinalIgnoreCase) >= 0;
-        var motionType = linear ? 0 : 1;
-
-        var parameterValues = new Dictionary<string, object>(StringComparer.Ordinal)
-        {
-            ["_Properties.MotionType"] = motionType,
-            ["Modulo.Enable"] = 0,
-            ["Actor.DataAdaption"] = 0,
-            ["Sensor[1].DataAdaption"] = 0,
-            ["Sensor[1].MountingMode"] = motionType,
-            ["Simulation.Mode"] = 1,
-            ["Sensor[1].Type"] = 2,
-            ["TorqueLimiting.PositionBasedMonitorings"] = 0,
-            ["FollowingError.EnableMonitoring"] = 0,
-            ["PositionControl.EnableDSC"] = 0
-        };
+        var parameterValues = TiaAxisConfigurationPolicy.CreateParameterValues(axisName);
 
         var results = new List<TiaAxisParameterResult>();
 
         foreach (dynamic parameter in technologyObject.Parameters)
         {
             var name = string.Empty;
-            object? value = null;
+            int? value = null;
             try
             {
                 name = Convert.ToString(parameter.GetAttribute("Name")) ?? string.Empty;
-                if (!parameterValues.TryGetValue(name, out value))
+                if (!parameterValues.TryGetValue(name, out var configuredValue))
                     continue;
 
-                parameter.Value = value;
+                value = configuredValue;
+                parameter.Value = configuredValue;
                 results.Add(new TiaAxisParameterResult
                 {
                     Name = name,
@@ -799,6 +783,9 @@ public sealed class TiaOpennessSession : ITiaOpennessSession
 
         return results;
     }
+
+    private static bool IsSelectedAxis(ISet<string>? selectedIds, string id) =>
+        selectedIds is null || selectedIds.Contains(id);
 
     private static object GetProperty(object target, string propertyName)
     {

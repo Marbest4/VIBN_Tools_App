@@ -11,6 +11,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
 - [ ] `Tests/TiaLiveRead` liest aus dem geöffneten `Projekt1.ap20` genau eine PLC, drei Teilnehmer und sechs eindeutige adressführende Modulzeilen, ohne das Projekt zu speichern.
 - [ ] Anwendung startet ohne XamlParseException.
+- [ ] Anwendung startet ohne FEE-/Interface-Abfrage und ohne entsprechende Fehlermeldung; `CoreApi` wird erst nach **Connect** initialisiert.
 
 ## Rollen und Navigation
 
@@ -20,6 +21,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Level9 sieht den Hauptreiter Administration und kann Rollen ändern.
 - [ ] `lutzma` wird als Level9 erkannt und kann nicht verändert/entfernt werden.
 - [ ] Eine Änderung, die weniger als zwei Level9-Benutzer hinterließe, wird abgewiesen.
+- [ ] Navigation einklappen reduziert die linke Leiste sichtbar auf Symbole; Ausklappen und Alt+N stellen die volle Breite wieder her.
 
 ## Project Settings und ViCo
 
@@ -29,6 +31,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Von mehreren lokalen Versionsordnern zählt nur ein Ordner mit `Bin\FS.SDK.dll`; höhere unvollständige Ordner werden ignoriert.
 - [ ] Bei mehreren vollständigen SDKs listet `Prepare-Development.cmd` alle Versionen absteigend; Enter wählt die neueste und eine Nummer wählt nach VS-Neustart exakt den angegebenen Ordner.
 - [ ] Project Settings zeigt FEE-Zugang, API-Key und RDP-Passwort jeweils als konfiguriert/nicht konfiguriert; Speichern gilt ohne Neustart und die Löschen-Buttons entfernen nur die eigene Gruppe.
+- [ ] Jede PasswordBox aktualisiert ihr ViewModel beim Tippen und bleibt nach einer ViewModel-Aktualisierung gebunden; aktuell eingegebene FEE-Daten können direkt für **Connect** verwendet werden.
+- [ ] Lokale Automatisierungsinstallationen stehen am Seitenende; gleiche Produkt-/Versionsfunde werden unabhängig von Registryquelle und leerem Pfad nur einmal angezeigt.
 - [ ] Im normalen interaktiven Windows-Profil erscheinen die Ziele `GROB/VIBN_Tools/FeeUsername`, `GROB/VIBN_Tools/FeePassword`, `GROB/VIBN_Tools/KanbanizeApiKey` und `GROB/VIBN_Tools/RemoteDesktopPassword` im Credential Manager; App-Neustart liest sie, Löschen entfernt sie. Der Codex-Dienstkontext konnte diesen Live-Test wegen Windows-Fehler 1312 (keine Anmeldesitzung) nicht ausführen.
 - [ ] ViCo-Countdown startet mit dem gespeicherten Intervall neu, pausiert ohne API-Key und führt bei Ablauf genau einen Kanbanize-Abruf aus.
 - [ ] Hauptfenster bleibt auf 1366 × 768 bedienbar; Project Settings und ViCo zeigen bei Bedarf Scrollleisten ohne die DataGrid-Virtualisierung zu verlieren.
@@ -36,6 +40,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Ohne FEE-Verbindung sind alle dokumentierten FEE-Aktionen grau, nicht ausführbar und zeigen den Tooltip „Keine Verbindung zu FEE vorhanden.“.
 - [ ] ViCo-Suche findet PC, Benutzer und Projekt mit demselben Suchfeld.
 - [ ] Hauptspalten stehen exakt als Belegung, PC, Online, Projekt, Software, Benutzer, Standort, Sonstiges und Projekt-IP; die letzten zwei lassen sich persistent ein-/ausblenden.
+- [ ] Die Projektspalte zeigt lange Projektlisten mit größerer Breite und vollständigem Tooltip, ohne Tabellenvirtualisierung zu deaktivieren.
 - [ ] Nur Planung/In-Arbeit-Projekte stehen in der aktiven Projektauswahl; Backlog/Abschluss stehen im Detailbereich.
 - [ ] Frei ist grün, Belegt rot; Online ist grün, Offline rot.
 - [ ] Offline-PCs lassen RDP, Anmeldedialog und PC-Projektordner sichtbar aber deaktiviert; vorhandene Serverpfade für Simulation, PLC und Planung bleiben nutzbar.
@@ -58,10 +63,13 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Mehrdeutige Zielkarte führt zu Konflikt ohne Änderung.
 - [ ] Bestehende generierte Karte ändert nur Startfeld und Deadline, nicht Titel/Position/Beschreibung.
 - [ ] Eigene Karte kann unabhängig erstellt werden.
+- [ ] Auf dem Board **Virtuelle Inbetriebnahme** werden ausschließlich Quellkarten aus dem Workflow **Team-Aufgaben** berücksichtigt; eine gleichnamig passende Karte in einem anderen Workflow bleibt ausgeschlossen.
 
 ## TIA und SpecialDevices2FEE
 
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
+- [ ] **Auswahl konfigurieren** verarbeitet einen statischen Auswahlsatz ohne Dynamic-Binder-Ausnahme; **Was wird geändert?** zeigt alle zehn Parameter und die Linear-/Rotatorikregel.
+- [ ] **Gesamtes TIA-Projekt speichern** ist von der Konfiguration getrennt und weist darauf hin, dass `Project.Save()` alle offenen Projektänderungen persistiert.
 - [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Diagnosepfad, Objektklasse, Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
 - [ ] Nach vollständig erfolgreicher SpecialDevices2FEE-Erzeugung ist der Root in FEE2SpecialDevices sichtbar; ein absichtlich fehlgeschlagener Teilvorgang ist nicht als gültige Quelle markiert.
 - [ ] JSON-Export enthält Präfix, Hersteller, Gerätetyp, E-/A-Startbyte und alle Signal-GUIDs; eine nachträglich geänderte FEE-Variable wird über ihre GUID aktualisiert.
@@ -80,6 +88,8 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 ## Bestehende VIBN-Funktionen
 
 - [ ] CAD Wizard, Zuli Converter, Container Generation und Container2Fee funktionieren mit einer bekannten Testvorlage.
+- [ ] Container Generation lädt nach einer Requirements-XML ein bestehendes ContainerFile als aktiven Arbeitsstand; ohne aktiven Stand ist der Vergleich deaktiviert.
+- [ ] **Aktiven Stand vergleichen** fragt nur einen Kandidaten ab und zeigt feldgenaue Unterschiede zum sichtbaren Workspace; **Arbeitsstand laden** lädt weiterhin ausschließlich das interne Workspaceformat.
 - [ ] Der bestehende Container2Fee-Reiter arbeitet unverändert.
 - [ ] Container2FEE Visual lädt dieselbe XML ohne FEE, zeigt Container/Signale/Links, speichert und lädt den Sidecar und erlaubt nur kompatible Drag-and-drop-Ziele.
 - [ ] Containercheckboxen sowie Alle selektieren/deselektieren begrenzen die Aktion auf vollständige unterstützte Container; abgewählte Container werden nicht erzeugt.

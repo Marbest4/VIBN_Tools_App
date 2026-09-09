@@ -51,6 +51,7 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
         SelectAllAxesCommand = GetCommandBinding(() => SetAllAxesSelected(true));
         SelectNoAxesCommand = GetCommandBinding(() => SetAllAxesSelected(false));
         ConfigureAxesCommand = GetCommandBindingAsync(ConfigureAxesAsync);
+        ToggleAxisConfigurationInfoCommand = GetCommandBinding(ToggleAxisConfigurationInfo);
         SaveCommand = GetCommandBindingAsync(SaveAsync);
         BrowseImportCommand = GetCommandBinding(BrowseImport);
         BrowseExportCommand = GetCommandBinding(BrowseExport);
@@ -82,6 +83,8 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     public ICommand ConfigureAxesCommand { get; }
 
+    public ICommand ToggleAxisConfigurationInfoCommand { get; }
+
     public ICommand SaveCommand { get; }
 
     public ICommand BrowseImportCommand { get; }
@@ -91,6 +94,34 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
     public ICommand ImportLibraryCommand { get; }
 
     public ICommand ExportLibraryCommand { get; }
+
+    public string AxisConfigurationInfo =>
+        "Auswahl konfigurieren ändert ausschließlich die markierten Technologieachsen. " +
+        "Ein separates X/Y/Z-Kennzeichen beziehungsweise Namen wie AxisX/AchseX werden als linear erkannt; andere Namen als rotatorisch. " +
+        "Gesetzt werden: _Properties.MotionType, Modulo.Enable=0, Actor.DataAdaption=0, " +
+        "Sensor[1].DataAdaption=0, Sensor[1].MountingMode, Simulation.Mode=1, " +
+        "Sensor[1].Type=2, TorqueLimiting.PositionBasedMonitorings=0, " +
+        "FollowingError.EnableMonitoring=0 und PositionControl.EnableDSC=0. " +
+        "Die Konfiguration speichert nicht automatisch.";
+
+    public string ProjectSaveInfo =>
+        "Gesamtes TIA-Projekt speichern ruft Project.Save() auf. Dadurch werden alle aktuell " +
+        "offenen, noch nicht gespeicherten Projektänderungen persistiert – auch Änderungen, die " +
+        "außerhalb dieses Tools vorgenommen wurden. Der Schritt ist nur erforderlich, wenn die " +
+        "Änderungen dauerhaft erhalten bleiben sollen.";
+
+    private bool _isAxisConfigurationInfoVisible;
+    public bool IsAxisConfigurationInfoVisible
+    {
+        get => _isAxisConfigurationInfoVisible;
+        private set
+        {
+            if (_isAxisConfigurationInfoVisible == value)
+                return;
+            _isAxisConfigurationInfoVisible = value;
+            OnPropertyChanged();
+        }
+    }
 
     private string _libraryPath = string.Empty;
     public string LibraryPath
@@ -289,6 +320,9 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
             }
         });
     }
+
+    private void ToggleAxisConfigurationInfo() =>
+        IsAxisConfigurationInfoVisible = !IsAxisConfigurationInfoVisible;
 
     private async Task LoadAxesAsync()
     {

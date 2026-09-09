@@ -42,6 +42,8 @@ try
     await VerifyVibnWorkplaceSynchronizationAsync();
     Console.WriteLine("Running narrow Kanbanize HTTP write-scope smoke test...");
     await VerifyKanbanizeHttpWriteScopeAsync();
+    Console.WriteLine("Running Kanbanize Team-Aufgaben workflow scope smoke test...");
+    await VerifyKanbanizeWorkflowStructureAsync();
     Console.WriteLine("Running workstation KONFIGURATION write-scope smoke test...");
     await VerifyWorkstationConfigurationWriteScopeAsync();
     Console.WriteLine("Running Kanbanize refresh/subtask API smoke test...");
@@ -577,6 +579,7 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
             new KanbanizeCardInfo(111, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM11000", null, sourceDeadline),
             new KanbanizeCardInfo(112, 1392, 10, 20, "[VIBN] Nachpflege GM12000", null, sourceDeadline),
             new KanbanizeCardInfo(113, 1392, 10, 20, "[VIBN] Grundinbetriebnahme GM13000", null, sourceDeadline),
+            new KanbanizeCardInfo(114, 1392, 10, 20, "[VIBN] Grundinbetriebnahme Fremdworkflow", null, sourceDeadline, WorkflowId: 99),
             new KanbanizeCardInfo(108, 1392, 10, 25236, "[VIBN] Grundinbetriebnahme Archiv", null, sourceDeadline)
         },
         new[]
@@ -630,8 +633,9 @@ static async Task VerifyVibnWorkplaceSynchronizationAsync()
                VibnWorkplaceSynchronizationAction.UpdatePrimaryTitle &&
            preview.Items.Single(item => item.SourceCard.Id == 113).ProposedTitle == "GM13000 *[Gen]* CORE",
         "A copied generated card must propose the primary-card CORE suffix.");
-    Assert(preview.ConflictCount == 3 && preview.ExcludedSourceCardCount == 1,
-        "Only the specified target inconsistencies must conflict and archived source cards stay excluded.");
+    Assert(preview.ConflictCount == 3 && preview.ExcludedSourceCardCount == 2 &&
+           preview.Items.All(item => item.SourceCard.Id != 114),
+        "Only Team-Aufgaben source cards may be considered; archive and other workflows stay excluded.");
     Assert(VibnWorkplaceSynchronizationPolicy.IsEligibleSourceCard(
                new KanbanizeCardInfo(1, 1392, 1, 1, "[VIBN] Nachpflege Test", null, sourceDeadline)),
         "Active Nachpflege cards must be eligible sources.");
@@ -757,6 +761,25 @@ static async Task VerifyKanbanizeHttpWriteScopeAsync()
            titleFields.SequenceEqual(new[] { "title" }, StringComparer.Ordinal) &&
            titlePayload.RootElement.GetProperty("title").GetString() == "GM1000 *[Gen]* CORE",
         "The CORE rename must PATCH only the generated card title.");
+}
+
+static async Task VerifyKanbanizeWorkflowStructureAsync()
+{
+    using var handler = new RecordingHttpMessageHandler();
+    handler.EnqueueJson("{\"data\":[{\"lane_id\":10,\"workflow_id\":42,\"name\":\"Planung\"}]}");
+    handler.EnqueueJson("{\"data\":[{\"column_id\":20,\"workflow_id\":42,\"name\":\"Backlog\"}]}");
+    handler.EnqueueJson("{\"data\":[{\"workflow_id\":42,\"name\":\"Team-Aufgaben\"},{\"workflow_id\":99,\"name\":\"Initiativen\"}]}");
+    using var httpClient = new HttpClient(handler);
+    var api = new KanbanizeCardApiService(httpClient, "test-only-key", "https://example.test/api/v2");
+
+    var structure = await api.LoadBoardStructureAsync(1392);
+    Assert(structure.Workflows.Count == 2 &&
+           structure.Workflows.Single(workflow => workflow.Name == "Team-Aufgaben").Id == 42 &&
+           structure.Lanes.Single().WorkflowId == 42 &&
+           structure.Columns.Single().WorkflowId == 42,
+        "Board structure must expose workflow names so the VIBN source can be restricted to Team-Aufgaben.");
+    Assert(handler.Requests.Any(request => request.RelativeUrl == "/api/v2/boards/1392/workflows"),
+        "The Kanbanize adapter did not request the workflow catalog.");
 }
 
 static async Task VerifyWorkstationConfigurationWriteScopeAsync()
@@ -915,6 +938,16 @@ static async Task VerifyTiaLibraryWorkflowAsync(string temporaryRoot)
 
 static void VerifyTiaAxisSelectionModel()
 {
+    var linearParameters = TiaAxisConfigurationPolicy.CreateParameterValues("AxisX");
+    var rotaryParameters = TiaAxisConfigurationPolicy.CreateParameterValues("AxisA");
+    Assert(linearParameters.Count == 10 &&
+           linearParameters["_Properties.MotionType"] == 0 &&
+           linearParameters["Sensor[1].MountingMode"] == 0 &&
+           linearParameters["Simulation.Mode"] == 1 &&
+           rotaryParameters["_Properties.MotionType"] == 1 &&
+           rotaryParameters["Sensor[1].MountingMode"] == 1,
+        "The documented TIA axis configuration values must remain complete and distinguish linear/rotary axes.");
+
     var row = new VIBN_Tools.Application.VM.TiaAxisSelectionRowVM(new TiaAxisInfo
     {
         Id = "Technology/Motion/AxisX",
@@ -1220,7 +1253,9 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
         IEnumerable<KanbanizeCardInfo> sourceCards,
         IEnumerable<KanbanizeCardInfo> targetCards)
     {
-        _sourceCards = sourceCards.ToList();
+        _sourceCards = sourceCards
+            .Select(card => card.WorkflowId == 0 ? card with { WorkflowId = 42 } : card)
+            .ToList();
         _targetCards = targetCards.ToList();
     }
 
@@ -1236,7 +1271,10 @@ sealed class MemoryKanbanizeCardService : IKanbanizeCardService
         Task.FromResult<IReadOnlyList<KanbanizeBoardInfo>>(Array.Empty<KanbanizeBoardInfo>());
 
     public Task<KanbanizeBoardStructure> LoadBoardStructureAsync(int boardId, CancellationToken cancellationToken = default) =>
-        Task.FromResult(new KanbanizeBoardStructure(Array.Empty<KanbanizeLaneInfo>(), Array.Empty<KanbanizeColumnInfo>()));
+        Task.FromResult(new KanbanizeBoardStructure(
+            Array.Empty<KanbanizeLaneInfo>(),
+            Array.Empty<KanbanizeColumnInfo>(),
+            [new KanbanizeWorkflowInfo(42, VibnWorkplaceSynchronizationPolicy.RequiredSourceWorkflowName)]));
 
     public Task<IReadOnlyList<KanbanizeCardInfo>> LoadCardsAsync(int boardId, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<KanbanizeCardInfo>>(

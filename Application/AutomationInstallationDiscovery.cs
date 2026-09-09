@@ -120,10 +120,17 @@ public sealed class AutomationInstallationDiscovery : IAutomationInstallationDis
             {
                 component.Kind,
                 Product = component.Product.Trim().ToUpperInvariant(),
-                Version = component.Version.Trim().ToUpperInvariant(),
-                Path = component.InstallLocation.Trim().ToUpperInvariant()
+                Version = component.Version.Trim().ToUpperInvariant()
             })
-            .Select(group => group.First())
+            // The same uninstall entry is frequently registered in the 32- and
+            // 64-bit views with an empty path in one view. Show the product once
+            // and retain the evidence with the most useful installation path.
+            .Select(group => group
+                .OrderByDescending(component => !string.IsNullOrWhiteSpace(component.InstallLocation))
+                .ThenByDescending(component =>
+                    string.Equals(component.Evidence, "Installationsordner", StringComparison.OrdinalIgnoreCase))
+                .ThenBy(component => component.Evidence, StringComparer.OrdinalIgnoreCase)
+                .First())
             .OrderBy(component => component.Kind)
             .ThenByDescending(component => component.Version, StringComparer.OrdinalIgnoreCase)
             .ThenBy(component => component.Product, StringComparer.OrdinalIgnoreCase)

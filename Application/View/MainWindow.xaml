@@ -25,6 +25,7 @@
             <Style TargetType="{x:Type TabItem}" BasedOn="{StaticResource {x:Type TabItem}}">
                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
                 <Setter Property="VerticalContentAlignment" Value="Center" />
+                <Setter Property="Width" Value="190" />
                 <Setter Property="HeaderTemplate">
                     <Setter.Value>
                         <DataTemplate>
@@ -45,6 +46,12 @@
                         </DataTemplate>
                     </Setter.Value>
                 </Setter>
+                <Style.Triggers>
+                    <DataTrigger Binding="{Binding DataContext.IsNavigationExpanded, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                        <Setter Property="Width" Value="54" />
+                        <Setter Property="ToolTip" Value="{Binding Header, RelativeSource={RelativeSource Self}}" />
+                    </DataTrigger>
+                </Style.Triggers>
             </Style>
         </ResourceDictionary>
     </Window.Resources>

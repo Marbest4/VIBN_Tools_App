@@ -594,13 +594,29 @@ namespace VIBN_Tools.Application.VM
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                var feeUsername = _credentialConfiguration.GetFeeUsername();
-                var feePassword = _credentialConfiguration.GetFeePassword();
+                // A freshly typed pair is valid for the current connection even
+                // before it is persisted. Empty inputs fall back to the protected
+                // Credential Manager values.
+                var typedPassword = FeePasswordInput;
+                var feeUsername = string.IsNullOrEmpty(typedPassword)
+                    ? _credentialConfiguration.GetFeeUsername()
+                    : FeeUsernameInput.Trim();
+                var feePassword = string.IsNullOrEmpty(typedPassword)
+                    ? _credentialConfiguration.GetFeePassword()
+                    : typedPassword;
                 if (string.IsNullOrWhiteSpace(feeUsername) || string.IsNullOrEmpty(feePassword))
                 {
                     stopwatch.Stop();
                     ConnectionStatus = "FEE-Zugangsdaten fehlen. Bitte unter Geschützte Zugangsdaten einmalig speichern.";
                     _log.Warning("Project Settings", ConnectionStatus);
+                    return;
+                }
+
+                if (!Services.TryInitializeFeeApi(out var initializationException))
+                {
+                    stopwatch.Stop();
+                    ConnectionStatus = "Die FEE-Laufzeit konnte für den Verbindungsversuch nicht initialisiert werden.";
+                    _log.Error("Project Settings", ConnectionStatus, initializationException);
                     return;
                 }
 
@@ -652,7 +668,7 @@ namespace VIBN_Tools.Application.VM
 
         private Task Disconnect_FromFee(object parameter)
         {
-            Services.ApiInstance.Disconnect();
+            Services.ApiInstance?.Disconnect();
 
             ConnectedServer = "---";
             ConnectionStatus = "Verbindung getrennt.";
@@ -915,7 +931,7 @@ namespace VIBN_Tools.Application.VM
         {
             try
             {
-                Services.ApiInstance.Disconnect();
+                Services.ApiInstance?.Disconnect();
                 await _connectionService.WaitForDisconnectedAsync(TimeSpan.FromSeconds(2));
             }
             catch

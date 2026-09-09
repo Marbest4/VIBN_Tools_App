@@ -119,11 +119,20 @@ namespace VIBN_Tools.Settings
                 return;
             }
 
-            // API Call for Connection State
-            var state = Services.ApiInstance.ApiState;
-
-            IsConnected = state == NetworkState.Connected;
-            IsConnecting = state == NetworkState.Connecting;
+            try
+            {
+                // Some FEE runtime versions throw while no interface endpoint
+                // exists yet. Polling must remain silent until an explicit
+                // connection attempt succeeds.
+                var state = Services.ApiInstance.ApiState;
+                IsConnected = state == NetworkState.Connected;
+                IsConnecting = state == NetworkState.Connecting;
+            }
+            catch
+            {
+                IsConnected = false;
+                IsConnecting = false;
+            }
 
         }
     }

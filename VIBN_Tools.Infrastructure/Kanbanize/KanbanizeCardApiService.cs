@@ -56,9 +56,11 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
 
         var lanesTask = GetJsonAsync($"/boards/{boardId}/lanes", cancellationToken);
         var columnsTask = GetJsonAsync($"/boards/{boardId}/columns", cancellationToken);
-        await Task.WhenAll(lanesTask, columnsTask);
+        var workflowsTask = GetJsonAsync($"/boards/{boardId}/workflows", cancellationToken);
+        await Task.WhenAll(lanesTask, columnsTask, workflowsTask);
         using var lanesDocument = await lanesTask;
         using var columnsDocument = await columnsTask;
+        using var workflowsDocument = await workflowsTask;
 
         var lanes = GetDataElements(lanesDocument.RootElement)
             .Select(element => new KanbanizeLaneInfo(
@@ -76,8 +78,15 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
             .Where(column => column.Id > 0)
             .OrderBy(column => column.Name, StringComparer.OrdinalIgnoreCase)
             .ToArray();
+        var workflows = GetDataElements(workflowsDocument.RootElement)
+            .Select(element => new KanbanizeWorkflowInfo(
+                ReadInt(element, "workflow_id", "id"),
+                ReadString(element, "name")))
+            .Where(workflow => workflow.Id > 0 && workflow.Name.Length > 0)
+            .OrderBy(workflow => workflow.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
 
-        return new KanbanizeBoardStructure(lanes, columns);
+        return new KanbanizeBoardStructure(lanes, columns, workflows);
     }
 
     /// <summary>
@@ -121,7 +130,7 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
 
     private static string BuildCardsUrl(int boardId, int page, int pageSize) =>
         $"/cards?board_ids={boardId}&page={page}&per_page={pageSize}" +
-        "&fields=card_id,title,custom_id,deadline&expand=custom_fields";
+        "&fields=card_id,title,custom_id,deadline,workflow_id&expand=custom_fields";
 
     public async Task<KanbanizeCreatedCard> CreateCardAsync(
         KanbanizeCardDraft draft,
@@ -371,7 +380,8 @@ public sealed class KanbanizeCardApiService : IKanbanizeCardService
                 ReadString(element, "title"),
                 ReadString(element, "custom_id"),
                 ReadDateTimeOffset(element, "deadline"),
-                ReadCustomDate(element, VibnWorkplaceSynchronizationPolicy.WorkplaceStartDateFieldId)))
+                ReadCustomDate(element, VibnWorkplaceSynchronizationPolicy.WorkplaceStartDateFieldId),
+                ReadInt(element, "workflow_id")))
             .Where(card => card.Id > 0);
 
     private static int ReadPageCount(JsonElement root)

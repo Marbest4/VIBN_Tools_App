@@ -14,10 +14,18 @@ public sealed record KanbanizeLaneInfo(int Id, int WorkflowId, string Name);
 /// <summary>A workflow column where a new card can be created.</summary>
 public sealed record KanbanizeColumnInfo(int Id, int WorkflowId, string Name);
 
+/// <summary>A named workflow used to scope board reads safely.</summary>
+public sealed record KanbanizeWorkflowInfo(int Id, string Name);
+
 /// <summary>All selectable positions of one Kanbanize board.</summary>
 public sealed record KanbanizeBoardStructure(
     IReadOnlyList<KanbanizeLaneInfo> Lanes,
-    IReadOnlyList<KanbanizeColumnInfo> Columns);
+    IReadOnlyList<KanbanizeColumnInfo> Columns,
+    IReadOnlyList<KanbanizeWorkflowInfo>? WorkflowItems = null)
+{
+    public IReadOnlyList<KanbanizeWorkflowInfo> Workflows { get; } =
+        WorkflowItems ?? Array.Empty<KanbanizeWorkflowInfo>();
+}
 
 /// <summary>Input required to create exactly one Kanbanize card.</summary>
 public sealed record KanbanizeCardDraft(
@@ -46,7 +54,8 @@ public sealed record KanbanizeCardInfo(
     string Title,
     string? CustomId,
     DateTimeOffset? Deadline,
-    DateTimeOffset? StartDate = null);
+    DateTimeOffset? StartDate = null,
+    int WorkflowId = 0);
 
 /// <summary>
 /// Minimal, deterministic payload for a card generated from a virtual

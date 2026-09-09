@@ -48,6 +48,7 @@ namespace VIBN_Tools.Application.VM
         public ICommand ValidateWorkspace => GetCommandBinding(Validate_Workspace);
         public ICommand ExportContainers => GetCommandBinding(Export_Containers);
         public ICommand CompareContainerFiles => GetCommandBinding(Compare_ContainerFiles);
+        public ICommand LoadContainerFile => GetCommandBinding(Load_ContainerFile);
 
         public ICommand LoadData => GetCommandBinding(Load_Data);
 
@@ -111,8 +112,16 @@ namespace VIBN_Tools.Application.VM
         public bool CanLoadData => RequirementsFile.IsInitialized;
 
         public string LoadDataUnavailableReason => CanLoadData
-            ? "Lädt einen gespeicherten Bearbeitungsstand."
+            ? "Lädt einen mit 'Arbeitsstand speichern' erzeugten VIBN-Bearbeitungsstand."
             : "Zuerst die zum Bearbeitungsstand gehörende Requirements-XML laden.";
+
+        public bool CanCompareContainerFile => RequirementsFile.IsInitialized && HasWorkspaceData;
+
+        public string CompareContainerFileUnavailableReason => CanCompareContainerFile
+            ? "Vergleicht den sichtbaren aktiven Arbeitsstand mit einem ausgewählten ContainerFile."
+            : !RequirementsFile.IsInitialized
+                ? "Zuerst die zugehörige Requirements-XML laden."
+                : "Zuerst ein ContainerFile laden oder Container generieren.";
 
 
 
@@ -535,6 +544,8 @@ namespace VIBN_Tools.Application.VM
                 OnPropertyChanged(nameof(LoadDataUnavailableReason));
                 OnPropertyChanged(nameof(CanGenerate));
                 OnPropertyChanged(nameof(GenerateUnavailableReason));
+                OnPropertyChanged(nameof(CanCompareContainerFile));
+                OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
             }
         }
 
@@ -1008,25 +1019,16 @@ namespace VIBN_Tools.Application.VM
 
         private void Compare_ContainerFiles(object parameter)
         {
-            if (!RequirementsFile.IsInitialized)
+            if (!CanCompareContainerFile)
             {
-                StatusText = "Vor dem ContainerFile-Vergleich muss die zugehörige Requirements-XML geladen sein.";
+                StatusText = CompareContainerFileUnavailableReason;
                 return;
             }
 
             var filter = "Container XML (*.xml)|*.xml";
-            var baseDialog = new OpenFileDialog
-            {
-                Title = "Bisheriges ContainerFile auswählen",
-                Filter = filter,
-                RestoreDirectory = true
-            };
-            if (baseDialog.ShowDialog() != true)
-                return;
-
             var candidateDialog = new OpenFileDialog
             {
-                Title = "Neues ContainerFile auswählen",
+                Title = "ContainerFile zum Vergleich mit dem aktiven Arbeitsstand auswählen",
                 Filter = filter,
                 RestoreDirectory = true
             };
@@ -1035,17 +1037,14 @@ namespace VIBN_Tools.Application.VM
 
             try
             {
-                var baseline = ContainerFileWorkspaceReader.Read(baseDialog.FileName);
                 var candidate = ContainerFileWorkspaceReader.Read(candidateDialog.FileName);
-                var baselineContainers = baseline.Containers.ToList();
-                var baselineUnassigned = baseline.UnassignedSignals.ToList();
                 var candidateContainers = candidate.Containers.ToList();
                 var candidateUnassigned = candidate.UnassignedSignals.ToList();
                 var candidateFiltered = new List<ContainerEntry>();
                 var snapshot = GenerationWorkspaceReconciler.Capture(
-                    baselineContainers,
-                    baselineUnassigned,
-                    []);
+                    ContainerList,
+                    UnassignedEntries,
+                    FilteredEntries);
                 var summary = GenerationWorkspaceReconciler.Reconcile(
                     snapshot,
                     candidateContainers,
@@ -1069,7 +1068,7 @@ namespace VIBN_Tools.Application.VM
                 OnPropertyChanged(nameof(ShowReimportNotice));
                 OnPropertyChanged(nameof(PendingReimportSelectionSummary));
                 ReimportNotice =
-                    $"ContainerFile-Vergleich: {Path.GetFileName(baseDialog.FileName)} → " +
+                    $"ContainerFile-Vergleich: aktiver Arbeitsstand → " +
                     $"{Path.GetFileName(candidateDialog.FileName)}; {summary.Differences.Count} Unterschiede erkannt.";
                 StatusText = summary.Differences.Count == 0
                     ? "Die beiden ContainerFiles sind semantisch gleich."
@@ -1080,6 +1079,58 @@ namespace VIBN_Tools.Application.VM
             {
                 Logger.Error(ex, "ContainerFile comparison failed.");
                 StatusText = $"ContainerFile-Vergleich fehlgeschlagen: {ex.Message}";
+            }
+        }
+
+        private void Load_ContainerFile(object parameter)
+        {
+            if (!RequirementsFile.IsInitialized)
+            {
+                StatusText = "Vor dem Laden eines ContainerFiles muss die zugehörige Requirements-XML geladen sein.";
+                return;
+            }
+
+            var dialog = new OpenFileDialog
+            {
+                Title = "Bestehendes ContainerFile als aktiven Arbeitsstand laden",
+                Filter = "Container XML (*.xml)|*.xml",
+                Multiselect = false,
+                RestoreDirectory = true
+            };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var loaded = ContainerFileWorkspaceReader.Read(dialog.FileName);
+                var containers = loaded.Containers.ToList();
+                var unassigned = loaded.UnassignedSignals.ToList();
+                foreach (var container in containers)
+                    ConfigureContainer(container);
+
+                if (HasWorkspaceData)
+                    CaptureUndo("ContainerFile als Arbeitsstand laden");
+                _pendingReimportSnapshot = null;
+                ClearPendingReimportResult();
+                ReplaceWorkspace(containers, unassigned, []);
+                ReattachAllSlotChangedHandlers();
+                WorkspaceDataPath = string.Empty;
+                ConfigureAutoSaveTimer();
+                WasGenerated = true;
+                ReimportNotice = $"{Path.GetFileName(dialog.FileName)} wurde als aktiver Arbeitsstand geladen.";
+                AddActivity(
+                    "ContainerFile",
+                    "Als Arbeitsstand geladen",
+                    $"{dialog.FileName} | {ContainerList.Count} Container, {AssignedSignals} zugeordnet, " +
+                    $"{UnassignedEntries.Count} nicht zugeordnet.");
+                StatusText =
+                    $"ContainerFile geladen: {ContainerList.Count} Container, {AssignedSignals} zugeordnete " +
+                    $"und {UnassignedEntries.Count} nicht zugeordnete Signale. Der nächste Vergleich verwendet diesen aktiven Stand.";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+            {
+                Logger.Error(ex, "ContainerFile load failed.");
+                StatusText = $"ContainerFile konnte nicht geladen werden: {ex.Message}";
             }
         }
 
@@ -1111,8 +1162,9 @@ namespace VIBN_Tools.Application.VM
         {
             SaveFileDialog saveFileDialog = new SaveFileDialog
             {
-                Filter = "xml (*.xml)|*.xml",
-                Title = "Choose save location"
+                Filter = "VIBN-Arbeitsstand (*.vibn-workspace.xml)|*.vibn-workspace.xml|XML (*.xml)|*.xml",
+                Title = "VIBN-Bearbeitungsstand speichern",
+                FileName = "Arbeitsstand.vibn-workspace.xml"
             };
 
             if (saveFileDialog.ShowDialog() == true)
@@ -1151,9 +1203,9 @@ namespace VIBN_Tools.Application.VM
 
             OpenFileDialog openFileDialog = new OpenFileDialog
             {
-                Filter = "xml (*.xml)|*.xml",
+                Filter = "VIBN-Arbeitsstand (*.vibn-workspace.xml;*.xml)|*.vibn-workspace.xml;*.xml",
                 Multiselect = false,
-                Title = "Select the data to load"
+                Title = "Mit VIBN Tools gespeicherten Bearbeitungsstand laden"
             };
 
             if (openFileDialog.ShowDialog() == true)
@@ -1377,7 +1429,7 @@ namespace VIBN_Tools.Application.VM
             var differenceCount = PendingReimportChanges.Count;
             var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
             ClearPendingReimportResult();
-            WasGenerated = false;
+            WasGenerated = HasWorkspaceData;
             ReimportNotice =
                 $"{comparisonLabel}-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
                 "der Arbeitsstand wurde nicht verändert.";
@@ -1726,6 +1778,9 @@ namespace VIBN_Tools.Application.VM
                 entry.EnsureSignalId();
                 FilteredEntries.Add(entry);
             }
+
+            OnPropertyChanged(nameof(CanCompareContainerFile));
+            OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
         }
 
         private static void EnsureSignalIds(IEnumerable<ContainerEntry> entries)
@@ -1774,6 +1829,8 @@ namespace VIBN_Tools.Application.VM
             ContainerList.Clear();
             UnassignedEntries.Clear();
             FilteredEntries.Clear();
+            OnPropertyChanged(nameof(CanCompareContainerFile));
+            OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
         }
 
 
@@ -2053,6 +2110,8 @@ namespace VIBN_Tools.Application.VM
 
             OnPropertyChanged(nameof(AssignedSignals));
             OnPropertyChanged(nameof(PercentComplete));
+            OnPropertyChanged(nameof(CanCompareContainerFile));
+            OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
         }
 
 

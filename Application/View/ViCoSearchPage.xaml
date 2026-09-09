@@ -136,7 +136,15 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Projekt(e)" Binding="{Binding ProjectSummary, Mode=OneWay}" Width="205" />
+                    <DataGridTemplateColumn Header="Projekt(e)" Width="330">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding ProjectSummary, Mode=OneWay}"
+                                           TextTrimming="CharacterEllipsis"
+                                           ToolTip="{Binding ProjectSummary, Mode=OneWay}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Software" Width="175">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>

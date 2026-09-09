@@ -3,7 +3,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
-             xmlns:i="http://schemas.microsoft.com/xaml/behaviors"
              xmlns:ux="http://Grob.com/wpf.ux"
              xmlns:uxb="http://Grob.com/wpf.ux.behaviors"
              xmlns:g="clr-namespace:VIBN_Tools.GlobalClasses"
@@ -15,12 +14,6 @@
     <UserControl.DataContext>
         <vm:InterfaceOperationPageVM/>
     </UserControl.DataContext>
-
-    <i:Interaction.Triggers>
-        <i:EventTrigger EventName="Loaded">
-            <i:InvokeCommandAction Command="{Binding ReloadFeeInterfaces}" />
-        </i:EventTrigger>
-    </i:Interaction.Triggers>
 
     <UserControl.Resources>
         <ResourceDictionary>
@@ -201,7 +194,8 @@
                         <ColumnDefinition Width="4*"/>
                     </Grid.ColumnDefinitions>
 
-                    <ux:Button Grid.Column="0" Margin="5" ux:Icon.Kind="Restart" Command="{Binding ReloadFeeInterfaces}" IsBusy="{Binding IsBusyReloadInterfaces}"/>
+                    <ux:Button Grid.Column="0" Margin="5" ux:Icon.Kind="Restart" Command="{Binding ReloadFeeInterfaces}" IsBusy="{Binding IsBusyReloadInterfaces}"
+                               IsEnabled="{Binding CanReloadFeeData}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                     <ux:Button Grid.Column="1" Margin="5" Content="Connect Interfaces" Command="{Binding ConnectInterfaces}" IsEnabled="{Binding CanConnetInterfaces}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
 
                 </Grid>
@@ -232,7 +226,8 @@
                     <ux:Button Margin="5" Content="Select All" DebounceInterval="150" MinWidth="120" Command="{Binding SelectVisibleSignals}" />
                     <ux:Button Margin="5" Content="Deselect All" DebounceInterval="150" MinWidth="120" Command="{Binding DeselectVisibleSignals}" />
 
-                    <ux:Button Margin="5" DebounceInterval="150" ux:Icon.Kind="Restart" Command="{Binding ReloadFeeSignals}" IsBusy="{Binding IsBusyUpdatingFeeData}"/>
+                    <ux:Button Margin="5" DebounceInterval="150" ux:Icon.Kind="Restart" Command="{Binding ReloadFeeSignals}" IsBusy="{Binding IsBusyUpdatingFeeData}"
+                               IsEnabled="{Binding CanReloadFeeData}" ToolTip="{Binding Connection.UnavailableReason}" ToolTipService.ShowOnDisabled="True"/>
                 </StackPanel>
 
                 <DataGrid Grid.Row="1" Margin="5" ItemsSource="{Binding SignalsView}" AutoGenerateColumns="False" CanUserAddRows="False" SelectionMode="Extended" SelectionUnit="FullRow" >

@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 
 namespace VIBN_Tools.SharedWpf;
 
@@ -19,12 +20,12 @@ public static class PasswordBoxBindingBehavior
         typeof(string),
         typeof(PasswordBoxBindingBehavior),
         new FrameworkPropertyMetadata(
-            string.Empty,
+            null,
             FrameworkPropertyMetadataOptions.BindsTwoWayByDefault,
             OnPasswordChanged));
 
     public static string GetPassword(DependencyObject element) =>
-        (string)element.GetValue(PasswordProperty);
+        element.GetValue(PasswordProperty) as string ?? string.Empty;
 
     public static void SetPassword(DependencyObject element, string value) =>
         element.SetValue(PasswordProperty, value);
@@ -44,7 +45,17 @@ public static class PasswordBoxBindingBehavior
     {
         var passwordBox = (PasswordBox)sender;
         passwordBox.SetValue(IsUpdatingProperty, true);
-        SetPassword(passwordBox, passwordBox.Password);
-        passwordBox.SetValue(IsUpdatingProperty, false);
+        try
+        {
+            // SetValue replaces an existing binding expression on the attached
+            // property. SetCurrentValue retains it; UpdateSource then transfers
+            // the current PasswordBox value immediately to the view model.
+            passwordBox.SetCurrentValue(PasswordProperty, passwordBox.Password);
+            BindingOperations.GetBindingExpression(passwordBox, PasswordProperty)?.UpdateSource();
+        }
+        finally
+        {
+            passwordBox.SetValue(IsUpdatingProperty, false);
+        }
     }
 }

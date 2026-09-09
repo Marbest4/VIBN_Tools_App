@@ -101,6 +101,7 @@ public static class VibnWorkplaceSynchronizationPolicy
     public const int DefaultSourceBoardId = 1392;
     public const int DefaultTargetBoardId = 1541;
     public const int ExcludedArchiveColumnId = 25236;
+    public const string RequiredSourceWorkflowName = "Team-Aufgaben";
     public const string CommissioningSourceTitleFragment = "Grundinbetriebnahme";
     public const string MaintenanceSourceTitleFragment = "Nachpflege";
     public const string ExcludedSourceTitleFragment = "Vorlage";
@@ -381,11 +382,38 @@ public sealed class VibnWorkplaceSynchronizationService : IVibnWorkplaceSynchron
 
         var sourceTask = _cards.LoadCardsAsync(settings.SourceBoardId, cancellationToken);
         var targetTask = _cards.LoadCardsAsync(settings.TargetBoardId, cancellationToken);
-        await Task.WhenAll(sourceTask, targetTask);
+        var sourceStructureTask = settings.SourceBoardId == VibnWorkplaceSynchronizationPolicy.DefaultSourceBoardId
+            ? _cards.LoadBoardStructureAsync(settings.SourceBoardId, cancellationToken)
+            : Task.FromResult(new KanbanizeBoardStructure(
+                Array.Empty<KanbanizeLaneInfo>(),
+                Array.Empty<KanbanizeColumnInfo>()));
+        await Task.WhenAll(sourceTask, targetTask, sourceStructureTask);
         var sourceCards = await sourceTask;
         var targetCards = await targetTask;
+        var sourceStructure = await sourceStructureTask;
+
+        HashSet<int>? requiredSourceWorkflowIds = null;
+        if (settings.SourceBoardId == VibnWorkplaceSynchronizationPolicy.DefaultSourceBoardId)
+        {
+            requiredSourceWorkflowIds = sourceStructure.Workflows
+                .Where(workflow => string.Equals(
+                    workflow.Name.Trim(),
+                    VibnWorkplaceSynchronizationPolicy.RequiredSourceWorkflowName,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(workflow => workflow.Id)
+                .ToHashSet();
+            if (requiredSourceWorkflowIds.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    $"Im Board 'Virtuelle Inbetriebnahme' wurde der Workflow " +
+                    $"'{VibnWorkplaceSynchronizationPolicy.RequiredSourceWorkflowName}' nicht gefunden. " +
+                    "Es wurden keine Karten berücksichtigt.");
+            }
+        }
 
         var eligibleSourceCards = sourceCards
+            .Where(card => requiredSourceWorkflowIds is null ||
+                           requiredSourceWorkflowIds.Contains(card.WorkflowId))
             .Where(VibnWorkplaceSynchronizationPolicy.IsEligibleSourceCard)
             .OrderBy(card => card.Title, StringComparer.OrdinalIgnoreCase)
             .ThenBy(card => card.Id)

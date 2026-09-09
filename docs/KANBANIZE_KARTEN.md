@@ -14,6 +14,7 @@ Beide Abläufe enthalten keine Lizenzanfrage- oder Lizenzdatenlogik.
 ### Voraussetzungen
 
 - API-Zugriff kann Boards, Lanes, Spalten und Karten lesen.
+- Das Quellboard „Virtuelle Inbetriebnahme“ enthält den Workflow **Team-Aufgaben** und liefert dessen `workflow_id` über die API.
 - Im Zielboard darf der API-Zugriff Karten erstellen und die beiden geplanten Terminwerte bestehender generierter Karten ändern.
 - Quellboard, Zielboard, Ziel-Lane und Zielspalte müssen gewählt sein.
 
@@ -27,7 +28,7 @@ Beide Abläufe enthalten keine Lizenzanfrage- oder Lizenzdatenlogik.
 
 ### Auswahlregel
 
-Eine Quellkarte ist zulässig, wenn ihr Titel `Grundinbetriebnahme` oder `Nachpflege` enthält, sie nicht `Vorlage` heißt und nicht in der Archivspalte liegt. Eine zusätzliche Vorlagenkarte ist für die Synchronisierung nicht erforderlich.
+Eine Quellkarte ist nur zulässig, wenn sie im Quellboard „Virtuelle Inbetriebnahme“ über ihre `workflow_id` eindeutig zum Workflow **Team-Aufgaben** gehört, ihr Titel `Grundinbetriebnahme` oder `Nachpflege` enthält, sie nicht `Vorlage` heißt und nicht in der Archivspalte liegt. Karten aller anderen Workflows bleiben auch dann ausgeschlossen, wenn ihr Titel passen würde. Kann **Team-Aufgaben** in der Boardstruktur nicht aufgelöst werden, wird die Vorschau mit einer Diagnose beendet; es gibt keinen unsicheren Fallback auf sämtliche Karten. Eine zusätzliche Vorlagenkarte ist für die Synchronisierung nicht erforderlich.
 
 ### Terminregel
 

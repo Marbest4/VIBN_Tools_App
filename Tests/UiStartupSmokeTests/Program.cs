@@ -1,7 +1,9 @@
 using System.Diagnostics;
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
@@ -15,6 +17,7 @@ using VIBN_Tools.ContainerToFeeVisual;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.GlobalClasses.FeeObjects;
 using VIBN_Tools.Settings;
+using VIBN_Tools.SharedWpf;
 using VIBN_Tools.Tia.Contracts;
 
 namespace VIBN_Tools.UiStartup.SmokeTests;
@@ -26,6 +29,8 @@ internal static class Program
     {
         _ = new System.Windows.Application();
         Services.Initialize();
+        if (Services.IsFeeApiInitialized)
+            throw new InvalidOperationException("FEE CoreApi must not be constructed during application startup.");
         var bindingTrace = PresentationTraceSources.DataBindingSource;
         var bindingErrors = new BindingErrorTraceListener();
         bindingTrace.Switch.Level = SourceLevels.Error;
@@ -40,6 +45,7 @@ internal static class Program
                 throw new InvalidOperationException("The FEE SDK used by the running build must be visible in Project Settings.");
             VerifyInstalledFeeVersionRequiresSdk();
             VerifyAutomationInstallationDiscovery();
+            VerifyPasswordBoxBinding();
             VerifyNavigationPreferencePersistence();
             VerifyConfigurationFieldAcceptsCreatedSubtask();
             VerifyExistingSignalReuseDoesNotCallUpdate();
@@ -105,6 +111,8 @@ internal static class Program
                 (ContainerGenerationPageVM)containerGenerationPage.DataContext;
             if (containerGenerationViewModel.CanLoadData)
                 throw new InvalidOperationException("Load Data must require a loaded Requirements XML.");
+            if (containerGenerationViewModel.CanCompareContainerFile)
+                throw new InvalidOperationException("ContainerFile comparison must require an active workspace.");
 
             var specialDevicePage = new SpecialDevicePage();
             var specialDeviceViewModel = (SpecialDevicePageVM)specialDevicePage.DataContext;
@@ -640,6 +648,11 @@ internal static class Program
                             @"C:\Program Files\Siemens\WinCC",
                             "fixture:wincc"),
                         new InstalledProductEvidence(
+                            "SIMATIC WinCC Unified Runtime",
+                            "20.0.1",
+                            string.Empty,
+                            "fixture:wincc-duplicate-32bit"),
+                        new InstalledProductEvidence(
                             "Siemens Safety Advanced V20",
                             "20.0",
                             @"C:\Program Files\Siemens\Safety",
@@ -656,6 +669,12 @@ internal static class Program
             {
                 throw new InvalidOperationException("Dynamic automation installation discovery missed fixture evidence.");
             }
+            if (inventory.Components.Count(component =>
+                    component.Product == "SIMATIC WinCC Unified Runtime" &&
+                    component.Version == "20.0.1") != 1)
+            {
+                throw new InvalidOperationException("Duplicate 32-/64-bit automation product entries were not collapsed.");
+            }
             if (AutomationInstallationDiscovery.ClassifyInstalledProduct("Unrelated Editor") is not null)
                 throw new InvalidOperationException("An unrelated installed product was classified as automation software.");
         }
@@ -664,6 +683,34 @@ internal static class Program
             if (Directory.Exists(directory))
                 Directory.Delete(directory, recursive: true);
         }
+    }
+
+    private static void VerifyPasswordBoxBinding()
+    {
+        var probe = new PasswordBindingProbe();
+        var passwordBox = new PasswordBox();
+        BindingOperations.SetBinding(
+            passwordBox,
+            PasswordBoxBindingBehavior.PasswordProperty,
+            new Binding(nameof(PasswordBindingProbe.Value))
+            {
+                Source = probe,
+                Mode = BindingMode.TwoWay,
+                UpdateSourceTrigger = UpdateSourceTrigger.PropertyChanged
+            });
+
+        passwordBox.Password = "typed-secret";
+        if (probe.Value != "typed-secret" ||
+            BindingOperations.GetBindingExpression(
+                passwordBox,
+                PasswordBoxBindingBehavior.PasswordProperty) is null)
+        {
+            throw new InvalidOperationException("PasswordBox typing did not update the bound view model or destroyed its binding.");
+        }
+
+        probe.Value = "view-model-secret";
+        if (passwordBox.Password != "view-model-secret")
+            throw new InvalidOperationException("A PasswordBox did not accept a value updated by its view model.");
     }
 
     private static void VerifyNavigationPreferencePersistence()
@@ -749,5 +796,24 @@ internal static class Program
         }
 
         public override void WriteLine(string? message) => Write(message);
+    }
+
+    private sealed class PasswordBindingProbe : INotifyPropertyChanged
+    {
+        private string _value = string.Empty;
+
+        public string Value
+        {
+            get => _value;
+            set
+            {
+                if (_value == value)
+                    return;
+                _value = value;
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Value)));
+            }
+        }
+
+        public event PropertyChangedEventHandler? PropertyChanged;
     }
 }
