@@ -284,6 +284,20 @@ internal static class Program
 
             var settingsPage = new SettingsPage();
             var settingsViewModel = (SettingsPageVM)settingsPage.DataContext;
+            var interfaceOperationPage = new InterfaceOperationPage();
+            var interfaceOperationViewModel =
+                (InterfaceOperationPageVM)interfaceOperationPage.DataContext;
+            if (interfaceOperationViewModel.CanReloadFeeData)
+                throw new InvalidOperationException("Interface reload must remain disabled before an explicit FEE connection.");
+            var logEntriesBeforeInterfaceLoad = ApplicationLogService.Instance.Entries.Count;
+            interfaceOperationPage.RaiseEvent(new RoutedEventArgs(FrameworkElement.LoadedEvent));
+            Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.ContextIdle);
+            if (ApplicationLogService.Instance.Entries
+                .Skip(logEntriesBeforeInterfaceLoad)
+                .Any(entry => string.Equals(entry.Area, "Interface Operation", StringComparison.Ordinal)))
+            {
+                throw new InvalidOperationException("Opening Interface Operation attempted a FEE operation before Connect.");
+            }
 
             FrameworkElement[] integratedViews =
             [
@@ -298,6 +312,7 @@ internal static class Program
                 fee2ContainerPage,
                 aiTrainingPage,
                 settingsPage,
+                interfaceOperationPage,
                 new DiagnosticsPanel()
             ];
 

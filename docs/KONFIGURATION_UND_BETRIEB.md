@@ -64,7 +64,7 @@ Kanbanize/Businessmap verwendet hier keinen Benutzerpasswort-Login, sondern den 
 
 ### Connect zeigt trotzdem nicht „verbunden“
 
-Das ist korrekt, wenn FEE die Verbindung nicht bestätigt. Die Anwendung setzt `Connected to` erst nach `WaitForConnectedAsync`. Status-/Logmeldung prüfen, Servernamen und FEE-Service kontrollieren und danach erneut verbinden.
+Die Anwendung setzt `Connected to` erst, wenn der normale Zustandsmonitor der FEE-SDK den Wechsel auf `Connected` meldet. Der Connect-Button ruft `CoreApi.Connect` genau einmal auf; es gibt keinen zusätzlichen Bestätigungs-Timeout und kein automatisches Trennen eines noch laufenden SDK-Handshakes. Bleibt der Status aus, Servernamen, gespeicherte Zugangsdaten, FEE-Service und das Diagnoseprotokoll prüfen. Erst danach manuell **Disconnect** beziehungsweise erneut **Connect** verwenden.
 
 Project Settings zeigt zusätzlich **Verwendete SDK-Version** und **Installierte FEE-Version**. Die erste Angabe stammt vorrangig aus der tatsächlich geladenen `FS.SDK.dll`. Für die zweite Angabe gilt eine Installation nur dann als vollständig, wenn in genau ihrem Installationspfad `Bin\FS.SDK.dll` vorhanden ist. Höhere, aber unvollständige Versionsordner und Registry-Einträge ohne dieses Merkmal werden ignoriert. Eine rote Abweichung ist ein Diagnosehinweis: Sie verhindert den Start nicht, sollte aber vor FEE-Schreiboperationen mit der freigegebenen Kompatibilitätsmatrix abgeglichen werden.
 

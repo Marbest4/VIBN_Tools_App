@@ -53,7 +53,7 @@ Das editierbare Dropdown **Online-PC eingeben oder auswählen** ist Auswahl und 
 3. **Connect** drücken.
 4. Erst nach der technischen Bestätigung zeigt **Connected to** den PC und die Statuszeile meldet „verbunden“.
 
-Scheitert die Verbindung oder läuft der Timeout ab, bleibt `Connected to: ---` sichtbar. Die Fehlerursache steht im Diagnoseprotokoll. **Create Project Base** setzt die bestehende Projektbasisfunktion erst nach einer passenden FEE-Verbindung ein.
+Der Connect-Button übergibt Server und Zugangsdaten genau einmal an die FEE-SDK. Der weitere Verbindungsaufbau bleibt – wie im ursprünglichen funktionierenden Ablauf – vollständig bei der SDK; die Anwendung trennt einen noch laufenden Versuch nicht nach einem eigenen Timeout. Wirft die SDK den Verbindungsaufruf direkt zurück, bleibt `Connected to: ---` sichtbar und die Fehlerursache steht im Diagnoseprotokoll. **Create Project Base** setzt die bestehende Projektbasisfunktion erst nach einer passenden FEE-Verbindung ein.
 
 Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Version. Bei mehreren lokalen Versionsordnern wird nur eine Installation berücksichtigt, in deren eigenem Pfad `Bin\FS.SDK.dll` existiert. Dadurch werden neuere, aber unvollständige Installationsreste nicht mehr als aktive FEE-Version angezeigt. Eine Abweichung zwischen verwendetem SDK und vollständiger lokaler Installation bleibt rot markiert.
 

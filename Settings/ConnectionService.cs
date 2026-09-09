@@ -62,51 +62,6 @@ namespace VIBN_Tools.Settings
             _timer.Start();
         }
 
-        /// <summary>
-        /// Waits for the FEE SDK to report a real connected state. Connect can
-        /// return before the remote server has accepted the session, so callers
-        /// must not use its return alone as a success indication.
-        /// </summary>
-        public async Task<bool> WaitForConnectedAsync(
-            TimeSpan timeout,
-            CancellationToken cancellationToken = default)
-        {
-            var deadline = DateTimeOffset.UtcNow + timeout;
-            do
-            {
-                CheckConnection();
-                if (IsConnected)
-                    return true;
-                await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
-            }
-            while (DateTimeOffset.UtcNow < deadline);
-
-            CheckConnection();
-            return IsConnected;
-        }
-
-        /// <summary>Waits until the SDK no longer reports a live remote session.</summary>
-        public async Task<bool> WaitForDisconnectedAsync(
-            TimeSpan timeout,
-            CancellationToken cancellationToken = default)
-        {
-            var deadline = DateTimeOffset.UtcNow + timeout;
-            do
-            {
-                CheckConnection();
-                if (!IsConnected && !IsConnecting)
-                    return true;
-                await Task.Delay(TimeSpan.FromMilliseconds(150), cancellationToken);
-            }
-            while (DateTimeOffset.UtcNow < deadline);
-
-            CheckConnection();
-            return !IsConnected && !IsConnecting;
-        }
-
-
-
-
         private void CheckConnection()
         {
             // Project Settings initializes the shared SDK before normal UI use.

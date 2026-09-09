@@ -27,6 +27,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] Project Settings zeigt nur erreichbare PCs und der Filter wirkt sofort.
 - [ ] Ein fehlgeschlagener FEE-Connect zeigt nicht fälschlich „verbunden“.
+- [ ] **Connect** ruft die FEE-SDK genau einmal auf und lässt einen laufenden SDK-Handshake ohne anwendungsseitigen Timeout oder automatisches Disconnect bestehen; **Disconnect** bleibt eine bewusste Benutzeraktion.
 - [ ] `localhost` bleibt nach der Online-PC-Aktualisierung ausgewählt und Connect verwendet die gespeicherten FEE-Zugangsdaten; die gebundene Serverliste erzeugt keinen CollectionView-Threadfehler.
 - [ ] Project Settings zeigt verwendete SDK- und lokal installierte FEE-Version; eine künstlich abweichende Version wird rot hervorgehoben.
 - [ ] Von mehreren lokalen Versionsordnern zählt nur ein Ordner mit `Bin\FS.SDK.dll`; höhere unvollständige Ordner werden ignoriert.

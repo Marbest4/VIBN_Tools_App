@@ -1,6 +1,5 @@
 ﻿using System.Collections.ObjectModel;
 using System.Net.Http;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Input;
 using Newtonsoft.Json;
@@ -15,7 +14,7 @@ using static VIBN_Tools.Settings.ProjectSettings;
 
 namespace VIBN_Tools.Application.VM
 {
-    /// <summary>Coordinates project settings and confirms FEE connections before showing them as active.</summary>
+    /// <summary>Coordinates project settings and delegates FEE connection handling to the vendor SDK.</summary>
     public class SettingsPageVM : MvvmBase
     {
 
@@ -581,17 +580,16 @@ namespace VIBN_Tools.Application.VM
         // M E T H O D S   ( B U T T O N S )
         //===========================================================================================================================
 
-        private async Task Connect_ToFee(object parameter)
+        private Task Connect_ToFee(object parameter)
         {
             if (string.IsNullOrWhiteSpace(SelectedServer))
             {
                 ConnectionStatus = "Bitte zuerst einen PC auswählen.";
                 _log.Warning("Project Settings", ConnectionStatus);
-                return;
+                return Task.CompletedTask;
             }
 
             _connectionService.LoadFeeDataOnConnect = LoadFeeData;
-            var stopwatch = Stopwatch.StartNew();
             try
             {
                 // A freshly typed pair is valid for the current connection even
@@ -606,61 +604,36 @@ namespace VIBN_Tools.Application.VM
                     : typedPassword;
                 if (string.IsNullOrWhiteSpace(feeUsername) || string.IsNullOrEmpty(feePassword))
                 {
-                    stopwatch.Stop();
                     ConnectionStatus = "FEE-Zugangsdaten fehlen. Bitte unter Geschützte Zugangsdaten einmalig speichern.";
                     _log.Warning("Project Settings", ConnectionStatus);
-                    return;
+                    return Task.CompletedTask;
                 }
 
                 if (!Services.TryInitializeFeeApi(out var initializationException))
                 {
-                    stopwatch.Stop();
                     ConnectionStatus = "Die FEE-Laufzeit konnte für den Verbindungsversuch nicht initialisiert werden.";
                     _log.Error("Project Settings", ConnectionStatus, initializationException);
-                    return;
+                    return Task.CompletedTask;
                 }
 
                 ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
-                // Clear stale UI state only after all prerequisites have been
-                // resolved and before the SDK confirms the new endpoint.
                 ConnectedServer = "---";
                 _log.Information("Project Settings", ConnectionStatus);
-                if (_connectionService.IsConnected)
-                {
-                    Services.ApiInstance.Disconnect();
-                    if (!await _connectionService.WaitForDisconnectedAsync(TimeSpan.FromSeconds(3)))
-                    {
-                        stopwatch.Stop();
-                        ConnectionStatus = "Die bestehende FEE-Verbindung konnte nicht sauber getrennt werden.";
-                        _log.Warning("Project Settings", ConnectionStatus);
-                        return;
-                    }
-                }
 
+                // Keep the proven vendor-SDK lifecycle: Connect is invoked once.
+                // The SDK owns the asynchronous handshake and FeeConnectionService
+                // reports its Connected transition. Pre-emptive disconnects and a
+                // second polling loop caused valid sessions to be torn down again.
                 Services.ApiInstance.Connect(SelectedServer, feeUsername, feePassword);
-                var connected = await _connectionService.WaitForConnectedAsync(TimeSpan.FromSeconds(10));
-                stopwatch.Stop();
-                if (!connected)
-                {
-                    await DisconnectAfterFailedConnectionAsync();
-                    ConnectedServer = "---";
-                    ConnectionStatus = $"Verbindung zu {SelectedServer} konnte nicht bestätigt werden (Zeitüberschreitung).";
-                    _log.Warning("Project Settings", ConnectionStatus);
-                    return;
-                }
-
-                ConnectedServer = SelectedServer;
-                ConnectionStatus = $"Mit {SelectedServer} verbunden ({stopwatch.Elapsed.TotalSeconds:F1} s).";
-                _log.Information("Project Settings", ConnectionStatus);
             }
             catch (Exception exception)
             {
-                stopwatch.Stop();
-                await DisconnectAfterFailedConnectionAsync();
                 ConnectedServer = "---";
                 ConnectionStatus = $"Verbindung zu {SelectedServer} fehlgeschlagen.";
                 _log.Error("Project Settings", ConnectionStatus, exception);
             }
+
+            return Task.CompletedTask;
         }
 
 
@@ -939,22 +912,9 @@ namespace VIBN_Tools.Application.VM
 
         private void OnConnected()
         {
-            // ConnectedServer is assigned only after WaitForConnectedAsync has
-            // confirmed the SDK state in Connect_ToFee. This event must not
-            // resurrect a stale "verbunden" display after a failed attempt.
-        }
-
-        private async Task DisconnectAfterFailedConnectionAsync()
-        {
-            try
-            {
-                Services.ApiInstance?.Disconnect();
-                await _connectionService.WaitForDisconnectedAsync(TimeSpan.FromSeconds(2));
-            }
-            catch
-            {
-                // The original connection exception is more useful to the caller.
-            }
+            ConnectedServer = SelectedServer;
+            ConnectionStatus = $"Mit {SelectedServer} verbunden.";
+            _log.Information("Project Settings", ConnectionStatus);
         }
 
     }
