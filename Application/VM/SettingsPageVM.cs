@@ -582,49 +582,9 @@ namespace VIBN_Tools.Application.VM
 
         private Task Connect_ToFee(object parameter)
         {
-            if (string.IsNullOrWhiteSpace(SelectedServer))
-            {
-                ConnectionStatus = "Bitte zuerst einen PC auswählen.";
-                _log.Warning("Project Settings", ConnectionStatus);
-                return Task.CompletedTask;
-            }
-
             _connectionService.LoadFeeDataOnConnect = LoadFeeData;
-            try
-            {
-                // A freshly typed pair is valid for the current connection even
-                // before it is persisted. Empty inputs fall back to the protected
-                // Credential Manager values.
-                var typedPassword = FeePasswordInput;
-                var feeUsername = string.IsNullOrEmpty(typedPassword)
-                    ? _credentialConfiguration.GetFeeUsername()
-                    : FeeUsernameInput.Trim();
-                var feePassword = string.IsNullOrEmpty(typedPassword)
-                    ? _credentialConfiguration.GetFeePassword()
-                    : typedPassword;
-                if (string.IsNullOrWhiteSpace(feeUsername) || string.IsNullOrEmpty(feePassword))
-                {
-                    ConnectionStatus = "FEE-Zugangsdaten fehlen. Bitte unter Geschützte Zugangsdaten einmalig speichern.";
-                    _log.Warning("Project Settings", ConnectionStatus);
-                    return Task.CompletedTask;
-                }
 
-                ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
-                ConnectedServer = "---";
-                _log.Information("Project Settings", ConnectionStatus);
-
-                // Keep the proven vendor-SDK lifecycle: Connect is invoked once.
-                // The SDK owns the asynchronous handshake and FeeConnectionService
-                // reports its Connected transition. Pre-emptive disconnects and a
-                // second polling loop caused valid sessions to be torn down again.
-                Services.ApiInstance.Connect(SelectedServer, feeUsername, feePassword);
-            }
-            catch (Exception exception)
-            {
-                ConnectedServer = "---";
-                ConnectionStatus = $"Verbindung zu {SelectedServer} fehlgeschlagen.";
-                _log.Error("Project Settings", ConnectionStatus, exception);
-            }
+            Services.ApiInstance.Connect(SelectedServer, "admin", "admin");
 
             return Task.CompletedTask;
         }

@@ -17,7 +17,6 @@ namespace VIBN_Tools
                     "Die WPF-Oberfläche hat eine unbehandelte Ausnahme ausgelöst.",
                     args.Exception);
 
-            GlobalClasses.FeeRuntimeAssemblyResolver.Register();
             GlobalClasses.Services.Initialize();
 
         }

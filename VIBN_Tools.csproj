@@ -74,16 +74,6 @@
     <ProjectReference Include="VIBN_Tools.Tia.Client\VIBN_Tools.Tia.Client.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <!-- CoreApi scans SDK types at startup. Their non-FS dependencies must
-         travel with the SDK as well; keep them separate from NuGet assets. -->
-    <Content Include="$(FeeScreenSimBinPath)\*.dll"
-             Exclude="$(FeeScreenSimBinPath)\FS.*.dll;$(FeeScreenSimBinPath)\ReadingUnitPlugin.dll"
-             Link="FeeRuntime\%(Filename)%(Extension)"
-             CopyToOutputDirectory="PreserveNewest"
-             CopyToPublishDirectory="PreserveNewest" />
-  </ItemGroup>
-
   <!-- The net48 TIA bridge is copied by a custom target instead of a normal
        ProjectReference. Mark its sources as VS up-to-date inputs so F5 never
        starts a stale bridge after an Openness change. -->
