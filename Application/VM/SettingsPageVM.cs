@@ -609,13 +609,6 @@ namespace VIBN_Tools.Application.VM
                     return Task.CompletedTask;
                 }
 
-                if (!Services.TryInitializeFeeApi(out var initializationException))
-                {
-                    ConnectionStatus = "Die FEE-Laufzeit konnte für den Verbindungsversuch nicht initialisiert werden.";
-                    _log.Error("Project Settings", ConnectionStatus, initializationException);
-                    return Task.CompletedTask;
-                }
-
                 ConnectionStatus = $"Verbindung zu {SelectedServer} wird aufgebaut …";
                 ConnectedServer = "---";
                 _log.Information("Project Settings", ConnectionStatus);
@@ -641,7 +634,7 @@ namespace VIBN_Tools.Application.VM
 
         private Task Disconnect_FromFee(object parameter)
         {
-            Services.ApiInstance?.Disconnect();
+            Services.ApiInstance.Disconnect();
 
             ConnectedServer = "---";
             ConnectionStatus = "Verbindung getrennt.";
