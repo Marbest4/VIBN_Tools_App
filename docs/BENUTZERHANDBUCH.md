@@ -59,7 +59,7 @@ Unterhalb der Verbindung stehen verwendete SDK- und lokal installierte FEE-Versi
 
 Im Bereich **Geschützte Zugangsdaten** werden FEE-Benutzer/-Passwort, API-Key und RDP-Passwort für den aktuellen Windows-Benutzer im Windows Credential Manager hinterlegt. Die verdeckten Eingabefelder übertragen Eingaben in beide Richtungen korrekt. **Eingaben speichern** ändert nur ausgefüllte Passwort-/Key-Felder; die Löschen-Schaltflächen entfernen jeweils nur den zugehörigen Eintrag. Für einen unmittelbaren FEE-Verbindungsversuch werden gerade eingegebener Benutzer und Passwort bereits vor dem Speichern verwendet. Die Statusfelder zeigen lediglich, ob ein Wert vorhanden ist. Die Anwendung übernimmt Änderungen sofort, ohne PowerShell oder Neustart. Ohne konfigurierte oder aktuell eingegebene FEE-Zugangsdaten wird kein Verbindungsversuch gestartet.
 
-Beim Programmstart wird weder die FEE-API erzeugt noch eine Interface-Liste abgefragt. Die Initialisierung erfolgt erst durch **Connect**; Interfaces und Signale werden erst nach bestätigter Verbindung und einem ausdrücklichen Ladebefehl abgefragt. Ein Rechner ohne FEE-Verbindung startet deshalb ohne entsprechende Verbindungs- oder Interface-Fehlermeldung.
+Beim Programmstart wird die bewährte gemeinsame FEE-API-Instanz vorbereitet, aber weder eine Verbindung aufgebaut noch eine Interface-Liste abgefragt. Interfaces und Signale werden erst nach bestätigter Verbindung und einem ausdrücklichen Ladebefehl abgefragt. Ein Rechner ohne FEE-Verbindung startet deshalb ohne entsprechende Verbindungs- oder Interface-Fehlermeldung. `localhost` bleibt als lokales Ziel erhalten; die dynamische Online-PC-Liste wird ausschließlich auf dem UI-Thread aktualisiert.
 
 ## ViCo
 
@@ -135,6 +135,14 @@ Die Schaltfläche **Was wird geändert?** blendet die vollständige Wirkung ein.
 
 Die TIA-Bridge läuft separat. Eine fehlende Openness-Berechtigung, eine falsche Version oder ein nicht geöffnetes Projekt führt zu einer Status-/Protokollmeldung, nicht zu einem Absturz der Hauptanwendung.
 
+### ViCo-Bibliothek
+
+Die Schaltfläche **Was wird gemacht?** zeigt diese Anleitung auch direkt im Reiter. Vor Import oder Export muss TIA Portal mit geöffnetem Projekt laufen. In VIBN Tools die passende Version über **Verbinden und öffnen** anbinden, die gewünschte PLC auswählen und **PLC auswählen** drücken.
+
+Für den Import einen Ordner wählen, der `_Programm` und/oder `_Datatype` mit TIA-XML-Dateien enthält. Fehlende Gruppen werden im ausgewählten PLC-Programm angelegt; gleichnamige Bausteine und Datentypen werden überschrieben. Die optionale Achsenfunktion konfiguriert alle gefundenen Achsen und erzeugt `AxisDB.xml` sowie `AxisFC.xml` im lokalen Importordner, bevor diese mitimportiert werden. Nach dem Import wird automatisch das gesamte TIA-Projekt gespeichert. Der Import ist daher eine schreibende Aktion und sollte nur gegen einen geprüften Projektstand ausgeführt werden.
+
+Für den Export einen Zielordner und unter **TIA-Bibliotheksordner** den exakten TIA-Ordnernamen angeben. Dessen Bausteine und Datentypen werden unter `<Exportordner>/<Name>_<TIA-Version>/_Programm` beziehungsweise `_Datatype` als XML abgelegt. Vorhandene gleichnamige Exportdateien werden ersetzt. Der Export verändert und speichert das TIA-Projekt nicht.
+
 Das Auslesen und Zuordnen der Hardware befindet sich ausschließlich unter **SpecialDevices2FEE**. Dadurch gibt es nur noch eine Tabelle und einen eindeutigen Weg bis zur FEE-Warteschlange.
 
 ## Administration
@@ -184,8 +192,8 @@ Hersteller, Gerätetyp, Präfix und Byteadressen auswählen. Das Gerät wird zun
 1. Auf der gemeinsamen Seite zum Bereich **Hardware aus geöffnetem TIA-Projekt lesen** wechseln.
 2. TIA-Version wählen, **Mit TIA verbinden** und PLC auswählen.
 3. **Hardware auslesen** drücken.
-4. Die nach Gerätename gruppierte Tabelle zeigt den Gerätenamen und Gerätetyp im Gruppenkopf sowie Traversierungsindex, Hierarchietiefe, Modul, Parent, Slot/Subslot, Pfad, konkrete Openness-Objektklasse, Hardware-ID, GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik, Zuordnungskandidat und Status. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
-5. Erforderlichenfalls Logik, Präfix und Byteadressen korrigieren. Das vorgeschlagene Präfix stammt vom Gerätenamen (Fallback: PROFINET-/Modulname), nicht mehr vom einzelnen Modulnamen.
+4. Die nach Gerätename gruppierte Tabelle zeigt Gerätenamen und Gerätetyp im Gruppenkopf sowie Hardware-ID, GSDML, IP-Adresse, Modultyp, Firmware, E-/A-Bereich, Byte-Längen, Präfix, Logik, Zuordnungskandidat und Status. Die Diagnosefelder Traversierungsindex, Hierarchietiefe, Modul, Parent, Slot/Subslot, Pfad und Openness-Objektklasse sind aus der Bedienoberfläche entfernt. Kopf-/Interfaceelemente ohne Adresse werden ausgeblendet; ihre Netzwerk-/Firmwaredaten werden an adressführende Kindmodule vererbt. Getrennte PROFIsafe-Module bleiben getrennte Zeilen. Die Logik wird nur bei eindeutiger Erkennung vorausgewählt.
+5. Erforderlichenfalls Logik, Präfix und Byteadressen korrigieren. **Keine Logik** ist eine bewusste Auswahl: Die Zeile wird auch mit gesetztem Übernehmen-Haken nicht zur Warteschlange hinzugefügt. Das vorgeschlagene Präfix stammt vom Gerätenamen (Fallback: PROFINET-/Modulname), nicht mehr vom einzelnen Modulnamen.
 6. **Zuordnung speichern** legt die geprüften Werte lokal ab und stellt sie beim nächsten Auslesen wieder her.
 7. Gewünschte Zeilen markieren und **Ausgewählte Geräte in Warteschlange übernehmen** drücken.
 8. In der rechts oben sichtbaren **Warteschlange** kontrollieren und erst danach **In FEE erzeugen** ausführen.

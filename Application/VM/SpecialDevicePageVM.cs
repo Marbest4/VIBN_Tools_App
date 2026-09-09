@@ -79,7 +79,7 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
     public ObservableCollection<TiaHardwareDeviceRowVM> TiaHardwareRows { get; } = new();
 
-    public IReadOnlyList<SpecialDeviceLogicOption> HardwareLogicOptions => SpecialDeviceLogicOption.All;
+    public IReadOnlyList<SpecialDeviceLogicOption> HardwareLogicOptions => SpecialDeviceLogicOption.Selectable;
 
     public IEnumerable<DeviceManufacturer> Manufacturers => Enum.GetValues<DeviceManufacturer>();
 
@@ -532,8 +532,15 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     {
         var errors = new List<string>();
         var added = 0;
+        var skippedWithoutLogic = 0;
         foreach (var row in TiaHardwareRows.Where(row => row.Include && !row.IsAdded))
         {
+            if (row.SelectedLogic is null || row.SelectedLogic.IsEmpty)
+            {
+                skippedWithoutLogic++;
+                continue;
+            }
+
             if (!row.TryCreate(out var device, out var error))
             {
                 if (error.Length > 0)
@@ -558,9 +565,12 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
             added++;
         }
 
+        var skipMessage = skippedWithoutLogic == 0
+            ? string.Empty
+            : $" {skippedWithoutLogic} ausgewählte Zeile(n) ohne Logik wurden bewusst übersprungen.";
         StatusText = errors.Count == 0
-            ? $"{added} TIA-Hardwareelement(e) wurden in die Warteschlange übernommen."
-            : $"{added} Gerät(e) übernommen; {errors.Count} Zuordnung(en) prüfen: {string.Join(" ", errors.Take(3))}";
+            ? $"{added} TIA-Hardwareelement(e) wurden in die Warteschlange übernommen.{skipMessage}"
+            : $"{added} Gerät(e) übernommen; {errors.Count} Zuordnung(en) prüfen: {string.Join(" ", errors.Take(3))}{skipMessage}";
         if (errors.Count > 0)
             _log.Warning("SpecialDevices2FEE", StatusText);
     }

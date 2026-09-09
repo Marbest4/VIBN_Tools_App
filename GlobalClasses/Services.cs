@@ -22,6 +22,23 @@ namespace VIBN_Tools.GlobalClasses
 
         public static void Initialize()
         {
+            // Preserve the proven SDK lifetime: CoreApi is created once on the
+            // UI thread before connection services begin polling it. This does
+            // not contact FEE or load interfaces. Machines without a complete
+            // runtime remain usable; the explicit Connect command retries and
+            // reports the initialization error there.
+            if (ApiInstance is null)
+            {
+                try
+                {
+                    ApiInstance = new CoreApi();
+                }
+                catch
+                {
+                    ApiInstance = null;
+                }
+            }
+
             if (!DesignerProperties.GetIsInDesignMode(new DependencyObject()))
             {
                 Connection = new FeeConnectionService();
@@ -62,10 +79,9 @@ namespace VIBN_Tools.GlobalClasses
         }
 
         /// <summary>
-        /// Creates the FEE SDK client only after the user explicitly requests a
-        /// connection. Constructing CoreApi during application startup can make
-        /// the vendor runtime display connection/interface diagnostics although
-        /// no FEE feature is being used.
+        /// Returns the shared FEE SDK client, or retries its construction when
+        /// startup could not create it because a runtime dependency was missing.
+        /// Interface data is never loaded here.
         /// </summary>
         public static bool TryInitializeFeeApi(out Exception exception)
         {

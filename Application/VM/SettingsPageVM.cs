@@ -827,6 +827,7 @@ namespace VIBN_Tools.Application.VM
                     ? string.Empty
                     : enteredText;
                 var candidates = _workstations.PcNames
+                    .Prepend("localhost")
                     .Where(name => string.IsNullOrWhiteSpace(filter) ||
                         name.Contains(filter, StringComparison.OrdinalIgnoreCase))
                     .Distinct(StringComparer.OrdinalIgnoreCase)
@@ -854,20 +855,24 @@ namespace VIBN_Tools.Application.VM
                     .OrderBy(name => string.Equals(name, "localhost", StringComparison.OrdinalIgnoreCase) ? 0 : 1)
                     .ThenBy(name => name, StringComparer.OrdinalIgnoreCase)
                     .ToArray();
-                ReplaceServerNames(online);
-
-                if (string.IsNullOrWhiteSpace(filter) &&
-                    !string.IsNullOrWhiteSpace(SelectedServer) &&
-                    !checksResult.Any(result =>
-                        result.IsOnline &&
-                        string.Equals(result.candidate, SelectedServer, StringComparison.OrdinalIgnoreCase)))
+                await RunOnUiThreadAsync(() =>
                 {
-                    _isServerChangeActive = true;
-                    SelectedServer = string.Empty;
-                    _isServerChangeActive = false;
-                    IsServerReachable = false;
-                    ConnectionStatus = "Der zuvor ausgewählte PC ist offline und wurde aus der Liste entfernt.";
-                }
+                    ReplaceServerNames(online);
+
+                    if (string.IsNullOrWhiteSpace(filter) &&
+                        !string.IsNullOrWhiteSpace(SelectedServer) &&
+                        !string.Equals(SelectedServer, "localhost", StringComparison.OrdinalIgnoreCase) &&
+                        !checksResult.Any(result =>
+                            result.IsOnline &&
+                            string.Equals(result.candidate, SelectedServer, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        _isServerChangeActive = true;
+                        SelectedServer = string.Empty;
+                        _isServerChangeActive = false;
+                        IsServerReachable = false;
+                        ConnectionStatus = "Der zuvor ausgewählte PC ist offline und wurde aus der Liste entfernt.";
+                    }
+                });
             }
             catch (OperationCanceledException)
             {
@@ -902,6 +907,18 @@ namespace VIBN_Tools.Application.VM
                 else if (currentIndex != index)
                     ServerNames.Move(currentIndex, index);
             }
+        }
+
+        private static async Task RunOnUiThreadAsync(Action action)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher is null || dispatcher.CheckAccess())
+            {
+                action();
+                return;
+            }
+
+            await dispatcher.InvokeAsync(action);
         }
 
 

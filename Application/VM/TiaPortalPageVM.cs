@@ -57,6 +57,7 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
         BrowseExportCommand = GetCommandBinding(BrowseExport);
         ImportLibraryCommand = GetCommandBindingAsync(ImportLibraryAsync);
         ExportLibraryCommand = GetCommandBindingAsync(ExportLibraryAsync);
+        ToggleLibraryOperationInfoCommand = GetCommandBinding(ToggleLibraryOperationInfo);
     }
 
     public ObservableCollection<string> InstalledVersions { get; } = new();
@@ -95,6 +96,8 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     public ICommand ExportLibraryCommand { get; }
 
+    public ICommand ToggleLibraryOperationInfoCommand { get; }
+
     public string AxisConfigurationInfo =>
         "Auswahl konfigurieren ändert ausschließlich die markierten Technologieachsen. " +
         "Ein separates X/Y/Z-Kennzeichen beziehungsweise Namen wie AxisX/AchseX werden als linear erkannt; andere Namen als rotatorisch. " +
@@ -110,6 +113,18 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
         "außerhalb dieses Tools vorgenommen wurden. Der Schritt ist nur erforderlich, wenn die " +
         "Änderungen dauerhaft erhalten bleiben sollen.";
 
+    public string LibraryOperationInfo =>
+        "Voraussetzung: TIA Portal mit geöffnetem Projekt starten, hier die passende Version verbinden, " +
+        "die gewünschte PLC wählen und 'PLC auswählen' drücken.\n\n" +
+        "Import: Der Importordner muss _Programm und/oder _Datatype mit TIA-XML-Dateien enthalten. " +
+        "Fehlende TIA-Ordner werden angelegt, gleichnamige Bausteine und Datentypen werden überschrieben. " +
+        "Ist die Achsenoption aktiv, werden alle gefundenen Achsen konfiguriert und AxisDB.xml sowie " +
+        "AxisFC.xml im lokalen Importordner erzeugt und mitimportiert. Am Ende wird das gesamte TIA-Projekt automatisch gespeichert.\n\n" +
+        "Export: 'TIA-Bibliotheksordner' muss exakt den Ordnernamen bezeichnen, der im TIA-Baustein- " +
+        "und Datentypbaum exportiert werden soll. Die XML-Dateien werden unter " +
+        "<Exportordner>/<Name>_<TIA-Version>/_Programm und _Datatype geschrieben; vorhandene gleichnamige " +
+        "Exportdateien werden ersetzt. Das TIA-Projekt wird beim Export nicht verändert oder gespeichert.";
+
     private bool _isAxisConfigurationInfoVisible;
     public bool IsAxisConfigurationInfoVisible
     {
@@ -119,6 +134,19 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
             if (_isAxisConfigurationInfoVisible == value)
                 return;
             _isAxisConfigurationInfoVisible = value;
+            OnPropertyChanged();
+        }
+    }
+
+    private bool _isLibraryOperationInfoVisible;
+    public bool IsLibraryOperationInfoVisible
+    {
+        get => _isLibraryOperationInfoVisible;
+        private set
+        {
+            if (_isLibraryOperationInfoVisible == value)
+                return;
+            _isLibraryOperationInfoVisible = value;
             OnPropertyChanged();
         }
     }
@@ -324,6 +352,9 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
     private void ToggleAxisConfigurationInfo() =>
         IsAxisConfigurationInfoVisible = !IsAxisConfigurationInfoVisible;
 
+    private void ToggleLibraryOperationInfo() =>
+        IsLibraryOperationInfoVisible = !IsLibraryOperationInfoVisible;
+
     private async Task LoadAxesAsync()
     {
         await RunBusyAsync("Achsen werden schreibgeschützt gelesen …", async () =>
@@ -368,8 +399,16 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     private async Task ImportLibraryAsync()
     {
-        if (string.IsNullOrWhiteSpace(LibraryPath) || string.IsNullOrWhiteSpace(SelectedVersion))
+        if (string.IsNullOrWhiteSpace(LibraryPath))
+        {
+            StatusText = "Bitte zuerst den Importordner mit _Programm und/oder _Datatype auswählen.";
             return;
+        }
+        if (string.IsNullOrWhiteSpace(SelectedVersion) || SelectedPlc is null)
+        {
+            StatusText = "Bitte zuerst TIA verbinden und die gewünschte PLC auswählen.";
+            return;
+        }
 
         await RunBusyAsync("ViCo-Bibliothek wird importiert …", async () =>
         {
@@ -387,10 +426,19 @@ public sealed class TiaPortalPageVM : MvvmBase, IAsyncDisposable
 
     private async Task ExportLibraryAsync()
     {
-        if (string.IsNullOrWhiteSpace(ExportPath) ||
-            string.IsNullOrWhiteSpace(LibraryName) ||
-            string.IsNullOrWhiteSpace(SelectedVersion))
+        if (string.IsNullOrWhiteSpace(ExportPath))
         {
+            StatusText = "Bitte zuerst einen Exportordner auswählen.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(LibraryName))
+        {
+            StatusText = "Bitte den exakten TIA-Bibliotheksordner angeben.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(SelectedVersion) || SelectedPlc is null)
+        {
+            StatusText = "Bitte zuerst TIA verbinden und die gewünschte PLC auswählen.";
             return;
         }
 

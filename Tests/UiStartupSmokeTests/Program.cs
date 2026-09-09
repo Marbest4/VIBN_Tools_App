@@ -29,8 +29,6 @@ internal static class Program
     {
         _ = new System.Windows.Application();
         Services.Initialize();
-        if (Services.IsFeeApiInitialized)
-            throw new InvalidOperationException("FEE CoreApi must not be constructed during application startup.");
         var bindingTrace = PresentationTraceSources.DataBindingSource;
         var bindingErrors = new BindingErrorTraceListener();
         bindingTrace.Switch.Level = SourceLevels.Error;
@@ -116,7 +114,7 @@ internal static class Program
 
             var specialDevicePage = new SpecialDevicePage();
             var specialDeviceViewModel = (SpecialDevicePageVM)specialDevicePage.DataContext;
-            specialDeviceViewModel.TiaHardwareRows.Add(new TiaHardwareDeviceRowVM(
+            var hardwareWithoutLogic = new TiaHardwareDeviceRowVM(
                 new TiaHardwareModuleInfo
                 {
                     Slot = 3,
@@ -129,7 +127,18 @@ internal static class Program
                     InputLength = 4,
                     OutputStartByte = 40,
                     OutputLength = 4
-                }));
+                });
+            hardwareWithoutLogic.Include = true;
+            hardwareWithoutLogic.SelectedLogic = SpecialDeviceLogicOption.None;
+            if (hardwareWithoutLogic.TryCreate(out _, out var emptyLogicError) || emptyLogicError.Length != 0)
+                throw new InvalidOperationException("A selected TIA hardware row without logic must be skipped intentionally.");
+            specialDeviceViewModel.TiaHardwareRows.Add(hardwareWithoutLogic);
+            specialDeviceViewModel.AddSelectedHardwareDevicesCommand.Execute(null);
+            if (specialDeviceViewModel.SpecialDevices.Count != 0 ||
+                !specialDeviceViewModel.StatusText.Contains("bewusst übersprungen", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("A checked TIA hardware row without logic entered the Special Device queue.");
+            }
             VerifyTiaHardwareMappingPersistence();
 
             var visualPlanService = VerifyContainerToFeeVisualPlan();
@@ -262,19 +271,33 @@ internal static class Program
             // Restore the documented initial state for the generated handbook preview.
             createRow.IsSelected = true;
 
+            var tiaPortalPage = new TiaPortalPage();
+            var tiaPortalViewModel = (TiaPortalPageVM)tiaPortalPage.DataContext;
+            if (!tiaPortalViewModel.LibraryOperationInfo.Contains("überschrieben", StringComparison.OrdinalIgnoreCase) ||
+                !tiaPortalViewModel.LibraryOperationInfo.Contains("automatisch gespeichert", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new InvalidOperationException("The TIA ViCo library help does not disclose its write and save effects.");
+            }
+            tiaPortalViewModel.ToggleLibraryOperationInfoCommand.Execute(null);
+            if (!tiaPortalViewModel.IsLibraryOperationInfoVisible)
+                throw new InvalidOperationException("The TIA ViCo library explanation cannot be expanded.");
+
+            var settingsPage = new SettingsPage();
+            var settingsViewModel = (SettingsPageVM)settingsPage.DataContext;
+
             FrameworkElement[] integratedViews =
             [
                 projectPage,
                 searchPage,
                 new ViCoCopyPage(),
-                new TiaPortalPage(),
+                tiaPortalPage,
                 administrationPage,
                 kanbanizeCardPage,
                 specialDevicePage,
                 visualContainerPage,
                 fee2ContainerPage,
                 aiTrainingPage,
-                new SettingsPage(),
+                settingsPage,
                 new DiagnosticsPanel()
             ];
 
@@ -302,6 +325,14 @@ internal static class Program
             Dispatcher.CurrentDispatcher.Invoke(
                 static () => { },
                 DispatcherPriority.ContextIdle);
+            PumpDispatcher(TimeSpan.FromMilliseconds(700));
+            if (!string.Equals(settingsViewModel.SelectedServer, "localhost", StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The asynchronous server refresh removed the local FEE target.");
+            if (ApplicationLogService.Instance.Entries.Any(entry =>
+                    entry.Details.Contains("CollectionView-Typ", StringComparison.OrdinalIgnoreCase)))
+            {
+                throw new InvalidOperationException("Project Settings modified its bound server list outside the UI dispatcher.");
+            }
 
             if (bindingErrors.Messages.Count > 0)
             {
@@ -336,6 +367,22 @@ internal static class Program
         }
 
         Dispatcher.CurrentDispatcher.Invoke(static () => { }, DispatcherPriority.ContextIdle);
+    }
+
+    private static void PumpDispatcher(TimeSpan duration)
+    {
+        var frame = new DispatcherFrame();
+        var timer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = duration
+        };
+        timer.Tick += (_, _) =>
+        {
+            timer.Stop();
+            frame.Continue = false;
+        };
+        timer.Start();
+        Dispatcher.PushFrame(frame);
     }
 
     private static void VerifyTiaHardwareMappingPersistence()

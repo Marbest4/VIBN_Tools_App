@@ -6,19 +6,28 @@ using static VIBN_Tools.SpecialDevices.DeviceCatalog;
 namespace VIBN_Tools.Application.VM;
 
 /// <summary>One selectable Special Device logic backed by the existing factory.</summary>
-public sealed record SpecialDeviceLogicOption(DeviceManufacturer Manufacturer, Enum DeviceType)
+public sealed record SpecialDeviceLogicOption(DeviceManufacturer? Manufacturer, Enum? DeviceType)
 {
-    public string DisplayName => $"{Manufacturer} – {DeviceCatalog.GetDisplayName(DeviceType)}";
+    public bool IsEmpty => Manufacturer is null || DeviceType is null;
 
-    public bool RequiresRobotType => DeviceMetadata.MetadataMap.TryGetValue(
-        (Manufacturer, DeviceType),
+    public string DisplayName => IsEmpty
+        ? "— Keine Logik —"
+        : $"{Manufacturer} – {DeviceCatalog.GetDisplayName(DeviceType!)}";
+
+    public bool RequiresRobotType => !IsEmpty && DeviceMetadata.MetadataMap.TryGetValue(
+        (Manufacturer!.Value, DeviceType!),
         out var metadata) && metadata.RequiresRobotType;
+
+    public static SpecialDeviceLogicOption None { get; } = new(null, null);
 
     public static IReadOnlyList<SpecialDeviceLogicOption> All { get; } = DeviceFactory.DeviceFactoryMap.Keys
         .Select(key => new SpecialDeviceLogicOption(key.Item1, key.Item2))
         .OrderBy(option => option.Manufacturer)
         .ThenBy(option => option.DisplayName, StringComparer.OrdinalIgnoreCase)
         .ToArray();
+
+    public static IReadOnlyList<SpecialDeviceLogicOption> Selectable { get; } =
+        new[] { None }.Concat(All).ToArray();
 
     /// <summary>
     /// Offers a conservative suggestion only when the TIA type clearly names
@@ -74,8 +83,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         _prefix = CreatePrefix(GetPreferredDeviceName(module));
         _inputByte = module.InputStartByte >= 0 ? module.InputStartByte : null;
         _outputByte = module.OutputStartByte >= 0 ? module.OutputStartByte : null;
-        _selectedLogic = SpecialDeviceLogicOption.Suggest(module);
-        _include = _selectedLogic is not null;
+        var suggestion = SpecialDeviceLogicOption.Suggest(module);
+        _selectedLogic = suggestion ?? SpecialDeviceLogicOption.None;
+        _include = suggestion is not null;
     }
 
     public TiaHardwareModuleInfo Module { get; }
@@ -170,7 +180,9 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public string TypeIdentifier => Module.TypeIdentifier;
 
-    public string SuggestedMapping => SelectedLogic?.DisplayName ?? "Keine eindeutige Zuordnung";
+    public string SuggestedMapping => SelectedLogic is { IsEmpty: false }
+        ? SelectedLogic.DisplayName
+        : "Keine eindeutige Zuordnung";
 
     public string FirmwareVersion => Module.FirmwareVersion;
 
@@ -262,7 +274,7 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         }
     }
 
-    public bool RequiresRobotType => SelectedLogic?.RequiresRobotType == true;
+    public bool RequiresRobotType => SelectedLogic is { IsEmpty: false, RequiresRobotType: true };
 
     public bool IsAdded
     {
@@ -277,9 +289,11 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
 
     public string State => IsAdded
         ? "In Warteschlange"
-        : _isConfigurationSaved
-            ? "Gespeichert"
-            : Include ? "Ausgewählt" : "Nicht ausgewählt";
+        : Include && SelectedLogic is not { IsEmpty: false }
+            ? "Ohne Logik – wird übersprungen"
+            : _isConfigurationSaved
+                ? "Gespeichert"
+                : Include ? "Ausgewählt" : "Nicht ausgewählt";
 
     public TiaHardwareMapping ToMapping() => new(
         MappingKey,
@@ -287,8 +301,8 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         Prefix,
         InputByte,
         OutputByte,
-        SelectedLogic?.Manufacturer.ToString() ?? string.Empty,
-        SelectedLogic?.DeviceType.ToString() ?? string.Empty,
+        SelectedLogic is { IsEmpty: false } ? SelectedLogic.Manufacturer!.Value.ToString() : string.Empty,
+        SelectedLogic is { IsEmpty: false } ? SelectedLogic.DeviceType!.ToString()! : string.Empty,
         SelectedRobotType?.ToString() ?? string.Empty);
 
     public bool ApplyMapping(TiaHardwareMapping mapping)
@@ -303,9 +317,12 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         _prefix = mapping.Prefix ?? string.Empty;
         _inputByte = mapping.InputByte;
         _outputByte = mapping.OutputByte;
-        _selectedLogic = SpecialDeviceLogicOption.All.FirstOrDefault(option =>
-            string.Equals(option.Manufacturer.ToString(), mapping.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
-            string.Equals(option.DeviceType.ToString(), mapping.DeviceType, StringComparison.OrdinalIgnoreCase));
+        _selectedLogic = string.IsNullOrWhiteSpace(mapping.Manufacturer) || string.IsNullOrWhiteSpace(mapping.DeviceType)
+            ? SpecialDeviceLogicOption.None
+            : SpecialDeviceLogicOption.All.FirstOrDefault(option =>
+                string.Equals(option.Manufacturer.ToString(), mapping.Manufacturer, StringComparison.OrdinalIgnoreCase) &&
+                string.Equals(option.DeviceType?.ToString(), mapping.DeviceType, StringComparison.OrdinalIgnoreCase))
+              ?? SpecialDeviceLogicOption.None;
         _selectedRobotType = Enum.TryParse<RobotType>(mapping.RobotType, ignoreCase: true, out var robotType)
             ? robotType
             : null;
@@ -337,11 +354,10 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         error = string.Empty;
         if (!Include || IsAdded)
             return false;
-        if (SelectedLogic is null)
-        {
-            error = $"{ModuleName}: Bitte eine Logik auswählen.";
+        // "Keine Logik" is an intentional exclusion. Even a checked row must
+        // never enter the FEE creation queue without a concrete factory type.
+        if (SelectedLogic is null || SelectedLogic.IsEmpty)
             return false;
-        }
         if (string.IsNullOrWhiteSpace(Prefix))
         {
             error = $"{ModuleName}: Ein Präfix ist erforderlich.";
@@ -359,8 +375,8 @@ public sealed class TiaHardwareDeviceRowVM : MvvmBase
         }
 
         device = DeviceFactory.Create(
-            SelectedLogic.Manufacturer,
-            SelectedLogic.DeviceType,
+            SelectedLogic.Manufacturer!.Value,
+            SelectedLogic.DeviceType!,
             Prefix.Trim(),
             new SpecialDeviceAddresses(InputByte.Value, OutputByte.Value),
             SelectedRobotType);

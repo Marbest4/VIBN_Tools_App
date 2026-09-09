@@ -11,7 +11,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] `Tests/Test-TiaHardwareTraversal.ps1` bestätigt Gerätegruppen, Local Session und exakt `E62–73/A62–67` sowie `E74–79/A68–79`.
 - [ ] `Tests/TiaLiveRead` liest aus dem geöffneten `Projekt1.ap20` genau eine PLC, drei Teilnehmer und sechs eindeutige adressführende Modulzeilen, ohne das Projekt zu speichern.
 - [ ] Anwendung startet ohne XamlParseException.
-- [ ] Anwendung startet ohne FEE-/Interface-Abfrage und ohne entsprechende Fehlermeldung; `CoreApi` wird erst nach **Connect** initialisiert.
+- [ ] Anwendung startet ohne FEE-Verbindungs-/Interface-Abfrage und ohne entsprechende Fehlermeldung; die gemeinsame `CoreApi`-Instanz wird vorbereitet, lädt aber keine Interfaces.
 
 ## Rollen und Navigation
 
@@ -27,6 +27,7 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 
 - [ ] Project Settings zeigt nur erreichbare PCs und der Filter wirkt sofort.
 - [ ] Ein fehlgeschlagener FEE-Connect zeigt nicht fälschlich „verbunden“.
+- [ ] `localhost` bleibt nach der Online-PC-Aktualisierung ausgewählt und Connect verwendet die gespeicherten FEE-Zugangsdaten; die gebundene Serverliste erzeugt keinen CollectionView-Threadfehler.
 - [ ] Project Settings zeigt verwendete SDK- und lokal installierte FEE-Version; eine künstlich abweichende Version wird rot hervorgehoben.
 - [ ] Von mehreren lokalen Versionsordnern zählt nur ein Ordner mit `Bin\FS.SDK.dll`; höhere unvollständige Ordner werden ignoriert.
 - [ ] Bei mehreren vollständigen SDKs listet `Prepare-Development.cmd` alle Versionen absteigend; Enter wählt die neueste und eine Nummer wählt nach VS-Neustart exakt den angegebenen Ordner.
@@ -70,7 +71,9 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] TIA-Version, Attach und PLC-Auswahl funktionieren.
 - [ ] **Auswahl konfigurieren** verarbeitet einen statischen Auswahlsatz ohne Dynamic-Binder-Ausnahme; **Was wird geändert?** zeigt alle zehn Parameter und die Linear-/Rotatorikregel.
 - [ ] **Gesamtes TIA-Projekt speichern** ist von der Konfiguration getrennt und weist darauf hin, dass `Project.Save()` alle offenen Projektänderungen persistiert.
-- [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Diagnosepfad, Objektklasse, Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Logik und Status.
+- [ ] **ViCo-Bibliothek → Was wird gemacht?** beschreibt Voraussetzungen sowie Überschreiben/Speichern beim Import, Achsen-/AxisXML-Option und read-only TIA-Export vollständig.
+- [ ] Die einzige Hardwareansicht unter SpecialDevices2FEE gruppiert gleiche Gerätenamen und zeigt Hardware-ID, GSDML, IP, Modultyp, Firmware, E-/A-Bereich und -Länge, Präfix, Logik und Status; #, Tiefe, Modul, Parent, Slot/Subslot, Pfad und Objektklasse sind ausgeblendet.
+- [ ] Die Logikauswahl bietet **Keine Logik**; eine entsprechend gesetzte Zeile gelangt auch mit aktivem Übernehmen-Haken nicht in die Warteschlange.
 - [ ] Nach vollständig erfolgreicher SpecialDevices2FEE-Erzeugung ist der Root in FEE2SpecialDevices sichtbar; ein absichtlich fehlgeschlagener Teilvorgang ist nicht als gültige Quelle markiert.
 - [ ] JSON-Export enthält Präfix, Hersteller, Gerätetyp, E-/A-Startbyte und alle Signal-GUIDs; eine nachträglich geänderte FEE-Variable wird über ihre GUID aktualisiert.
 - [ ] Ältere/manuelle BasicFrames werden gezählt, aber nicht heuristisch als Special Device exportiert.
