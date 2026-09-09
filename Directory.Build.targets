@@ -50,9 +50,9 @@
   <Target Name="ValidateGrobGenerationInterfaceSdk"
           BeforeTargets="ResolveAssemblyReferences"
           Condition="'$(MSBuildProjectName)' == 'GrobGenerationInterface'">
-    <Error Condition="!Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.dll') or !Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Localization.dll')"
-           Text="Das Grob Generation Interface benötigt den vollständigen Repository-SDK-Satz einschließlich FS.SDK.Localization.dll." />
+    <Error Condition="'$(GrobGenerationInterfaceSdkRoot)' == '' or !Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.dll') or !Exists('$(GrobGenerationInterfaceSdkRoot)\FS.SDK.Localization.dll')"
+           Text="Das Grob Generation Interface benötigt den durch Prepare-Development.cmd ausgewählten SDK-Satz einschließlich FS.SDK.Localization.dll." />
     <Message Importance="High"
-             Text="Grob Generation Interface verwendet unveränderte Quellen mit SDK aus '$(GrobGenerationInterfaceSdkRoot)'." />
+             Text="Grob Generation Interface verwendet unveränderte Quellen mit dem ausgewählten SDK aus '$(GrobGenerationInterfaceSdkRoot)'." />
   </Target>
 </Project>
