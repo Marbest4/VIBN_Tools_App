@@ -99,7 +99,11 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Stop.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Stop.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"Stopper {ComponentName}: {slotname}");
                 }
             }
 
@@ -120,7 +124,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = this.ComponentName,
                     Parent = Logic_Stop,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.01f, 0.2f, 0.05f),
+                    Scale = ContainerGeneratedObjectDefaults.StopFloorScale,
+                    UseCollisionSlot = true,
                 };
 
                 await floor.CreateAsync();
@@ -138,11 +143,15 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 foreach (var floor in Floors_Stop)
                 {
+                    await ContainerSlotLinkService.EnsureFloorCollisionSlotEnabledAsync(
+                        floor,
+                        $"Stopper {ComponentName}");
                     slotsToAssignFloor.Add((floor.Guid, "Collision"));
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignFloor.Select(x => x.Item1).ToArray(), slotsToAssignFloor.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignFloor,
+                    $"Stopper {ComponentName}: SIM_Collision");
 
             }
         }

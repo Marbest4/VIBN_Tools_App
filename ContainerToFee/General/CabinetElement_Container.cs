@@ -65,22 +65,30 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_NormallyOpened_Ch1 != null)
             {
                 await Signal_NormallyOpened_Ch1.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NO1", Signal_NormallyOpened_Ch1.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NO1", Signal_NormallyOpened_Ch1.Guid,
+                    $"CabinetSwitch {ComponentName}: NO1");
             }
             if (Signal_NormallyOpened_Ch2 != null)
             {
                 await Signal_NormallyOpened_Ch2.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NO2", Signal_NormallyOpened_Ch2.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NO2", Signal_NormallyOpened_Ch2.Guid,
+                    $"CabinetSwitch {ComponentName}: NO2");
             }
             if (Signal_NormallyClosed_Ch1 != null)
             {
                 await Signal_NormallyClosed_Ch1.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NC1", Signal_NormallyClosed_Ch1.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NC1", Signal_NormallyClosed_Ch1.Guid,
+                    $"CabinetSwitch {ComponentName}: NC1");
             }            
             if (Signal_NormallyClosed_Ch2 != null)
             {
                 await Signal_NormallyClosed_Ch2.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NC2", Signal_NormallyClosed_Ch2.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NC2", Signal_NormallyClosed_Ch2.Guid,
+                    $"CabinetSwitch {ComponentName}: NC2");
             }
         }
 
@@ -143,12 +151,16 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_NormallyClosed != null)
             {
                 await Signal_NormallyClosed.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NC", Signal_NormallyClosed.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NC", Signal_NormallyClosed.Guid,
+                    $"CabinetFuse {ComponentName}: NC");
             }
             if (Signal_NormallyOpened != null)
             {
                 await Signal_NormallyOpened.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Switch.Guid, "NO", Signal_NormallyOpened.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Switch.Guid, "NO", Signal_NormallyOpened.Guid,
+                    $"CabinetFuse {ComponentName}: NO");
             }
         }
 
@@ -214,22 +226,30 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_NormallyClosed_Ch1 != null)
             {
                 await Signal_NormallyClosed_Ch1.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_EStop.Guid, "NC1", Signal_NormallyClosed_Ch1.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_EStop.Guid, "NC1", Signal_NormallyClosed_Ch1.Guid,
+                    $"CabinetEStop {ComponentName}: NC1");
             }
             if (Signal_NormallyClosed_Ch2 != null)
             {
                 await Signal_NormallyClosed_Ch2.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_EStop.Guid, "NC2", Signal_NormallyClosed_Ch2.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_EStop.Guid, "NC2", Signal_NormallyClosed_Ch2.Guid,
+                    $"CabinetEStop {ComponentName}: NC2");
             }
             if (Signal_NormallyOpened_Ch1 != null)
             {
                 await Signal_NormallyOpened_Ch1.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_EStop.Guid, "NO1", Signal_NormallyOpened_Ch1.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_EStop.Guid, "NO1", Signal_NormallyOpened_Ch1.Guid,
+                    $"CabinetEStop {ComponentName}: NO1");
             }
             if (Signal_NormallyOpened_Ch2 != null)
             {
                 await Signal_NormallyOpened_Ch2.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_EStop.Guid, "NO2", Signal_NormallyOpened_Ch2.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_EStop.Guid, "NO2", Signal_NormallyOpened_Ch2.Guid,
+                    $"CabinetEStop {ComponentName}: NO2");
             }
         }
 
@@ -289,7 +309,9 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_LampOn != null)
             {
                 await Signal_LampOn.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(CabinetElement_Lamp.Guid, "ON", Signal_LampOn.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    CabinetElement_Lamp.Guid, "ON", Signal_LampOn.Guid,
+                    $"CabinetLamp {ComponentName}: ON");
             }
         }
 

@@ -11,7 +11,11 @@ using VIBN_Tools.ContainerGeneration.Utils;
 using VIBN_Tools.ContainerToFee;
 using VIBN_Tools.ContainerToFee.GrobStandard;
 using VIBN_Tools.ContainerToFeeVisual;
+using VIBN_Tools.GlobalClasses;
+using VIBN_Tools.GlobalClasses.FeeObjects;
+using VIBN_Tools.ModelValidation;
 using VIBN_Tools.SpecialDevices;
+using static VIBN_Tools.GlobalClasses.FeeObjects.FeeLogic;
 
 namespace VIBN_Tools.ContainerGeneration.SmokeTests;
 
@@ -43,6 +47,7 @@ internal static class Program
 
         ValidateWorkspacePersistenceAndAutoSaveSettings();
         ValidateSlotMultiplicityPolicy();
+        await ValidateContainerToFeeModelContractsAsync();
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
@@ -54,6 +59,111 @@ internal static class Program
         Console.WriteLine(
             $"Container-Generation-Smoke-Test erfolgreich; SixLabors.Fonts {fontsVersion}.");
         return 0;
+    }
+
+    private static async Task ValidateContainerToFeeModelContractsAsync()
+    {
+        static void RequireScale(string propertyName, float x, float y, float z, string name)
+        {
+            var property = typeof(ContainerGeneratedObjectDefaults).GetProperty(propertyName)
+                ?? throw new InvalidOperationException($"Größenvorgabe {propertyName} fehlt.");
+            var scale = property.GetValue(null)
+                ?? throw new InvalidOperationException($"Größenvorgabe {propertyName} ist leer.");
+            var scaleType = scale.GetType();
+            float ReadComponent(string component) =>
+                (float)(scaleType.GetProperty(component)?.GetValue(scale) ??
+                        scaleType.GetField(component)?.GetValue(scale) ??
+                        float.NaN);
+            var actualX = ReadComponent("X");
+            var actualY = ReadComponent("Y");
+            var actualZ = ReadComponent("Z");
+            if (actualX != x || actualY != y || actualZ != z)
+                throw new InvalidOperationException($"Unerwartete ursprüngliche Container2FEE-Größe für {name}: {scale}.");
+        }
+
+        RequireScale("StopFloorScale", 0.01f, 0.2f, 0.05f, "Stop/Floor");
+        RequireScale("SensorScale", 0.01f, 0.03f, 0.01f, "Sensor");
+        RequireScale("ConveyorSurfaceScale", 2f, 0.5f, 0.05f, "Conveyor/Surface");
+        RequireScale("MotionJointScale", 0.5f, 0.5f, 0.5f, "MotionJoint");
+        RequireScale("PickAndPlaceScale", 0.1f, 0.1f, 0.1f, "PickAndPlace");
+        RequireScale("ButtonScale", 0.5f, 0.5f, 0.5f, "Button");
+        if (ContainerGeneratedObjectDefaults.MotionOperationTime <= 0f ||
+            ContainerGeneratedObjectDefaults.MotionHomePosition == ContainerGeneratedObjectDefaults.MotionWorkPosition ||
+            ContainerGeneratedObjectDefaults.GripperUnclampedPosition == ContainerGeneratedObjectDefaults.GripperClampedPosition)
+        {
+            throw new InvalidOperationException("Die ModelValidation-Fallbackparameter sind nicht plausibel.");
+        }
+
+        var logicGuid = Guid.NewGuid();
+        var floorGuid = Guid.NewGuid();
+        var additionalFloorGuid = Guid.NewGuid();
+        var actualLinks = new[]
+        {
+            (floorGuid.ToString(), new[] { "Collision" }),
+            (additionalFloorGuid.ToString(), new[] { "collision" }),
+        };
+        if (!ContainerSlotLinkService.ContainsAllEndpoints(
+                actualLinks,
+                [(floorGuid, "Collision"), (additionalFloorGuid, "Collision")]) ||
+            ContainerSlotLinkService.ContainsAllEndpoints(
+                actualLinks,
+                [(floorGuid, "Collision"), (Guid.NewGuid(), "Collision")]))
+        {
+            throw new InvalidOperationException("Die Slot-Link-Rückleseprüfung erkennt vollständige bzw. fehlende Endpunkte nicht korrekt.");
+        }
+        if (!ContainerSlotLinkService.ContainsVariableEndpoint(
+                [(logicGuid, new[] { "PLC_IN_Opened" })],
+                logicGuid,
+                "plc_in_opened"))
+        {
+            throw new InvalidOperationException("Die Variablen-Link-Rückleseprüfung ist nicht case-insensitive.");
+        }
+
+        var completeStop = new FeeLogic
+        {
+            Slots = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                [LogicsStandard.Grob_Stop.Slots.Open] = Guid.NewGuid(),
+                [LogicsStandard.Grob_Stop.Slots.Opened] = Guid.NewGuid(),
+                [LogicsStandard.Grob_Stop.Slots.Collision] = floorGuid,
+            }
+        };
+        if ((await new StopValidator().ValidateAsync(completeStop)).Any(issue => issue.Severity == Severity.Error))
+            throw new InvalidOperationException("Ein vollständig verbundener Stopper wird von ModelValidation abgelehnt.");
+
+        completeStop.Slots.Remove(LogicsStandard.Grob_Stop.Slots.Opened);
+        var incompleteStopIssues = (await new StopValidator().ValidateAsync(completeStop)).ToArray();
+        if (!incompleteStopIssues.Any(issue => issue.Message.Contains("Status Slots", StringComparison.Ordinal)))
+            throw new InvalidOperationException("ModelValidation erkennt einen fehlenden Opened/Closed-Status nicht.");
+
+        var belt = new FeeLogic
+        {
+            Slots = new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase)
+            {
+                [LogicsStandard.Grob_BeltControl.Slots.AxisValue] = Guid.NewGuid(),
+                [LogicsStandard.Grob_BeltControl.Slots.BeltControlState] = Guid.NewGuid(),
+            }
+        };
+        if ((await new BeltControlValidator().ValidateAsync(belt)).Any(issue => issue.Severity == Severity.Error))
+            throw new InvalidOperationException("Eine vollständig verbundene BeltControl-Logik wird fälschlich abgelehnt.");
+
+        var stopContainer = new GrobStop_Container
+        {
+            Signal_Open = new FeeInterfaceSignal(),
+            Signal_Opened = new FeeInterfaceSignal(),
+            IsCreationRequested = true,
+        };
+        if (ContainerModelValidationPreflight.Validate(stopContainer)
+            .Any(issue => issue.Severity == ContainerPreflightSeverity.Error))
+        {
+            throw new InvalidOperationException("Der Stopper-Preflight lehnt eine vollständige Erzeugung ab.");
+        }
+        stopContainer.Signal_Opened = null!;
+        if (!ContainerModelValidationPreflight.Validate(stopContainer)
+            .Any(issue => issue.Code == "STOP_STATUS_MISSING"))
+        {
+            throw new InvalidOperationException("Der Stopper-Preflight erkennt die fehlende Rückmeldung nicht.");
+        }
     }
 
     private static async Task ValidateGoldenMasterCorpusAsync()

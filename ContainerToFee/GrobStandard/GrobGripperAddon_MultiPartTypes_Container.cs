@@ -143,7 +143,9 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Addon.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Addon.Guid, slotname, signal.Guid,
+                        $"Gripper-Addon {ComponentName}: {slotname}");
                 }
             }
 
@@ -174,7 +176,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = $"{this.ComponentName} Detect Type1",
                     Parent = Logic_Addon,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.1f, 0.1f, 0.05f),
+                    Scale = ContainerGeneratedObjectDefaults.GripperPartTypeSensorScale,
                 };
 
                 await sensor.CreateAsync();
@@ -189,7 +191,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = $"{this.ComponentName} Detect Type2",
                     Parent = Logic_Addon,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.1f, 0.1f, 0.05f),
+                    Scale = ContainerGeneratedObjectDefaults.GripperPartTypeSensorScale,
                 };
 
                 await sensor.CreateAsync();
@@ -204,7 +206,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = $"{this.ComponentName} Detect Type3",
                     Parent = Logic_Addon,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.1f, 0.1f, 0.05f),
+                    Scale = ContainerGeneratedObjectDefaults.GripperPartTypeSensorScale,
                 };
 
                 await sensor.CreateAsync();
@@ -218,15 +220,24 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
         {
             if (Sensor_Type1 != null)
             {
-                await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Sensor_Type1.Guid, "Channel1", Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent1);
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    Sensor_Type1.Guid, "Channel1",
+                    Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent1,
+                    $"Gripper-Addon {ComponentName}: PartPresent1");
             }
             if (Sensor_Type2 != null)
             {
-                await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Sensor_Type2.Guid, "Channel1", Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent2);
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    Sensor_Type2.Guid, "Channel1",
+                    Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent2,
+                    $"Gripper-Addon {ComponentName}: PartPresent2");
             }
             if (Sensor_Type3 != null)
             {
-                await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Sensor_Type3.Guid, "Channel1", Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent3);
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    Sensor_Type3.Guid, "Channel1",
+                    Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent3,
+                    $"Gripper-Addon {ComponentName}: PartPresent3");
             }
         }
 
@@ -242,8 +253,18 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             if (ParentContainer.Logic_Gripper == null)
                 return;
 
-            await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(ParentContainer.Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.AddOnStatus, Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.AddOnStatus);
-            await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(ParentContainer.Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.ClampedPos, Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.TargetPosition);
+            await ContainerSlotLinkService.AssignAndVerifyAsync(
+                ParentContainer.Logic_Gripper.Guid,
+                LogicsStandard.Grob_GripperBasic.Slots.AddOnStatus,
+                Logic_Addon.Guid,
+                LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.AddOnStatus,
+                $"Gripper-Addon {ComponentName}: AddOnStatus");
+            await ContainerSlotLinkService.AssignAndVerifyAsync(
+                ParentContainer.Logic_Gripper.Guid,
+                LogicsStandard.Grob_GripperBasic.Slots.ClampedPos,
+                Logic_Addon.Guid,
+                LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.TargetPosition,
+                $"Gripper-Addon {ComponentName}: TargetPosition");
         }
 
 

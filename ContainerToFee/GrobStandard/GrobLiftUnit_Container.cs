@@ -118,23 +118,27 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_LiftUnit.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_LiftUnit.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"LiftUnit {ComponentName}: {slotname}");
                 }
             }
 
             // Map parameters
-            if (Parameter_HomePos != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.HomePos, Parameter_HomePos);
-            }
-            if (Parameter_WorkPos != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.WorkPos, Parameter_WorkPos);
-            }
-            if (Parameter_OperationTime != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.OperationTime, Parameter_OperationTime);
-            }
+            Services.ApiInstance.Object.SetSlotValue(
+                Logic_LiftUnit.Guid,
+                LogicsStandard.Grob_LiftUnit.Slots.HomePos,
+                Parameter_HomePos == -1f ? ContainerGeneratedObjectDefaults.MotionHomePosition : Parameter_HomePos);
+            Services.ApiInstance.Object.SetSlotValue(
+                Logic_LiftUnit.Guid,
+                LogicsStandard.Grob_LiftUnit.Slots.WorkPos,
+                Parameter_WorkPos == -1f ? ContainerGeneratedObjectDefaults.MotionWorkPosition : Parameter_WorkPos);
+            Services.ApiInstance.Object.SetSlotValue(
+                Logic_LiftUnit.Guid,
+                LogicsStandard.Grob_LiftUnit.Slots.OperationTime,
+                Parameter_OperationTime == -1f ? ContainerGeneratedObjectDefaults.MotionOperationTime : Parameter_OperationTime);
         }
 
         async Task ILogicSimObjectOwner.CreateSimObjectsAsync()
@@ -148,7 +152,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     JointType = MotionType.Translate,
                     ControlType = MotionSource.Position,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.5f, 0.5f, 0.5f),
+                    Scale = ContainerGeneratedObjectDefaults.MotionJointScale,
                 };
 
                 await joint.CreateAsync();
@@ -176,7 +180,12 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                     if (!isActualPositionConnected)
                     {
-                        isActualPositionConnected = await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.ActualPosition, joint.Guid, "OutValue");
+                        isActualPositionConnected = await ContainerSlotLinkService.AssignAndVerifyAsync(
+                            Logic_LiftUnit.Guid,
+                            LogicsStandard.Grob_LiftUnit.Slots.ActualPosition,
+                            joint.Guid,
+                            "OutValue",
+                            $"LiftUnit {ComponentName}: SIM_ActualPosition");
                     }
 
                     slotsToAssignTarget.Add((joint.Guid, "InTarget"));
@@ -184,9 +193,12 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignTarget.Select(x => x.Item1).ToArray(), slotsToAssignTarget.Select(x => x.Item2).ToArray());
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignVelocity.Select(x => x.Item1).ToArray(), slotsToAssignVelocity.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignTarget,
+                    $"LiftUnit {ComponentName}: SIM_TargetPosition");
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignVelocity,
+                    $"LiftUnit {ComponentName}: SIM_Velocity");
 
             }
 

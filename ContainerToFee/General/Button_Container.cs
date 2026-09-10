@@ -67,7 +67,7 @@ namespace VIBN_Tools.ContainerToFee.General
                     Parent = parentObject,
                     Name = this.ComponentName,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.5f, 0.5f, 0.5f),
+                    Scale = ContainerGeneratedObjectDefaults.ButtonScale,
                 };
 
                 await button.CreateAsync();
@@ -94,11 +94,15 @@ namespace VIBN_Tools.ContainerToFee.General
                 // Map signals to Button
                 if (Signal_NormallyOpened != null)
                 {
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Button.Guid, "Pressed", Signal_NormallyOpened.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Button.Guid, "Pressed", Signal_NormallyOpened.Guid,
+                        $"Button {ComponentName}: Pressed");
                 }
                 if (Signal_NormallyClosed != null)
                 {
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Button.Guid, "PressedInverted", Signal_NormallyClosed.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Button.Guid, "PressedInverted", Signal_NormallyClosed.Guid,
+                        $"Button {ComponentName}: PressedInverted");
                 }
             }
         }

@@ -115,7 +115,11 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Sensor.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Sensor.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"Sensor {ComponentName}: {slotname}");
                 }
             }
         }
@@ -130,7 +134,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = this.ComponentName,
                     Parent = Logic_Sensor,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.01f, 0.03f, 0.01f),
+                    Scale = ContainerGeneratedObjectDefaults.SensorScale,
                 };
 
                 await sensor.CreateAsync();
@@ -143,7 +147,12 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
         {
             if (Sensor != null)
             {
-                await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Sensor.Guid, "Channel1", Logic_Sensor.Guid, LogicsStandard.Grob_Sensor.Slots.SensorValue);
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    Sensor.Guid,
+                    "Channel1",
+                    Logic_Sensor.Guid,
+                    LogicsStandard.Grob_Sensor.Slots.SensorValue,
+                    $"Sensor {ComponentName}: Channel1");
 
             }
         }

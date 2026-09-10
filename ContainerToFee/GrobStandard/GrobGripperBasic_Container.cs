@@ -153,7 +153,11 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Gripper.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Gripper.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"GripperBasic {ComponentName}: {slotname}");
                 }
             }
 
@@ -172,30 +176,45 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                     await signal.CreateSignalAsync(targetInterface);
 
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(moveBit.Guid, "Output 01", signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        moveBit.Guid,
+                        "Output 01",
+                        signal.Guid,
+                        $"GripperBasic {ComponentName}: MoveBit Output 01");
 
                     // Add current assignment information
                     slotsToAssign.Add((moveBit.Guid, "Input 01"));
                 }
 
                 // Assign slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssign.Select(x => x.Item1).ToArray(), slotsToAssign.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssign,
+                    $"GripperBasic {ComponentName}: PLC_IN-Mehrfachbelegung {slotName}");
 
             }
 
-            // Map parameters
-            var parametermapping = new (Guid ObjectGuid, string SlotName, object Value)[]
+            // -1 means "not supplied by the container file". Apply explicit,
+            // ModelValidation-compatible scaffolding values instead of writing
+            // the invalid sentinel or depending on provider-specific defaults.
+            var parameterMapping = new (string SlotName, float Value)[]
             {
-                (Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.UnclampedPos, Parameter_UnclampedPosition),
-                (Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.ClampedPos,   Parameter_ClampedPosition),
-                (Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.OperationTime, Parameter_OperationTime),
+                (LogicsStandard.Grob_GripperBasic.Slots.UnclampedPos,
+                    Parameter_UnclampedPosition == -1f
+                        ? ContainerGeneratedObjectDefaults.GripperUnclampedPosition
+                        : Parameter_UnclampedPosition),
+                (LogicsStandard.Grob_GripperBasic.Slots.ClampedPos,
+                    Parameter_ClampedPosition == -1f
+                        ? ContainerGeneratedObjectDefaults.GripperClampedPosition
+                        : Parameter_ClampedPosition),
+                (LogicsStandard.Grob_GripperBasic.Slots.OperationTime,
+                    Parameter_OperationTime == -1f
+                        ? ContainerGeneratedObjectDefaults.MotionOperationTime
+                        : Parameter_OperationTime),
             };
-
-            var guids = parametermapping.Select(x => x.ObjectGuid).ToArray();
-            var slotNames = parametermapping.Select(x => x.SlotName).ToArray();
-            var values = parametermapping.Select(x => x.Value).ToArray();
-
-            await Services.ApiInstance.Object.SetSlotValuesAsync(guids, slotNames, values);
+            await Services.ApiInstance.Object.SetSlotValuesAsync(
+                Enumerable.Repeat(Logic_Gripper.Guid, parameterMapping.Length).ToArray(),
+                parameterMapping.Select(parameter => parameter.SlotName).ToArray(),
+                parameterMapping.Select(parameter => (object)parameter.Value).ToArray());
         }
 
         async Task ILogicSimObjectOwner.CreateSimObjectsAsync()
@@ -209,7 +228,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     JointType = MotionType.Translate,
                     ControlType = MotionSource.Position,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.5f, 0.5f, 0.5f),
+                    Scale = ContainerGeneratedObjectDefaults.MotionJointScale,
                 };
 
                 await jointA.CreateAsync();
@@ -223,7 +242,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     JointType = MotionType.Translate,
                     ControlType = MotionSource.Position,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.5f, 0.5f, 0.5f),
+                    Scale = ContainerGeneratedObjectDefaults.MotionJointScale,
                 };
 
                 await jointB.CreateAsync();
@@ -240,7 +259,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = this.ComponentName,
                     Parent = Logic_Gripper,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.1f, 0.1f, 0.1f),
+                    Scale = ContainerGeneratedObjectDefaults.PickAndPlaceScale,
                     PickRange = 0.25f,
                     DropRange = 0.5f,
                 };
@@ -270,16 +289,24 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                     if (!isActualPosAssigned)
                     {
-                        isActualPosAssigned = await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.ActualPosition, joint.Guid, "OutValue");
+                        isActualPosAssigned = await ContainerSlotLinkService.AssignAndVerifyAsync(
+                            Logic_Gripper.Guid,
+                            LogicsStandard.Grob_GripperBasic.Slots.ActualPosition,
+                            joint.Guid,
+                            "OutValue",
+                            $"GripperBasic {ComponentName}: SIM_ActualPosition");
                     }
 
                     slotsToAssignTarget.Add((joint.Guid, "InTarget"));
                     slotsToAssignVelocity.Add((joint.Guid, "InVelocity"));
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignTarget.Select(x => x.Item1).ToArray(), slotsToAssignTarget.Select(x => x.Item2).ToArray());
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignVelocity.Select(x => x.Item1).ToArray(), slotsToAssignVelocity.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignTarget,
+                    $"GripperBasic {ComponentName}: SIM_TargetPosition");
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignVelocity,
+                    $"GripperBasic {ComponentName}: SIM_Velocity");
 
 
             }
@@ -296,16 +323,24 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 {
                     if (!isPartPickedAssigned)
                     {
-                        isPartPickedAssigned = await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.PartPicked, pickplace.Guid, "Feedback");
+                        isPartPickedAssigned = await ContainerSlotLinkService.AssignAndVerifyAsync(
+                            Logic_Gripper.Guid,
+                            LogicsStandard.Grob_GripperBasic.Slots.PartPicked,
+                            pickplace.Guid,
+                            "Feedback",
+                            $"GripperBasic {ComponentName}: SIM_PartPicked");
                     }
                     slotsToAssignPick.Add((pickplace.Guid, "Pick"));
                     slotsToAssignDrop.Add((pickplace.Guid, "Drop"));
 
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignPick.Select(x => x.Item1).ToArray(), slotsToAssignPick.Select(x => x.Item2).ToArray());
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignDrop.Select(x => x.Item1).ToArray(), slotsToAssignDrop.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignPick,
+                    $"GripperBasic {ComponentName}: SIM_Pick");
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignDrop,
+                    $"GripperBasic {ComponentName}: SIM_Drop");
 
             }
         }

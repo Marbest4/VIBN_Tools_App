@@ -94,135 +94,16 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 Parent = parentObject,
             };
 
-            (Logic_Cylinder.LogicDefinitionGuid, Logic_Cylinder.LogicDefinitionVersion) = await FeeLogic.GetOrImportLogicDefinition(Logic_Cylinder.LogicDefinitionName, Logic_Cylinder.LogicDefinitionPath);
-            await Logic_Cylinder.CreateSendAssignAndWaitAsync();
+            (Logic_Cylinder.LogicDefinitionGuinv„_-¢Gß≤⁄Óù∆≠y”QYò][
 
-            return Logic_Cylinder;
-        }
-
-        async Task ILogicSimObjectOwner.AssignSignalsAsync(FeeInterface targetInterface)
-        {
-
-            // Map signals to LogicObject if existing
-            var singleMappings = new (FeeInterfaceSignal Signal, string SlotName)[]
-            {
-                (Signal_ToHomePos, LogicsStandard.Grob_Cylinder.Slots.ToHomePos),
-                (Signal_ToWorkPos, LogicsStandard.Grob_Cylinder.Slots.ToWorkPos),
-                (Signal_ReleaseClamping, LogicsStandard.Grob_GripperBasic.Slots.ReleaseClamping),
-                (Signal_ClampingReleased, LogicsStandard.Grob_GripperBasic.Slots.ClampingReleased),
-            };
-
-            var listMappings = new (List<FeeInterfaceSignal> Signals, string SlotName)[]
-            {
-                (Signals_InHomePos, LogicsStandard.Grob_Cylinder.Slots.InHomePos),
-                (Signals_InWorkPos, LogicsStandard.Grob_Cylinder.Slots.InWorkPos),
-            };
-
-            foreach (var (signal, slotname) in singleMappings)
-            {
-                if (signal != null)
-                {
-                    await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Cylinder.Guid, slotname, signal.Guid, true);
-                }
-            }
-
-            foreach (var (signals, slotName) in listMappings)
-            {
-                if (signals == null) continue;
-
-                // Save Slot Assignments for parallel creation, initialize with Logic slot
-                var slotsToAssign = new List<(Guid, string)>() { (Logic_Cylinder.Guid, slotName) };
-
-                foreach (var signal in signals)
-                {
-                    FeeSimpleMove moveBit = new FeeSimpleMove();
-                    await moveBit.CreateAsync();
-                    await moveBit.SendAndWaitAsync();
-
-                    await signal.CreateSignalAsync(targetInterface);
-
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(moveBit.Guid, "Output 01", signal.Guid, true);
-
-                    // Add current assignment information
-                    slotsToAssign.Add((moveBit.Guid, "Input 01"));
-                }
-
-                // Assign slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssign.Select(x => x.Item1).ToArray(), slotsToAssign.Select(x => x.Item2).ToArray());
-
-            }
-
-
-            // Map parameters
-            if (Parameter_HomePos != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.HomePos, Parameter_HomePos);
-            }
-            if (Parameter_WorkPos != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.WorkPos, Parameter_WorkPos);
-            }
-            if (Parameter_OperationTime != -1)
-            {
-                Services.ApiInstance.Object.SetSlotValue(Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.OperationTime, Parameter_OperationTime);
-            }
-        }
-
-        async Task ILogicSimObjectOwner.CreateSimObjectsAsync()
-        {
-            if (!Joints_Cylinder.Any() && IsCreationRequested)
-            {
-                var joint = new FeeJoint()
-                {
-                    Name = this.ComponentName,
-                    Parent = Logic_Cylinder,
-                    JointType = MotionType.Translate,
-                    ControlType = MotionSource.Position,
-                    Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.5f, 0.5f, 0.5f),
-                };
-
-                await joint.CreateAsync();
-                await joint.SendAndWaitAsync();
-                Joints_Cylinder.Add(joint);
-            }
-        }
-
-        async Task ILogicSimObjectOwner.AssignSimObjectsAsync()
-        {
-            if (Joints_Cylinder.Any())
-            {
-                bool isActualPositionConnected = false;
-
-                // Lists with slot assignments for later assignment
-                var slotsToAssignTarget = new List<(Guid, string)>() { (Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.TargetPosition) };
-                var slotsToAssignVelocity = new List<(Guid, string)>() { (Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.Velocity) };
-
-                foreach (var joint in Joints_Cylinder)
-                {
-                    // Set ControlType to Position
-                    Services.ApiInstance.Object.CreateObject(nameof(MotionJoint), joint.Guid);
-                    await Services.ApiInstance.Object.SetPropertyAsync(joint.Guid, nameof(JointControllerComponent.MotionSource), MotionSource.Position, "Controller");
-                    await Services.ApiInstance.Object.SendAndWait(joint.Guid);
-
-                    if (!isActualPositionConnected)
-                    {
-                        isActualPositionConnected = await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.ActualPosition, joint.Guid, "OutValue");
-                    }
-
-                    slotsToAssignTarget.Add((joint.Guid, "InTarget"));
-                    slotsToAssignVelocity.Add((joint.Guid, "InVelocity"));
-
-                }
-
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignTarget.Select(x => x.Item1).ToArray(), slotsToAssignTarget.Select(x => x.Item2).ToArray());
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignVelocity.Select(x => x.Item1).ToArray(), slotsToAssignVelocity.Select(x => x.Item2).ToArray());
-
-            }
-        }
-
-
-    }
-}
+N√Bàò\à[\‹ùH]ÿZ]ù[KîôXYúõ€Qö[P\ﬁ[ò ö[JN√BàYà
+Z[\‹ùí\‘›XÿŸ\‹ CBàõ›»ô]»[ùò[Y‹\ò][€ë^Ÿ\[€ä	í[\‹ùõ€à	ﬁŸö[_I»ôZŸ\ÿ⁄YŸ[éà⁄[\‹ùë\úõ‹ìY\‹ÿYŸ_HäN√BàYà
+[\‹ùïò[YKê€›[ùOH
+CBàõ›»ô]»[ùò[Y‹\ò][€ë^Ÿ\[€ä	í[\‹ùõ€à	ﬁŸö[_I»YYô\ùHŸZ[ôH⁄Y€ò[KàäN√BÉBàÀ»H[\Hô\]Z\ô[Y[ù»[Ÿ[ò[Y]\»H€€\]H÷]ÀYŸ[ô\ò]‹ÉBàÀ»[ô[Ÿôà⁄]›]ô][ô[ô»]H›\›€Y\à€€\€ô[ùX\[ô»^\›ÀÉBàò\àô\]Z\ô[Y[ù»Hÿ›[Y[ùî\úŸJè]]–‹ôX]Oèö[\ì\›œè–]]–‹ôX]OàäN√Bàò\àŸ[ô\ò]‹àHô]»€€ùZ[ô\ëŸ[ô\ò]‹ä
+N√Bàò\àŸ[ô\ò][€àH]ÿZ]Ÿ[ô\ò]‹ãëŸ[ô\ò]P\ﬁ[ò Bàô]»€€ùZ[ô\ëŸ[ô\ò][€îô\]Y\›
+Bà[\‹ùïò[YKBàô\]Z\ô[Y[ùÀBà\úò^Kë[\O‹õ›\[ô‘ù[Oä
+KBàù[BàY€õ‹ôPÿ\ŸNàùYKBà\ŸQö[\ì\›àò[ŸJJN√BÉBàYà
+Ÿ[ô\ò][€ãî›]\›X‹Àï›[⁄Y€ò[»OH[\‹ùïò[YKê€›[ùBàŸ[ô\ò][€ãï[ò\‹⁄Y€ôY⁄Y€ò[Àê€›[ùOH[\‹ùïò[YKê€›[ù
+CBà√Bàõ›»ô]»[ùò[Y‹\ò][€ë^Ÿ\[€äBà	ëŸ[ô\ò]‹∞Ôô\ôÿXôH∞Ôà	ﬁŸö[_I»\›[ö€€ú⁄\›[ùàà
+√Bà	í[\‹ù^⁄[\‹ùïò[YKê€›[ùK›[^ŸŸ[ô\ò][€ãî›]\›X‹Àï›[⁄Y€ò[ﬂKà
+√Bà	ï[ò\‹⁄Y€ôY^ŸŸ[ô\ò][€ãï[ò\‹⁄Y€ôY⁄Y€ò[Àê€›[ùKàäN√BàCBÉBà€€ú€€Kï‹ö]S[ôJBà	û‘]ëŸ]ö[Sò[YJö[J_Nà⁄[\‹ùïò[YKê€›[ùH⁄Y€ò[H\ôõ€‹ôZX⁄Z[ôŸ[\Ÿ[à[ôô\ò\òôZ]]àäN√BàCBüCB

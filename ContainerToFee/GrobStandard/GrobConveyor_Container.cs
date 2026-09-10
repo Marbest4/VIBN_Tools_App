@@ -136,9 +136,20 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Conveyor.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Conveyor.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"Conveyor {ComponentName}: {slotname}");
                 }
             }
+
+            Services.ApiInstance.Object.SetSlotValue(
+                Logic_Conveyor.Guid,
+                LogicsStandard.Grob_Conveyor.Slots.VelocityIn,
+                Parameter_Velocity == -1f
+                    ? ContainerGeneratedObjectDefaults.ConveyorVelocity
+                    : Parameter_Velocity);
         }
 
         async Task ILogicSimObjectOwner.CreateSimObjectsAsync()
@@ -150,7 +161,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = this.ComponentName,
                     Parent = Logic_Conveyor,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(2f, 0.5f, 0.05f),
+                    Scale = ContainerGeneratedObjectDefaults.ConveyorSurfaceScale,
                 };
 
                 await surface.CreateAsync();
@@ -194,8 +205,9 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     await surfaceLabel.SendAndWaitAsync();
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignVelocity.Select(x => x.Item1).ToArray(), slotsToAssignVelocity.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignVelocity,
+                    $"Conveyor {ComponentName}: SIM_Velocity");
 
             }
         }

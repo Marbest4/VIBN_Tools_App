@@ -82,7 +82,9 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_PneumaticSupply.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_PneumaticSupply.Guid, slotname, signal.Guid,
+                        $"PneumaticSupply {ComponentName}: {slotname}");
                 }
             }
         }

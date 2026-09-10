@@ -122,7 +122,9 @@ namespace VIBN_Tools.ContainerToFee.General
 
                     if (Lamps_Stacklight.Any())
                     {
-                        await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Lamps_Stacklight.First().Guid, slotName, signal.Guid, true);
+                        await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                            Lamps_Stacklight.First().Guid, slotName, signal.Guid,
+                            $"Stacklight {ComponentName}: {slotName}");
                     }
                 }
             }

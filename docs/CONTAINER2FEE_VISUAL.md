@@ -50,6 +50,14 @@ Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, au
 
 Dieser Link-only-Modus benötigt keine Interface-Auswahl, weil er weder Signale erzeugt noch verändert. Er wird erst aktiv, wenn ein Plan, eine FEE-Verbindung, mindestens ein ausgewählter Container und mindestens eine vorhandene Zielzuordnung vorliegen. Die Tooltips von **FEE aktualisieren**, **Start Generation** und **Nur SimObjects verknüpfen** nennen jeweils die erste konkret fehlende Voraussetzung oder den ersten blockierenden Validierungsfehler.
 
+## ModelValidation-Vertrag
+
+Vor der vollständigen Erzeugung prüft Container2FEE Visual die aus dem ContainerFile eindeutig ableitbaren Pflichtbeziehungen der vorhandenen `ModelValidation`. Fehlt eine erforderliche Signal- oder SimObject-Beziehung, wird vor dem ersten FEE-Schreibzugriff abgebrochen.
+
+Alle geschriebenen Variablen- und Slotverknüpfungen werden über die FEE-API zurückgelesen. Eine nicht übernommene Verbindung gilt als Fehler. Beim Stopper wird `Floor.CollisionSlot` für neue und vorhandene Floors vor dem Verbinden aktiviert und ebenfalls zurückgelesen. Die Größen bleiben die Werte des bisherigen Container2FEE-Generators: Floor `0,01 × 0,2 × 0,05`, Sensor `0,01 × 0,03 × 0,01`, Surface `2 × 0,5 × 0,05`, MotionJoint/Button `0,5 × 0,5 × 0,5` und PickAndPlace `0,1 × 0,1 × 0,1`. Fehlende Bewegungsparameter erhalten prüfbare Startwerte.
+
+Nicht aus dem ContainerFile ableitbar sind reale Positionen, Pick-/Drop-Marks und die konkrete BeltControl-Achsbeziehung. Diese werden nicht erfunden. Nach deren fachlicher Festlegung ist **Model Validation → Update Objects** als Live-Abnahme auszuführen.
+
 ## Codeaufteilung
 
 | Bereich | Verantwortung |

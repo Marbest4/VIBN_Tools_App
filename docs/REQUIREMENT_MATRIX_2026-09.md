@@ -1,6 +1,6 @@
 # Anforderungsmatrix Refactoring 2026
 
-Stand: 8. September 2026
+Stand: 10. September 2026
 Status: **vorhanden**, **teilweise**, **offen**, **fachlich blockiert** oder **Live-Abnahme offen**.
 
 Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme. Ein erfolgreicher Build ist kein Nachweis für korrektes Verhalten in FEE, TIA oder Kanbanize.
@@ -37,6 +37,7 @@ Die Matrix trennt Implementierung, automatische Verifikation und externe Abnahme
 | PLC_OUT nie doppelt | vorhanden, FEE-Live-Abnahme offen | `ContainerSlotMultiplicityPolicy`, `ContainerData.Validate`, `ContainerBaseClass` | zentrale, case-insensitive Regel blockiert doppelte Ausgänge vor dem ersten FEE-Schreibzugriff mit Slot und Anzahl | automatischer Policy- und XML-Parser-Test; reale FEE-Abnahme bleibt offen |
 | PLC_IN definierte Mehrfachbelegung | vorhanden, FEE-Live-Abnahme offen | `ContainerSlotMultiplicityPolicy`, `ContainerBaseClass`, Factories, `FeeSimpleMove` | jede Mehrfachbelegung zulassen; bei Einzel-Slotmodellen je Signal ein eigenes Move erzeugen und gemeinsam verschalten; vorhandene Listen-Slotmodelle bleiben kompatibel | automatischer Policy-/Parsertest für Einzel- und Listen-Slots; vollständige SDK-Kanten live abnehmen |
 | Container2FEE Bäume expand/collapse | vorhanden | `ContainerToFeeVisualPage.xaml`, TreeNodeVM | kombinierte Container-/Objektstruktur global auf-/zuklappen | WPF-Binding-Smoke; manuelle Bedienprüfung offen |
+| Container2FEE ModelValidation-Vertrag | strukturell vorhanden; FEE-Live-Abnahme offen | `ContainerModelValidationPreflight`, `ContainerSlotLinkService`, Containerklassen, `LogicValidation` | Pflichtsignale/-ziele vorab blockieren; Links zurücklesen; Stop-Collision aktivieren; Objektgrößen beibehalten; Bewegungsparameter plausibel vorbelegen | Policy-/Validator-/Größen-/Matcher-Test und WPF-Smoke; echte FEE-Verbindungen, Positionen, Pick/Drop-Marks und BeltControl-Achslink live abnehmen |
 | Fehlende Ziele Alle/Keine | vorhanden | Visual Plan/VM/UI | Erzeugung für alle unterstützten Container in einem Undo-Schritt ein-/ausschalten | Plan-/Sidecar- und WPF-Smoke |
 | Visual Layout Größen | umgesetzt, manuelle Auflösungsabnahme offen | Visual XAML | Außenbereiche vergrößert, Mitte verkleinert, Splitter erhalten | WPF-Startup; manuell bei 1366×768 und 1920×1080 offen |
 | Separaten Signal-erzeugen-Schalter entfernen | vorhanden, FEE-Live-Abnahme offen | `SignalResolutionPlanner`, VM/UI, Executor | deterministisches Search-all → Reuse → dedupliziertes Create | automatische Tests vorhanden/fehlend/Duplikat/Konflikt; FEE live offen |

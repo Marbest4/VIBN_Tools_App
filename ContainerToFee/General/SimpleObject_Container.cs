@@ -44,12 +44,16 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_PlcOutSignal != null)
             {
                 await Signal_PlcOutSignal.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(SimpleLogic_MoveBit.Guid, "Input 01", Signal_PlcOutSignal.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    SimpleLogic_MoveBit.Guid, "Input 01", Signal_PlcOutSignal.Guid,
+                    $"SimpleMove {ComponentName}: Input 01");
             }
             if (Signal_PlcInSignal != null)
             {
                 await Signal_PlcInSignal.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(SimpleLogic_MoveBit.Guid, "Output 01", Signal_PlcInSignal.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    SimpleLogic_MoveBit.Guid, "Output 01", Signal_PlcInSignal.Guid,
+                    $"SimpleMove {ComponentName}: Output 01");
             }
         }
 
@@ -98,12 +102,16 @@ namespace VIBN_Tools.ContainerToFee.General
             if (Signal_PlcOutSignal != null)
             {
                 await Signal_PlcOutSignal.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(SimpleLogic_BoolNot.Guid, "Input 01", Signal_PlcOutSignal.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    SimpleLogic_BoolNot.Guid, "Input 01", Signal_PlcOutSignal.Guid,
+                    $"SimpleNot {ComponentName}: Input 01");
             }
             if (Signal_PlcInSignal != null)
             {
                 await Signal_PlcInSignal.CreateSignalAsync(targetInterface);
-                await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(SimpleLogic_BoolNot.Guid, "Output 01", Signal_PlcInSignal.Guid, true);
+                await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                    SimpleLogic_BoolNot.Guid, "Output 01", Signal_PlcInSignal.Guid,
+                    $"SimpleNot {ComponentName}: Output 01");
             }
         }
 

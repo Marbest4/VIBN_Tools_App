@@ -33,6 +33,23 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             var selectedBindings = binding.Containers
                 .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
                 .ToArray();
+            var modelPreflightIssues = selectedBindings
+                .SelectMany(item => ContainerModelValidationPreflight.Validate(item.RuntimeContainer)
+                    .Select(issue => new VisualIssue(
+                        issue.Severity == ContainerPreflightSeverity.Error
+                            ? VisualIssueSeverity.Error
+                            : VisualIssueSeverity.Warning,
+                        issue.Code,
+                        $"{item.PlanNode.Name}: {issue.Message}",
+                        item.PlanNode.Id)))
+                .ToArray();
+            if (modelPreflightIssues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Die Generierung wurde vor dem Schreiben abgebrochen, weil Voraussetzungen der ModelValidation fehlen.",
+                    modelPreflightIssues);
+            }
             var signalRequests = selectedBindings
                 .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
                     new SignalResolutionRequest(
@@ -187,7 +204,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 $"Generierung abgeschlossen: {selectedContainers.Length} Container wurden verarbeitet; " +
                 $"{signalPlan.ExistingBindings.Count} Signale wurden wiederverwendet und " +
                 $"{signalPlan.MissingSignals.Count} im Grob Generation Interface erzeugt.",
-                []);
+                modelPreflightIssues);
         }
         catch (OperationCanceledException)
         {

@@ -124,17 +124,17 @@ namespace VIBN_Tools.ContainerToFee
                     await move.CreateAsync();
                     await move.SendAndWaitAsync();
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
                         move.Guid,
                         "Output 01",
                         signal.Guid,
-                        true);
+                        $"{ComponentName}: MoveBit Output 01");
                     slotsToAssign.Add((move.Guid, "Input 01"));
                 }
 
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(
-                    slotsToAssign.Select(item => item.ObjectGuid).ToArray(),
-                    slotsToAssign.Select(item => item.SlotName).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssign,
+                    $"{ComponentName}: PLC_IN-Mehrfachbelegung {fanIn.SlotName}");
             }
         }
 

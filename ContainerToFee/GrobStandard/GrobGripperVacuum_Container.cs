@@ -112,7 +112,11 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Gripper.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Gripper.Guid,
+                        slotname,
+                        signal.Guid,
+                        $"GripperVacuum {ComponentName}: {slotname}");
                 }
             }
 
@@ -131,14 +135,20 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                     await signal.CreateSignalAsync(targetInterface);
 
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(moveBit.Guid, "Output 01", signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        moveBit.Guid,
+                        "Output 01",
+                        signal.Guid,
+                        $"GripperVacuum {ComponentName}: MoveBit Output 01");
 
                     // Add current assignment information
                     slotsToAssign.Add((moveBit.Guid, "Input 01"));
                 }
 
                 // Assign slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssign.Select(x => x.Item1).ToArray(), slotsToAssign.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssign,
+                    $"GripperVacuum {ComponentName}: PLC_IN-Mehrfachbelegung {slotName}");
 
             }
         }
@@ -153,7 +163,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     Name = this.ComponentName,
                     Parent = Logic_Gripper,
                     Position = new Vector3(0, 0, 0),
-                    Scale = new Vector3(0.1f, 0.1f, 0.1f),
+                    Scale = ContainerGeneratedObjectDefaults.PickAndPlaceScale,
                     PickRange = 0.25f,
                     DropRange = 0.5f,
                 };
@@ -185,9 +195,12 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 }
 
-                // Assign all slots parallel
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignPick.Select(x => x.Item1).ToArray(), slotsToAssignPick.Select(x => x.Item2).ToArray());
-                await Services.ApiInstance.Interface.SendMultipleSlotSlotAssignmentsAsync(slotsToAssignDrop.Select(x => x.Item1).ToArray(), slotsToAssignDrop.Select(x => x.Item2).ToArray());
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignPick,
+                    $"GripperVacuum {ComponentName}: SIM_Pick");
+                await ContainerSlotLinkService.AssignAndVerifyAsync(
+                    slotsToAssignDrop,
+                    $"GripperVacuum {ComponentName}: SIM_Drop");
 
             }
         }

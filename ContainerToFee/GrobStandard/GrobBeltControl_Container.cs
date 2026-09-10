@@ -64,7 +64,9 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_BeltControl.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_BeltControl.Guid, slotname, signal.Guid,
+                        $"BeltControl {ComponentName}: {slotname}");
                 }
             }
         }

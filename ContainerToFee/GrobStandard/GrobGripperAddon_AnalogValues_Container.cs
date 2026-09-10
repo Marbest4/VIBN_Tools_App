@@ -85,7 +85,9 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                 if (signal != null)
                 {
                     await signal.CreateSignalAsync(targetInterface);
-                    await Services.ApiInstance.Interface.SendSlotVarAssignmentAsync(Logic_Addon.Guid, slotname, signal.Guid, true);
+                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
+                        Logic_Addon.Guid, slotname, signal.Guid,
+                        $"Gripper-Addon {ComponentName}: {slotname}");
                 }
             }         
             
@@ -116,7 +118,12 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             if (ParentContainer.Logic_Gripper == null)
                 return;
 
-            await Services.ApiInstance.Interface.SendSlotSlotAssignmentAsync(ParentContainer.Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.AddOnStatus, Logic_Addon.Guid, LogicsAddons.Grob_GripperAddOn_AnalogValues.Slots.AddOnStatus);
+            await ContainerSlotLinkService.AssignAndVerifyAsync(
+                ParentContainer.Logic_Gripper.Guid,
+                LogicsStandard.Grob_GripperBasic.Slots.AddOnStatus,
+                Logic_Addon.Guid,
+                LogicsAddons.Grob_GripperAddOn_AnalogValues.Slots.AddOnStatus,
+                $"Gripper-Addon {ComponentName}: AddOnStatus");
         }
 
 

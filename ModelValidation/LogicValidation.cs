@@ -83,7 +83,7 @@ namespace VIBN_Tools.ModelValidation
             if (!plcValueConnected)
                 issues.Add(new PlausibilityIssue($"Slot '{LogicsStandard.Grob_BeltControl.Slots.AxisValue}' nicht verbunden", Severity.Error));
 
-            if (stateConnected)
+            if (!stateConnected)
                 issues.Add(new PlausibilityIssue($"Slot '{LogicsStandard.Grob_BeltControl.Slots.BeltControlState}' nicht verbunden", Severity.Error));
 
             return issues;
@@ -285,8 +285,8 @@ namespace VIBN_Tools.ModelValidation
             Guid guid;
             var openConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Open, out guid) && guid != Guid.Empty;
             var closeConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Close, out guid) && guid != Guid.Empty;
-            var openedConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Open, out guid) && guid != Guid.Empty;
-            var closedConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Close, out guid) && guid != Guid.Empty;
+            var openedConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Opened, out guid) && guid != Guid.Empty;
+            var closedConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Closed, out guid) && guid != Guid.Empty;
             var collisionConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_Stop.Slots.Collision, out guid) && guid != Guid.Empty;
 
             if (!openConnected && !closeConnected)

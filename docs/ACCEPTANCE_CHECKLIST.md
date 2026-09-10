@@ -100,6 +100,10 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] Fehlende SimObject-Ziele sind rot, Erzeugungswünsche gelb und vorhandene Zuordnungen auf Ziel- und FEE-Objektseite grün dargestellt.
 - [ ] **Nur SimObjects verknüpfen** verbindet nach Model Validation → Update Objects vorhandene SimObjects mit genau einer gleichnamigen vorhandenen Logik und erzeugt kein Modellobjekt neu.
 - [ ] Container2FEE Visual erzeugt mit denselben Zuordnungen fachlich dasselbe Ergebnis wie der bestehende Executor; Erzeugen und Überspringen sind geprüft.
+- [ ] Ein Stopper-Floor besitzt nach Erzeugung oder Link-only-Aktualisierung einen aktiven `CollisionSlot`; `SIM_Collision` und alle gewählten `Floor/Collision`-Slots sind nach Save/Reload verbunden.
+- [ ] Eine von FEE abgewiesene Variablen- oder Slotverknüpfung wird mit GUID-/Slot-Kontext als Fehler gemeldet und nicht als Erfolg angezeigt.
+- [ ] Fehlende ModelValidation-Pflichtsignale/-ziele brechen vor dem ersten Schreibzugriff ab; Stopper-Rückmeldungen werden über `Opened/Closed` geprüft.
+- [ ] Neu erzeugte SimObjects besitzen die dokumentierten bisherigen Container2FEE-Größen; Bewegungscontainer haben plausible Startparameter.
 - [ ] Container2FEE Visual erzeugt in FEE einen BasicFrame mit `vibn.container2fee.schema`-Tag; nach FEE-Speichern, Schließen und Öffnen findet FEE2Container denselben Root und exportiert ein semantisch gleiches ContainerFile.
 - [ ] Eine direkte Slotänderung und eine PLC_IN-Änderung über MoveBit werden nach Save/Reload als eindeutige Route innerhalb des Roots exportiert; externe oder mehrdeutige Routen bleiben unverändert und erscheinen als Diagnose.
 - [ ] Model Validation, Model Control und Interface Operation funktionieren mit dem Testmodell; Update Objects protokolliert Objektzahl und Laufzeit und ist gegenüber dem Referenzmodell nicht langsamer.
