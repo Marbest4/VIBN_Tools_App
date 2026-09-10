@@ -21,7 +21,7 @@ Die Anwendung arbeitet defensiv: externe Aktionen werden erst nach einer bewusst
 | Container Generation | Container aus Interface- und Requirements-Dateien prüfen und generieren | Level7 |
 | Container2Fee | Container XML mit FEE-Simulationsobjekten verbinden | Level7 |
 | Container2FEE Visual | zusätzliche Planansicht mit Drag-and-drop; nutzt denselben Generator | Level7 |
-| FEE2Container | exportiert ContainerFiles aus künftig durch Container2FEE erzeugten Roots | Level7 + FEE-Verbindung |
+| FEE2Container | exportiert ContainerFiles aus auswählbaren BasicFrames; exakt per Provenienz oder geprüft aus bestehender FEE-Struktur rekonstruiert | Level7 + FEE-Verbindung |
 | AI-Test / Regelvorschläge | analysiert protokollierte Slotkorrekturen; geprüfte exakte Regeln mit Vorschau und Backup übernehmen | Level8 |
 | SpecialDevices2FEE | Geräte manuell oder aus TIA-Hardware vorbereiten und in FEE erzeugen | alle |
 | FEE2SpecialDevices | künftig erzeugte Special Devices über Provenienz aus FEE als JSON rücklesen | Level 7 oder höher |
@@ -259,7 +259,7 @@ Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbinde
 
 ### FEE2Container
 
-Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und zeigt nur Roots mit gültiger, versionierter Container2FEE-Provenienz. Wählen Sie einen Root und exportieren Sie dessen ContainerFile. Signalname, Adresse/Pfad, Datentyp und Signal-ID werden dabei über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen; fehlende Variablen werden gemeldet. Ältere und manuell erstellte Modelle werden nicht heuristisch rekonstruiert; beschädigte Metadaten erscheinen als konkrete Diagnose. Details, Slot-Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
+Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und lässt den gewünschten Hauptknoten auswählen. Bei gültiger Container2FEE-Provenienz werden Signalname, Adresse/Pfad, Datentyp und Signal-ID über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen. Bei älteren oder manuell aufgebauten Roots werden ausschließlich unterstützte Containerobjekte innerhalb des gewählten Teilbaums sowie ihre eindeutigen Signal-/Slotzuordnungen rekonstruiert. Fachlich nicht mehr unterscheidbare Typen und nicht abbildbare Objekte erscheinen als Prüfhinweise. Das exportierte ContainerFile kann anschließend in den bestehenden Containervergleich geladen werden. Details, Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
 
 ### AI-Test / Regelvorschläge
 

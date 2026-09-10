@@ -22,7 +22,7 @@
         <StackPanel>
             <TextBlock FontSize="24" FontWeight="SemiBold" Text="FEE2Container" />
             <TextBlock Margin="0,7,0,0" TextWrapping="Wrap"
-                       Text="Liest ausschließlich BasicFrames mit versionierter Container2FEE-Provenienz. Ältere oder manuell erstellte FEE-Modelle werden bewusst nicht heuristisch rekonstruiert." />
+                       Text="Zeigt alle BasicFrames als auswählbare Hauptknoten. Container2FEE-Provenienz ermöglicht einen exakten Round-Trip; bestehende Modelle werden aus unterstützten Objekttypen sowie ihren Signal- und Slotzuordnungen rekonstruiert und mit Prüfhinweisen gekennzeichnet." />
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="0,16,0,10" Orientation="Horizontal">
@@ -47,13 +47,14 @@
             <DataGrid.Columns>
                 <DataGridTextColumn Header="FEE-Root" Binding="{Binding Name}" Width="2*" />
                 <DataGridTextColumn Header="GUID" Binding="{Binding Guid}" Width="2*" />
+                <DataGridTextColumn Header="Quelle" Binding="{Binding SourceKind}" Width="2*" />
                 <DataGridTextColumn Header="Container" Binding="{Binding ContainerCount}" Width="*" />
                 <DataGridTextColumn Header="Signale" Binding="{Binding SignalCount}" Width="*" />
                 <DataGridTextColumn Header="Aktuell gelesen" Binding="{Binding UpdatedSignalCount}" Width="*" />
                 <DataGridTextColumn Header="Fehlend" Binding="{Binding MissingSignalCount}" Width="*" />
                 <DataGridTextColumn Header="Slotrouten" Binding="{Binding UpdatedSlotCount}" Width="*" />
                 <DataGridTextColumn Header="Slot ungeklärt" Binding="{Binding UnresolvedSlotCount}" Width="*" />
-                <DataGridTextColumn Header="Quellfingerprint" Binding="{Binding Provenance.SourceFingerprint}" Width="2*" />
+                <DataGridTextColumn Header="Quellfingerprint" Binding="{Binding Provenance.SourceFingerprint, TargetNullValue=-}" Width="2*" />
             </DataGrid.Columns>
         </DataGrid>
 

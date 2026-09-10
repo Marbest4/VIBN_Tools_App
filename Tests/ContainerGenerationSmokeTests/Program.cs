@@ -46,6 +46,7 @@ internal static class Program
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
+        ValidateFee2ContainerLiveReconstruction();
         ValidateFee2SpecialDevicesProvenanceRoundTrip();
         ValidateRuleSuggestionWorkflow();
         await ValidateRequirementsRulePatchWorkflowAsync();
@@ -184,6 +185,54 @@ internal static class Program
         };
         if (FeeSpecialDeviceProvenanceCodec.TryRead(damaged, out _, out _))
             throw new InvalidOperationException("Damaged special-device provenance was accepted.");
+    }
+
+    private static void ValidateFee2ContainerLiveReconstruction()
+    {
+        var rootGuid = Guid.NewGuid();
+        var sensorGuid = Guid.NewGuid();
+        var buttonGuid = Guid.NewGuid();
+        var notGuid = Guid.NewGuid();
+        var ignoredGuid = Guid.NewGuid();
+        var sensorSignal1 = Guid.NewGuid();
+        var sensorSignal2 = Guid.NewGuid();
+        var buttonSignal = Guid.NewGuid();
+        var returnSignal = Guid.NewGuid();
+        var result = FeeContainerLiveReconstructor.Reconstruct(
+            rootGuid,
+            "Existing main frame",
+            [
+                new FeeContainerLiveObject(sensorGuid, "Sensor_1", "LogicObject", "Grob_Sensor"),
+                new FeeContainerLiveObject(buttonGuid, "Button_1", "Button"),
+                new FeeContainerLiveObject(notGuid, "Return_1", "BoolNot"),
+                new FeeContainerLiveObject(ignoredGuid, "Unrelated", "Decoration"),
+            ],
+            [
+                new FeeContainerLiveVariable(sensorSignal1, "Sensor A", "%I10.0", "", "Bool", "S1"),
+                new FeeContainerLiveVariable(sensorSignal2, "Sensor B", "%I10.1", "", "Bool", "S2"),
+                new FeeContainerLiveVariable(buttonSignal, "Button NO", "%I11.0", "", "Bool", "B1"),
+                new FeeContainerLiveVariable(returnSignal, "Return", "%Q12.0", "", "Bool", "R1"),
+            ],
+            [
+                new FeeContainerLiveAssignment(sensorSignal1, sensorGuid, "PLC_IN_PartPresent_Ch1"),
+                new FeeContainerLiveAssignment(sensorSignal2, sensorGuid, "PLC_IN_PartPresent_Ch1"),
+                new FeeContainerLiveAssignment(buttonSignal, buttonGuid, "Pressed"),
+                new FeeContainerLiveAssignment(returnSignal, notGuid, "Input 01"),
+            ]);
+
+        var containers = result.Snapshot.ContainerDocument.Descendants("Container").ToArray();
+        if (result.Snapshot.ContainerCount != 3 || result.Snapshot.SignalCount != 4 ||
+            result.IgnoredObjectCount != 1 || result.Issues.Count != 1 ||
+            containers.Single(item => item.Element("Type")?.Value == "Sensor")
+                .Descendants("Entry").Count() != 2 ||
+            containers.Single(item => item.Element("Type")?.Value == "Button")
+                .Descendants("Slot").Single().Value != "PLC_IN_NO" ||
+            containers.Single(item => item.Element("Type")?.Value == "ReturnCircuit")
+                .Descendants("Slot").Single().Value != "PLC_OUT_Signal")
+        {
+            throw new InvalidOperationException(
+                "Existing FEE BasicFrame reconstruction lost a supported container, fan-in, or slot mapping.");
+        }
     }
 
     private static void ValidateSlotMultiplicityPolicy()

@@ -549,7 +549,28 @@ internal static class Program
         if (!generationResolution.IsValid ||
             !ReferenceEquals(generationResolution.Interface, generationInterface))
         {
-            throw new InvalidOperationException("Grob Generation Interface identity was not resolved strictly.");
+            throw new InvalidOperationException("Legacy Grob Generation Interface identity was not resolved strictly.");
+        }
+
+
+        var providerResolution = GrobGenerationInterfaceResolver.ResolveProvider(
+            [new GrobGenerationProviderIdentity(
+                Defines.GrobGenerationInterfaceProviderGuid,
+                "localized or version-dependent provider name")]);
+        if (!providerResolution.IsValid ||
+            providerResolution.Provider?.ProviderGuid != Defines.GrobGenerationInterfaceProviderGuid)
+        {
+            throw new InvalidOperationException(
+                "Grob Generation provider must be resolved by its stable provider GUID.");
+        }
+
+        var inconsistentProvider = GrobGenerationInterfaceResolver.ResolveProvider(
+            [new GrobGenerationProviderIdentity(Guid.NewGuid(), GrobGenerationInterfaceResolver.ProviderName)]);
+        if (inconsistentProvider.IsValid ||
+            inconsistentProvider.Issue?.Code != "GROB_GENERATION_PROVIDER_INCONSISTENT")
+        {
+            throw new InvalidOperationException(
+                "A provider-name match with a foreign GUID must not authorize FEE writes.");
         }
     }
 

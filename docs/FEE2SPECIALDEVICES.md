@@ -11,7 +11,7 @@ Nach einer vollständig erfolgreichen Erzeugung durch `SpecialDevices2FEE` schre
 - Eingangs- und Ausgangs-Startbyte;
 - Signal-GUID, Tag, Adresse, Richtung, Datentyp und Kommentar.
 
-Ein fehlgeschlagener oder nur teilweise ausgeführter Schreibvorgang erhält keine Provenienz. Beim Rücklesen werden die Signale über ihre persistierte Variablen-GUID mit den aktuellen FEE-Werten überlagert. Fehlende Variablen werden gezählt und als Hinweis angezeigt; der gespeicherte Generierungsstand bleibt für die Diagnose erhalten.
+Ein fehlgeschlagener oder nur teilweise ausgeführter Schreibvorgang erhält keine gültige Provenienz. Nach der vollständigen Geräteerzeugung wird der Tag-Datensatz geschrieben, der vorhandene `BasicFrame` erneut an FEE gesendet und anschließend zurückgelesen sowie per Prüfsumme validiert. Erst dann meldet `SpecialDevices2FEE` die Erstellung als erfolgreich und entfernt das Gerät aus der Warteschlange. Beim Rücklesen werden die Signale über ihre persistierte Variablen-GUID mit den aktuellen FEE-Werten überlagert. Fehlende Variablen werden gezählt und als Hinweis angezeigt; der gespeicherte Generierungsstand bleibt für die Diagnose erhalten.
 
 ## Ablauf
 

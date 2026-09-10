@@ -95,19 +95,23 @@ public sealed class Fee2ContainerPageVM : MvvmBase
         : Connection.UnavailableReason;
 
     public string ExportUnavailableReason => SelectedRoot is null
-        ? "Zuerst einen durch Container2FEE erzeugten Root auswählen."
+        ? "Zuerst einen BasicFrame als Hauptknoten auswählen."
         : IsBusy
             ? "Ein FEE2Container-Vorgang läuft bereits."
             : string.Empty;
 
     public string SelectionSummary => SelectedRoot is null
         ? "Kein Root ausgewählt."
-        : $"{SelectedRoot.ContainerCount} Container, {SelectedRoot.SignalCount} Signale; " +
+        : !SelectedRoot.HasProvenance
+            ? $"{SelectedRoot.SourceKind}; Container, Signale, Slotzuordnungen und Prüfhinweise werden " +
+              "beim Export aus dem gewählten FEE-Teilbaum ermittelt."
+        : $"{SelectedRoot.SourceKind}; " +
+          $"{SelectedRoot.ContainerCount} Container, {SelectedRoot.SignalCount} Signale; " +
           $"{SelectedRoot.UpdatedSignalCount} aus aktuellem FEE gelesen, " +
           $"{SelectedRoot.MissingSignalCount} fehlend; " +
           $"{SelectedRoot.UpdatedSlotCount} Slotrouten gelesen, " +
           $"{SelectedRoot.UnresolvedSlotCount} ungeklärt; " +
-          $"Quellfingerprint {Shorten(SelectedRoot.Provenance.SourceFingerprint)}";
+          $"Quellfingerprint {Shorten(SelectedRoot.Provenance?.SourceFingerprint)}";
 
     private async Task RefreshAsync()
     {
@@ -129,10 +133,10 @@ public sealed class Fee2ContainerPageVM : MvvmBase
                 Issues.Add($"{issue.RootName}: {issue.Message}".TrimStart(':', ' '));
             SelectedRoot = Roots.FirstOrDefault();
             StatusText = result.Roots.Count == 0
-                ? $"Keine exportierbaren Roots gefunden. {result.IgnoredWithoutProvenance} ältere/manuelle BasicFrames wurden ignoriert."
-                : $"{result.Roots.Count} exportierbare Roots gefunden; " +
-                  $"{result.IgnoredWithoutProvenance} ältere/manuelle BasicFrames ignoriert; " +
-                  $"{result.Issues.Count} Lesefehler.";
+                ? "Keine BasicFrames im geöffneten FEE-Projekt gefunden."
+                : $"{result.Roots.Count} BasicFrame(s) gefunden; " +
+                  $"{result.IgnoredWithoutProvenance} ohne Container2FEE-Provenienz werden bei Export aus der FEE-Struktur rekonstruiert; " +
+                  $"{result.Issues.Count} Hinweis(e).";
             ApplicationLogService.Instance.Information(LogArea, StatusText);
         }
         catch (Exception exception)
@@ -146,17 +150,17 @@ public sealed class Fee2ContainerPageVM : MvvmBase
         }
     }
 
-    private Task ExportAsync()
+    private async Task ExportAsync()
     {
         if (!CanExport || SelectedRoot is null)
         {
             StatusText = ExportUnavailableReason;
-            return Task.CompletedTask;
+            return;
         }
 
         var dialog = new SaveFileDialog
         {
-            Title = "ContainerFile aus FEE-Provenienz exportieren",
+            Title = "ContainerFile aus ausgewähltem FEE-Hauptknoten exportieren",
             Filter = "Container XML (*.xml)|*.xml|Alle Dateien (*.*)|*.*",
             FileName = $"{SanitizeFileName(SelectedRoot.Name)}.container.xml",
             AddExtension = true,
@@ -164,13 +168,32 @@ public sealed class Fee2ContainerPageVM : MvvmBase
             OverwritePrompt = true,
         };
         if (dialog.ShowDialog() != true)
-            return Task.CompletedTask;
+            return;
 
         IsBusy = true;
         try
         {
-            FeeContainerProvenanceCodec.SaveAtomically(SelectedRoot.Provenance, dialog.FileName);
-            StatusText = $"ContainerFile wurde exportiert: {dialog.FileName}";
+            var export = await _service.CreateExportAsync(SelectedRoot);
+            Issues.Clear();
+            foreach (var issue in export.Issues)
+            {
+                var objectLabel = issue.ObjectGuid is Guid guid ? $"{guid:D}: " : string.Empty;
+                Issues.Add($"{SelectedRoot.Name}: {objectLabel}{issue.Message}");
+            }
+            if (export.Snapshot.ContainerCount == 0)
+            {
+                StatusText = "Im ausgewählten Hauptknoten wurden keine sicher unterstützten Container erkannt. " +
+                             "Es wurde keine Datei geschrieben.";
+                ApplicationLogService.Instance.Warning(LogArea, StatusText);
+                return;
+            }
+
+            FeeContainerProvenanceCodec.SaveAtomically(export.Snapshot, dialog.FileName);
+            StatusText = export.UsedProvenance
+                ? $"ContainerFile aus exakter Container2FEE-Provenienz exportiert: {dialog.FileName}"
+                : $"ContainerFile aus FEE-Struktur rekonstruiert: {export.Snapshot.ContainerCount} Container, " +
+                  $"{export.Snapshot.SignalCount} Signale, {export.IgnoredObjectCount} nicht unterstützte/nicht " +
+                  $"containerrelevante Objekte ignoriert, {export.Issues.Count} Prüfhinweis(e). Datei: {dialog.FileName}";
             ApplicationLogService.Instance.Information(LogArea, StatusText);
         }
         catch (Exception exception)
@@ -182,7 +205,6 @@ public sealed class Fee2ContainerPageVM : MvvmBase
         {
             IsBusy = false;
         }
-        return Task.CompletedTask;
     }
 
     private void OnConnectionPropertyChanged(object? sender, PropertyChangedEventArgs args)
@@ -195,7 +217,7 @@ public sealed class Fee2ContainerPageVM : MvvmBase
         CommandManager.InvalidateRequerySuggested();
     }
 
-    private static string Shorten(string value) => string.IsNullOrWhiteSpace(value)
+    private static string Shorten(string? value) => string.IsNullOrWhiteSpace(value)
         ? "nicht vorhanden"
         : value[..Math.Min(12, value.Length)];
 

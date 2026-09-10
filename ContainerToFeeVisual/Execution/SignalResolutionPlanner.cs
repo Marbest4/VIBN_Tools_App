@@ -242,11 +242,55 @@ public sealed record GrobGenerationInterfaceResolution(
     public bool IsValid => Interface is not null && Issue is null;
 }
 
+public sealed record GrobGenerationProviderIdentity(Guid ProviderGuid, string ProviderName);
+
+public sealed record GrobGenerationProviderResolution(
+    GrobGenerationProviderIdentity? Provider,
+    VisualIssue? Issue)
+{
+    public bool IsValid => Provider is not null && Issue is null;
+}
+
 /// <summary>Strictly identifies the installed Grob generation interface.</summary>
 public static class GrobGenerationInterfaceResolver
 {
     public const string InterfaceName = "Grob Generation Interface";
     public const string ProviderName = "GrobGenerationInterface.Interface.GrobInterfaceProvider";
+
+    /// <summary>
+    /// Resolves the installed provider. Interface instance names are deliberately
+    /// not used here: the established Container2FEE path creates timestamped
+    /// interface instances, while the provider GUID is the stable plugin identity.
+    /// </summary>
+    public static GrobGenerationProviderResolution ResolveProvider(
+        IEnumerable<GrobGenerationProviderIdentity> providers)
+    {
+        ArgumentNullException.ThrowIfNull(providers);
+        var source = providers.Where(item => item is not null).ToArray();
+        var matches = source
+            .Where(item => item.ProviderGuid == Defines.GrobGenerationInterfaceProviderGuid)
+            .ToArray();
+        if (matches.Length > 0)
+            return new GrobGenerationProviderResolution(matches[0], null);
+
+        var nameMatches = source.Where(item =>
+                Same(item.ProviderName, ProviderName) ||
+                Same(item.ProviderName, InterfaceName))
+            .ToArray();
+        if (nameMatches.Length > 0)
+        {
+            return ProviderFailure(
+                "GROB_GENERATION_PROVIDER_INCONSISTENT",
+                "Der Providername des Grob Generation Interface wurde gefunden, seine Provider-GUID stimmt " +
+                $"jedoch nicht mit '{Defines.GrobGenerationInterfaceProviderGuid:D}' überein. " +
+                "Die Generierung wurde vor dem ersten Schreibzugriff abgebrochen.");
+        }
+
+        return ProviderFailure(
+            "GROB_GENERATION_PROVIDER_MISSING",
+            "Der Provider des Grob Generation Interface wurde im geöffneten FEE-Projekt nicht gefunden. " +
+            "Plugin installieren/aktivieren und FEE-Objekte erneut aktualisieren; es wurde noch nichts erzeugt.");
+    }
 
     public static GrobGenerationInterfaceResolution Resolve(IEnumerable<FeeInterface> interfaces)
     {
@@ -293,5 +337,8 @@ public static class GrobGenerationInterfaceResolver
         string.Equals(left?.Trim(), right, StringComparison.OrdinalIgnoreCase);
 
     private static GrobGenerationInterfaceResolution Failure(string code, string message) =>
+        new(null, new VisualIssue(VisualIssueSeverity.Error, code, message));
+
+    private static GrobGenerationProviderResolution ProviderFailure(string code, string message) =>
         new(null, new VisualIssue(VisualIssueSeverity.Error, code, message));
 }

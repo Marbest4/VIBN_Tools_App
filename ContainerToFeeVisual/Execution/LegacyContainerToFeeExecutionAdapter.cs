@@ -33,15 +33,6 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             var selectedBindings = binding.Containers
                 .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
                 .ToArray();
-            var generationInterfaceResolution = GrobGenerationInterfaceResolver.Resolve(
-                runtimeInterfaces.Values);
-            if (!generationInterfaceResolution.IsValid)
-            {
-                var issue = generationInterfaceResolution.Issue!;
-                return new VisualExecutionResult(false, issue.Message, [issue]);
-            }
-            var generationInterface = generationInterfaceResolution.Interface!;
-
             var signalRequests = selectedBindings
                 .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
                     new SignalResolutionRequest(
@@ -65,6 +56,36 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                     signalPlan.Issues);
             }
             signalPlan.ApplyExistingBindings();
+
+            // Missing variables require the installed generation provider, not
+            // an existing interface instance with a fixed display name. The
+            // legacy generator creates a fresh timestamped instance as well.
+            var timestamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
+            var generationInterface = new FeeInterface
+            {
+                Name = $"Auto Generated (at {timestamp})",
+                ProviderGuid = Defines.GrobGenerationInterfaceProviderGuid,
+            };
+            if (signalPlan.MissingSignals.Count > 0)
+            {
+                var providers = await Services.ApiInstance.Interface.GetProvidersOfProjectAsync();
+                var providerResolution = GrobGenerationInterfaceResolver.ResolveProvider(
+                    providers.Select(provider => new GrobGenerationProviderIdentity(
+                        provider.ProviderGuid,
+                        provider.ProviderName ?? string.Empty)));
+                if (!providerResolution.IsValid)
+                {
+                    var issue = providerResolution.Issue!;
+                    return new VisualExecutionResult(false, issue.Message, [issue]);
+                }
+
+                if (!await generationInterface.CreateInterfaceAsync())
+                {
+                    return Failure(
+                        "Das Grob Generation Interface konnte nicht als neue FEE-Interfaceinstanz angelegt werden.",
+                        "GROB_GENERATION_INTERFACE_CREATE_FAILED");
+                }
+            }
 
             var selectedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
@@ -91,8 +112,6 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 }
             }
             signalPlan.ApplyCreatedBindings(generationInterface);
-
-            var timestamp = DateTime.Now.ToString("dd.MM.yyyy HH:mm");
 
             if (selectedContainers.Length > 0)
             {

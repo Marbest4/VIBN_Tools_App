@@ -41,6 +41,17 @@ internal static class ContainerMetadataCatalog
     public static bool TryGet(string xmlType, out ContainerDescriptor descriptor) =>
         Descriptors.TryGetValue(xmlType, out descriptor!);
 
+    public static IReadOnlyList<string> FindXmlTypesByLogicName(string? logicName) =>
+        string.IsNullOrWhiteSpace(logicName)
+            ? []
+            : Descriptors
+                .Where(item => string.Equals(
+                    item.Value.ExpectedLogicName,
+                    logicName,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(item => item.Key)
+                .ToArray();
+
     private static ContainerDescriptor Describe<TContainer>(
         string? expectedLogicName = null,
         IReadOnlyList<string>? technicalHelpers = null,

@@ -1,5 +1,6 @@
 using FS.SDK.Components;
 using FS.SDK.Scene.Objects;
+using System.Xml.Linq;
 using VIBN_Tools.GlobalClasses;
 using VIBN_Tools.Settings;
 
@@ -8,15 +9,24 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 public sealed record Fee2ContainerRoot(
     Guid Guid,
     string Name,
-    FeeContainerProvenanceSnapshot Provenance,
+    FeeContainerProvenanceSnapshot? Provenance,
     int UpdatedSignalCount,
     int MissingSignalCount,
     int UpdatedSlotCount,
     int UnresolvedSlotCount)
 {
-    public int ContainerCount => Provenance.ContainerCount;
-    public int SignalCount => Provenance.SignalCount;
+    public bool HasProvenance => Provenance is not null;
+    public string SourceKind => HasProvenance ? "Container2FEE-Provenienz" : "FEE-Struktur (Rekonstruktion)";
+    public int ContainerCount => Provenance?.ContainerCount ?? 0;
+    public int SignalCount => Provenance?.SignalCount ?? 0;
 }
+
+public sealed record Fee2ContainerExportResult(
+    FeeContainerProvenanceSnapshot Snapshot,
+    bool UsedProvenance,
+    int InspectedObjectCount,
+    int IgnoredObjectCount,
+    IReadOnlyList<FeeContainerReconstructionIssue> Issues);
 
 public sealed record Fee2ContainerDiscoveryIssue(Guid? Guid, string RootName, string Message);
 
@@ -26,8 +36,9 @@ public sealed record Fee2ContainerDiscoveryResult(
     IReadOnlyList<Fee2ContainerDiscoveryIssue> Issues);
 
 /// <summary>
-/// Reads only BasicFrames carrying the versioned Container2FEE tag payload.
-/// Older or manually created FEE trees are intentionally not guessed.
+/// Lists all BasicFrames as selectable scopes. Roots carrying versioned
+/// Container2FEE metadata use the exact round-trip; other roots can be
+/// reconstructed from supported descendants and their live assignments.
 /// </summary>
 public sealed class Fee2ContainerService
 {
@@ -80,11 +91,15 @@ public sealed class Fee2ContainerService
                 if (!tags.ContainsKey(FeeContainerProvenanceCodec.SchemaKey))
                 {
                     ignored++;
+                    roots.Add(new Fee2ContainerRoot(
+                        guid, name, null, 0, 0, 0, 0));
                     continue;
                 }
                 if (!FeeContainerProvenanceCodec.TryRead(tags, out var provenance, out var error))
                 {
                     issues.Add(new Fee2ContainerDiscoveryIssue(guid, name, error));
+                    roots.Add(new Fee2ContainerRoot(
+                        guid, name, null, 0, 0, 0, 0));
                     continue;
                 }
 
@@ -137,6 +152,198 @@ public sealed class Fee2ContainerService
             issues);
     }
 
+    public async Task<Fee2ContainerExportResult> CreateExportAsync(
+        Fee2ContainerRoot root,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(root);
+        if (root.Provenance is not null)
+        {
+            return new Fee2ContainerExportResult(
+                root.Provenance,
+                true,
+                0,
+                0,
+                []);
+        }
+
+        if (Services.Connection?.CanUseFeeFeatures != true || Services.ApiInstance is null)
+            throw new InvalidOperationException(FeeConnectionService.MissingConnectionMessage);
+        return await ReconstructAsync(root.Guid, root.Name, cancellationToken);
+    }
+
+    private static async Task<Fee2ContainerExportResult> ReconstructAsync(
+        Guid rootGuid,
+        string rootName,
+        CancellationToken cancellationToken)
+    {
+        var issues = new List<FeeContainerReconstructionIssue>();
+        var guidTexts = (await Services.ApiInstance!.Object
+                .GetAllChildrenFromSceneObjectAsync(rootGuid.ToString()))
+            .Where(value => Guid.TryParse(value, out _))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var xmlTexts = guidTexts.Length == 0
+            ? []
+            : (await Services.ApiInstance.Object.GetSceneObjectsAsXmlAsync(guidTexts)).ToArray();
+        var logicDefinitions = await Services.ApiInstance.Logic.GetAllAvailableLogicDefinitionsAsync();
+        var logicNames = logicDefinitions
+            .Where(item => Guid.TryParse(item.Guid, out _))
+            .GroupBy(item => Guid.Parse(item.Guid))
+            .ToDictionary(group => group.Key, group => group.First().Name ?? string.Empty);
+        var objects = new List<FeeContainerLiveObject>();
+        for (var index = 0; index < Math.Min(guidTexts.Length, xmlTexts.Length); index++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var guid = Guid.Parse(guidTexts[index]);
+            try
+            {
+                var xml = XElement.Parse(xmlTexts[index]);
+                var type = xml.Attribute("Type")?.Value ?? xml.Name.LocalName;
+                var name = xml.Attribute("Name")?.Value ?? string.Empty;
+                var logicGuidText = xml.Element("Logic")?.Element("PersistedLogicGuid")?.Value;
+                var logicName = Guid.TryParse(logicGuidText, out var logicGuid) &&
+                                logicNames.TryGetValue(logicGuid, out var resolvedLogicName)
+                    ? resolvedLogicName
+                    : null;
+                objects.Add(new FeeContainerLiveObject(
+                    guid,
+                    name,
+                    type,
+                    logicName,
+                    xml.Element("Definition")?.Value,
+                    xml.Element("Label")?.Value));
+            }
+            catch (Exception exception) when (exception is System.Xml.XmlException or InvalidOperationException)
+            {
+                issues.Add(new FeeContainerReconstructionIssue(
+                    guid,
+                    $"FEE-Objekt konnte nicht ausgewertet werden: {exception.Message}"));
+            }
+        }
+
+        if (xmlTexts.Length != guidTexts.Length)
+        {
+            issues.Add(new FeeContainerReconstructionIssue(
+                null,
+                $"FEE lieferte für {guidTexts.Length} untergeordnete Objekte nur {xmlTexts.Length} XML-Datensätze."));
+        }
+
+        var apiVariables = (await Services.ApiInstance.Interface.GetAllVariablesAsync()).ToArray();
+        var currentVariables = apiVariables
+            .Select(variable => new FeeContainerLiveVariable(
+                variable.VariableGuid,
+                variable.Tag ?? string.Empty,
+                variable.Address ?? string.Empty,
+                variable.Path ?? string.Empty,
+                variable.Type.ToString(),
+                variable.Comment ?? string.Empty))
+            .ToArray();
+        var scopedObjects = objects.Select(item => item.Guid).ToHashSet();
+        var assignmentRead = await ReadAssignmentsAsync(
+            apiVariables
+                .Where(variable => variable.References > 0)
+                .Select(variable => variable.VariableGuid),
+            scopedObjects,
+            cancellationToken);
+        issues.AddRange(assignmentRead.Issues);
+
+        var reconstruction = FeeContainerLiveReconstructor.Reconstruct(
+            rootGuid,
+            rootName,
+            objects,
+            currentVariables,
+            assignmentRead.Assignments);
+        return new Fee2ContainerExportResult(
+            reconstruction.Snapshot,
+            false,
+            reconstruction.InspectedObjectCount,
+            reconstruction.IgnoredObjectCount,
+            issues.Concat(reconstruction.Issues).ToArray());
+    }
+
+    private static async Task<VariableAssignmentRead> ReadAssignmentsAsync(
+        IEnumerable<Guid> variableGuids,
+        IReadOnlySet<Guid> scopedObjects,
+        CancellationToken cancellationToken)
+    {
+        using var throttle = new SemaphoreSlim(6);
+        var tasks = variableGuids.Distinct().Select(async variableGuid =>
+        {
+            await throttle.WaitAsync(cancellationToken);
+            try
+            {
+                var matches = new List<FeeContainerLiveAssignment>();
+                var localIssues = new List<FeeContainerReconstructionIssue>();
+                var assignments = await Services.ApiInstance!.Interface
+                    .GetAssignedSceneObjectsAsync(variableGuid);
+                foreach (var (objectGuid, slots) in assignments)
+                {
+                    foreach (var slot in slots ?? Array.Empty<string>())
+                    {
+                        if (scopedObjects.Contains(objectGuid))
+                        {
+                            matches.Add(new FeeContainerLiveAssignment(
+                                variableGuid,
+                                objectGuid,
+                                slot));
+                        }
+
+                        // Container2FEE creates MoveBit outside the container root for
+                        // a second PLC_IN consumer. Follow that project-wide assignment
+                        // and only scope the linked target back to the selected root.
+                        if (!string.Equals(slot, "Output 01", StringComparison.OrdinalIgnoreCase))
+                            continue;
+                        try
+                        {
+                            var links = await Services.ApiInstance.Interface
+                                .GetSlotSlotAssignmentAsync(objectGuid, "Input 01");
+                            foreach (var (linkedGuidText, linkedSlots) in links)
+                            {
+                                if (!Guid.TryParse(linkedGuidText, out var linkedGuid) ||
+                                    !scopedObjects.Contains(linkedGuid))
+                                    continue;
+                                foreach (var linkedSlot in linkedSlots ?? Array.Empty<string>())
+                                {
+                                    matches.Add(new FeeContainerLiveAssignment(
+                                        variableGuid,
+                                        linkedGuid,
+                                        linkedSlot));
+                                }
+                            }
+                        }
+                        catch (Exception exception)
+                        {
+                            localIssues.Add(new FeeContainerReconstructionIssue(
+                                objectGuid,
+                                $"MoveBit-Slotroute konnte nicht gelesen werden: {exception.Message}"));
+                        }
+                    }
+                }
+
+                return new VariableAssignmentRead(matches, localIssues);
+            }
+            catch (Exception exception)
+            {
+                return new VariableAssignmentRead(
+                    [],
+                    [new FeeContainerReconstructionIssue(
+                        variableGuid,
+                        $"Zuweisungen der Variable konnten nicht gelesen werden: {exception.Message}")]);
+            }
+            finally
+            {
+                throttle.Release();
+            }
+        });
+        var reads = await Task.WhenAll(tasks);
+        return new VariableAssignmentRead(
+            reads.SelectMany(read => read.Assignments).Distinct().ToArray(),
+            reads.SelectMany(read => read.Issues).ToArray());
+    }
+
     private static async Task<IReadOnlyList<SlotResolution>> ResolveSlotsAsync(
         Guid rootGuid,
         IEnumerable<Guid> variableGuids,
@@ -157,11 +364,12 @@ public sealed class Fee2ContainerService
                 var candidates = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 var assignments = await Services.ApiInstance.Interface
                     .GetAssignedSceneObjectsAsync(variableGuid);
-                foreach (var (objectGuid, slots) in assignments.Where(item => scopedObjects.Contains(item.Item1)))
+                foreach (var (objectGuid, slots) in assignments)
                 {
                     foreach (var slot in slots ?? Array.Empty<string>())
                     {
-                        if (slot.StartsWith("PLC_", StringComparison.OrdinalIgnoreCase))
+                        if (scopedObjects.Contains(objectGuid) &&
+                            slot.StartsWith("PLC_", StringComparison.OrdinalIgnoreCase))
                             candidates.Add(slot);
                         if (!string.Equals(slot, "Output 01", StringComparison.OrdinalIgnoreCase))
                             continue;
@@ -211,4 +419,8 @@ public sealed class Fee2ContainerService
     }
 
     private sealed record SlotResolution(Guid VariableGuid, string? Slot, string? Issue);
+
+    private sealed record VariableAssignmentRead(
+        IReadOnlyList<FeeContainerLiveAssignment> Assignments,
+        IReadOnlyList<FeeContainerReconstructionIssue> Issues);
 }

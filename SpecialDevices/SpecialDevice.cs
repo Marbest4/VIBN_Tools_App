@@ -100,14 +100,60 @@ namespace VIBN_Tools.SpecialDevices
             // SDK transaction remains deliberately ineligible for reverse export.
             var provenance = FeeSpecialDeviceProvenanceCodec.Encode(
                 FeeSpecialDeviceProvenanceCodec.Create(this));
-            await ApiInstance.Object.SetPropertyAsync(
+            if (!await ApiInstance.Object.SetPropertyAsync(
                 DeviceBasicFrame.Guid,
                 nameof(FS.SDK.Components.TagComponent.TagEntries),
                 new Dictionary<string, string>(provenance, StringComparer.Ordinal),
-                nameof(FS.SDK.Components.TagComponent));
+                nameof(FS.SDK.Components.TagComponent)))
+            {
+                throw new InvalidOperationException(
+                    "FEE hat das Schreiben der SpecialDevices2FEE-Provenienz abgelehnt.");
+            }
+
+            // SetPropertyAsync updates the SDK-side object wrapper. Sending the
+            // already existing root is required to persist the changed component
+            // in the FEE project. Verify the round-trip before reporting success.
+            ApiInstance.Object.Send(DeviceBasicFrame.Guid);
+            if (!await VerifyProvenanceAsync(provenance))
+            {
+                throw new InvalidOperationException(
+                    "Die SpecialDevices2FEE-Provenienz konnte nach dem Speichern nicht aus FEE zurückgelesen werden. " +
+                    "Das Gerät bleibt zur Prüfung in der Warteschlange.");
+            }
             return true;
 
 
+        }
+
+        private async Task<bool> VerifyProvenanceAsync(
+            IReadOnlyDictionary<string, string> expected)
+        {
+            for (var attempt = 0; attempt < 50; attempt++)
+            {
+                try
+                {
+                    var tagsXml = await ApiInstance.Object.GetPropertyAsync(
+                        DeviceBasicFrame.Guid,
+                        nameof(FS.SDK.Components.TagComponent.TagEntries),
+                        nameof(FS.SDK.Components.TagComponent));
+                    var actual = ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+                    if (expected.All(item =>
+                            actual.TryGetValue(item.Key, out var value) &&
+                            string.Equals(value, item.Value, StringComparison.Ordinal)))
+                    {
+                        return FeeSpecialDeviceProvenanceCodec.TryRead(actual, out _, out _);
+                    }
+                }
+                catch when (attempt < 49)
+                {
+                    // A freshly sent component may not yet be visible through
+                    // the read API. Retry within the bounded confirmation window.
+                }
+
+                await Task.Delay(100);
+            }
+
+            return false;
         }
 
         protected abstract Task<bool> CreateDeviceSpecificAsync();
