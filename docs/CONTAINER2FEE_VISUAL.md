@@ -12,8 +12,8 @@ Die visuelle Seite kann eine Container-XML bereits ohne FEE-Verbindung lesen und
 
 1. **XML öffnen** wählen. Die Quelldatei wird nur gelesen und nicht verändert.
 2. Links Container, Logiken, Signale, technische Hilfsobjekte und mögliche SimObject-Ziele prüfen.
-3. Nach erfolgreicher FEE-Verbindung **FEE aktualisieren** drücken. Noch freie Ziele werden wie im bisherigen Ablauf anhand von identischem Komponentennamen und kompatiblem Typ automatisch zugeordnet.
-4. Ein FEE-SimObject von rechts auf ein kompatibles Ziel in der Mitte ziehen. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt. Dasselbe FEE-Objekt kann nie gleichzeitig mehreren Containern gehören.
+3. Nach erfolgreicher FEE-Verbindung **FEE aktualisieren** drücken. Noch freie Ziele werden wie im bisherigen Ablauf anhand von identischem Komponentennamen und kompatiblem Typ automatisch zugeordnet. Zusätzlich werden vorhandene Signale und rücklesbare Containerbestände verglichen.
+4. Ein FEE-SimObject von rechts auf ein kompatibles Ziel in der Mitte ziehen. Ein Einzelziel wird ersetzt, ein Mehrfachziel ergänzt. Dasselbe FEE-Objekt kann nie gleichzeitig mehreren Containern gehören. Ein vorhandenes FEE-Signal kann aus der Signalliste auf einen Signal-Knoten gezogen werden, um einen geprüften Tag-/Adresskonflikt ausdrücklich aufzulösen.
 5. In der linken Struktur pro vollständigem Container festlegen, ob er verarbeitet wird. **Alle selektieren** und **Alle deselektieren** ändern diese Auswahl gemeinsam. Kindobjekte erben die Containerentscheidung, weil Logik, Signale und technische Hilfsobjekte keine unabhängig ausführbaren Legacy-Einheiten sind.
 6. **Fehlende SimObjects bei der Generierung erzeugen** ist standardmäßig aktiv. Die Einstellung kann je Container oder über **Alle/Keine** für alle erzeugbaren Container geändert werden. Ein ausgewählter Container mit SimObjectTarget benötigt entweder eine grüne Zuordnung oder diese Erzeugungsoption; andernfalls bleibt das Ziel dunkelrot und die Validierung erklärt den Fehler.
 7. Änderungen mit **Rückgängig/Wiederholen** korrigieren und über **Plan speichern** sichern.
@@ -29,20 +29,20 @@ Benutzeränderungen werden nicht in die Container-XML geschrieben. Standardmäß
 Container.xml.container2fee.visual.json
 ```
 
-Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, ausdrücklich deaktivierte SimObject-Erzeugung und abgewählte Container. Schema 4 liest weiterhin Sidecars aus Schema 1–3 und migriert deren frühere Positivliste auf den neuen sicheren Standard. Die entfernte Einstellung **Signale erzeugen** wird beim Laden alter Sidecars ignoriert und als Information ausgewiesen. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
+Gespeichert werden ausschließlich Quellfingerabdruck, Ziel-/FEE-Zuordnungen, ausdrücklich bestätigte Signalzuordnungen, deaktivierte SimObject-Erzeugung und abgewählte Container. Schema 5 liest weiterhin Sidecars aus Schema 1–4 und migriert deren frühere Positivliste auf den neuen sicheren Standard. Die entfernte Einstellung **Signale erzeugen** wird beim Laden alter Sidecars ignoriert und als Information ausgewiesen. Der Schreibvorgang erfolgt über eine temporäre Datei und anschließendes Ersetzen. Beim erneuten Öffnen wird der Sidecar automatisch angewendet, sofern der SHA-256-Fingerabdruck der XML noch stimmt. Nach einer XML-Änderung werden alte Zuordnungen nicht stillschweigend übernommen.
 
 ## Drag-and-drop-Regeln
 
 - Zulässig sind nur vorhandene FEE-SimObjects, deren Wrapper-Typ dem `AllowedType` des unveränderten Legacy-Containers entspricht.
 - Einzelziele besitzen höchstens eine, Mehrfachziele mehrere Zuordnungen.
 - Eine Objekt-GUID ist im gesamten Plan höchstens einmal zugeordnet.
-- Signal-/Slot- und Parent-/Child-Verknüpfungen werden sichtbar gemacht, aber nicht frei umverdrahtet. Diese Grenze verhindert einen Plan, den der bestehende Generator nicht identisch ausführen könnte.
+- Signal-/Slot- und Parent-/Child-Verknüpfungen werden sichtbar gemacht, aber nicht frei umverdrahtet. Ausschließlich die Identität eines vorhandenen FEE-Signals kann bewusst einem vorhandenen Plan-Signal zugewiesen werden; Slot und Containerbeziehung bleiben unverändert.
 - Das Entfernen einer Zuordnung löscht kein Objekt in FEE.
 
 ## Statusfarben und Link-only
 
-- Ein SimObjectTarget ist **grün**, wenn ein aktuell vorhandenes, typkompatibles FEE-SimObject zugeordnet ist.
-- Es ist **hellrot**, wenn das fehlende SimObject bei der vollständigen Generierung erzeugt werden soll.
+- Ein einzelnes Objekt oder Signal ist **grün**, wenn es eindeutig in FEE gefunden beziehungsweise in der aktuellen Sitzung erfolgreich erzeugt wurde. Ein kompletter Container wird nur grün, wenn Typ, Komponente und sämtliche Einträge mit einer rückgelesenen FEE2Container-Projektion übereinstimmen oder seine Generierung erfolgreich abgeschlossen wurde.
+- Ein Element ist **gelb**, wenn es bei der vollständigen Generierung erzeugt oder vervollständigt werden soll.
 - Es ist **dunkelrot**, wenn weder Zuordnung noch Erzeugungswunsch vorliegt. Die Validierung nennt das konkrete Ziel und mögliche Korrekturen.
 - Ein Eintrag unter **Verfügbare FEE-SimObjects** wird grün, sobald er zugeordnet ist, und nennt das Ziel.
 
@@ -52,7 +52,7 @@ Dieser Link-only-Modus benötigt keine Interface-Auswahl, weil er weder Signale 
 
 ## ModelValidation-Vertrag
 
-Vor der vollständigen Erzeugung prüft Container2FEE Visual die aus dem ContainerFile eindeutig ableitbaren Pflichtbeziehungen der vorhandenen `ModelValidation`. Fehlt eine erforderliche Signal- oder SimObject-Beziehung, ist die normale Generierung gesperrt. Eine ausdrücklich bestätigte Fehler-Teilgenerierung überspringt ausschließlich eindeutig betroffene Container. Globale, keinem Container sicher zuordenbare Fehler bleiben nicht übersteuerbar. Der erste erzeugte BasicFrame trägt dann den Zusatz **Fehler übersprungen**; Fehlercode und -text werden als persistente `vibn.validation.*`-Tags gespeichert. ModelValidation-Fehler, die erst beim Preflight erkannt werden, erscheinen nach dem Versuch am betroffenen Knoten und können in einem zweiten, erneut zu bestätigenden Lauf übersprungen werden.
+Vor der vollständigen Erzeugung prüft Container2FEE Visual die aus dem ContainerFile eindeutig ableitbaren Pflichtbeziehungen der vorhandenen `ModelValidation`. Fehlt eine erforderliche Signal- oder SimObject-Beziehung, verlangt eine Best-Effort-Generierung eine eindringliche, standardmäßig verneinte Bestätigung. Danach wird auch für auffällige Container eine Erzeugung versucht. Der erste erzeugte BasicFrame trägt den Zusatz **Trotz Validierungsfehlern erstellt**, hält die Fehler weiterhin als `vibn.validation.*`-Tags und erhält pro Fehler einen eigenen untergeordneten BasicFrame mit Code, Meldung und Knotenbezug. Nicht deterministische Laufzeitkonflikte wie mehrere widersprüchliche Signaltreffer bleiben gesperrt, bis sie eindeutig aufgelöst wurden. ModelValidation-Fehler, die erst beim Preflight erkannt werden, erscheinen nach dem ersten Versuch und können in einem zweiten, erneut zu bestätigenden Lauf bewusst akzeptiert werden.
 
 Alle geschriebenen Variablen- und Slotverknüpfungen werden über die FEE-API zurückgelesen. Eine nicht übernommene Verbindung gilt als Fehler. Beim Stopper wird `Floor.CollisionSlot` für neue und vorhandene Floors vor dem Verbinden aktiviert und ebenfalls zurückgelesen. Die Größen bleiben die Werte des bisherigen Container2FEE-Generators: Floor `0,01 × 0,2 × 0,05`, Sensor `0,01 × 0,03 × 0,01`, Surface `2 × 0,5 × 0,05`, MotionJoint/Button `0,5 × 0,5 × 0,5` und PickAndPlace `0,1 × 0,1 × 0,1`. Fehlende Bewegungsparameter erhalten prüfbare Startwerte.
 
@@ -73,7 +73,7 @@ Nicht aus dem ContainerFile ableitbar sind reale Positionen, Pick-/Drop-Marks un
 
 ## Bewusste technische Grenzen
 
-Vor einer vollständigen Generierung durchsucht `SignalResolutionPlanner` alle eingelesenen Interfaces. Ein vorhandenes Signal wird nur bei eindeutiger, widerspruchsfreier Identität wiederverwendet und niemals aktualisiert. Nur wenn Signale fehlen, prüft der Executor den installierten Provider über dessen stabile GUID `a6222164-be37-49de-b760-9b1c97c320bb` und erzeugt – wie der bestehende Container2FEE-Ablauf – eine neue zeitgestempelte Interfaceinstanz dieses Providers. Der frei benennbare Instanzname und ein lokalisierter Providertext sind kein Ablehnungsgrund mehr. Fehlt der Provider oder widersprechen sich Providername und GUID, wird vor BasicFrame-, Logik- und SimObject-Erzeugung abgebrochen. Das rechts auswählbare bevorzugte Interface ist optional; **Keins** ist ein expliziter Eintrag.
+Vor einer vollständigen Generierung durchsucht `SignalResolutionPlanner` alle eingelesenen Interfaces. Ein vorhandenes Signal wird nur bei eindeutiger, widerspruchsfreier Identität wiederverwendet und niemals aktualisiert. `EXISTING_SIGNAL_IDENTITY_CONFLICT` bedeutet konkret: Derselbe Tag wurde gefunden, aber Adresse oder symbolischer Pfad des ContainerFiles widerspricht dem FEE-Treffer. Die Fehlermeldung nennt erwartete und vorhandene Quelle. Eine ausdrückliche Drag&Drop-Zuordnung darf diesen Konflikt auflösen, ohne das FEE-Signal zu verändern. Nur wenn Signale fehlen, prüft der Executor den installierten Provider über dessen stabile GUID `a6222164-be37-49de-b760-9b1c97c320bb`; dabei gilt auch ein bereits geladenes Interface desselben Providers als Nachweis. Anschließend entsteht – wie im bestehenden Container2FEE-Ablauf – eine neue zeitgestempelte Interfaceinstanz dieses Providers. Der frei benennbare Instanzname und ein lokalisierter Providertext sind kein Ablehnungsgrund. Das rechts auswählbare bevorzugte Interface ist optional; **Keins** ist ein expliziter Eintrag.
 
 Der bestehende FEE-Executor unterstützt keinen transaktionalen Rollback. Wird eine laufende SDK-Schreiboperation abgebrochen, kann bereits erzeugter Inhalt bestehen bleiben und muss in FEE geprüft werden. Die neue Pipeline führt deshalb zuerst alle read-only Prüfungen und danach die fehlenden Signalvariablen aus; erst anschließend entstehen BasicFrame, Logiken und SimObjects. Scheitert die SDK-Anlage einer späteren Variablen, können zuvor angelegte Variablen bestehen bleiben. Eine freie grafische Neuverdrahtung oder unabhängige Auswahl einzelner Signale/Hilfsobjekte ist nicht Bestandteil dieser Version.
 

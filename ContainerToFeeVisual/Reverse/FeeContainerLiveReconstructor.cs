@@ -102,12 +102,26 @@ public static class FeeContainerLiveReconstructor
                 issues.Add(new FeeContainerReconstructionIssue(
                     candidate.Object.Guid,
                     $"'{componentName}' wurde als {candidate.XmlType} erkannt, besitzt aber keine " +
-                    "eindeutig rücklesbare Variablenzuordnung und wurde nicht in die schema-konforme Datei übernommen."));
-                continue;
+                    "eindeutig rücklesbare Variablenzuordnung. Der Container wird mit einem deutlich " +
+                    "markierten, unzugeordneten Prüfeintrag exportiert."));
             }
 
             var dataList = new XElement("DataList");
             var containerIndex = containerElements.Count;
+            if (resolved.Length == 0)
+            {
+                // CAAResult.xsd requires at least one Entry. A placeholder keeps
+                // an older, structurally recognized FEE container visible for
+                // comparison without inventing a signal or slot assignment.
+                dataList.Add(new XElement("Entry",
+                    new XElement("ID", $"FEE-UNASSIGNED-{candidate.Object.Guid:D}"),
+                    new XElement("Address", string.Empty),
+                    new XElement("DataType", string.Empty),
+                    new XElement("Signal", string.Empty),
+                    new XElement("Slot", string.Empty),
+                    new XElement("Note",
+                        $"PRÜFEN: Aus FEE rekonstruiert; Objekt {candidate.Object.Guid:D} besitzt keine rücklesbare Signalverknüpfung.")));
+            }
             foreach (var entry in resolved)
             {
                 var variable = entry.Variable;
@@ -164,15 +178,16 @@ public static class FeeContainerLiveReconstructor
         ambiguity = null;
         var feeType = item.FeeType ?? string.Empty;
         string? xmlType = null;
-        if (EndsWithType(feeType, "LogicObject"))
+        // SDK/FEE versions do not always expose a logic-bearing scene object
+        // under the literal type name LogicObject. The persisted, known logic
+        // definition is the stable discriminator also used by ModelValidation.
+        var logicMatches = ContainerMetadataCatalog.FindXmlTypesByLogicName(item.LogicDefinitionName);
+        if (logicMatches.Count > 0)
         {
-            var matches = ContainerMetadataCatalog.FindXmlTypesByLogicName(item.LogicDefinitionName);
-            if (matches.Count == 0)
-                return false;
-            xmlType = matches[0];
-            if (matches.Count > 1)
+            xmlType = logicMatches[0];
+            if (logicMatches.Count > 1)
             {
-                ambiguity = $"Die Logik '{item.LogicDefinitionName}' passt zu {string.Join(" oder ", matches)}. " +
+                ambiguity = $"Die Logik '{item.LogicDefinitionName}' passt zu {string.Join(" oder ", logicMatches)}. " +
                             $"Für den Export wird '{xmlType}' verwendet; bitte im Vergleich prüfen.";
             }
         }

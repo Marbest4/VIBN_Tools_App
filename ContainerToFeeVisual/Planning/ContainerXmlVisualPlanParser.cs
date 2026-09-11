@@ -334,6 +334,7 @@ internal sealed class ContainerXmlVisualPlanParser(IVisualPlanLogger logger)
             creationRequests: null,
             generationSelections: null,
             signalCreationSelections: null,
+            signalAssignments: null,
             existingInterfaceSelection: null,
             new ReadOnlyCollection<VisualIssue>(issues));
     }
@@ -363,7 +364,8 @@ internal sealed class ContainerXmlVisualPlanParser(IVisualPlanLogger logger)
             string.IsNullOrWhiteSpace(signal) ? address : signal,
             dataType,
             slot,
-            false);
+            false,
+            sourceLocation: address);
         AddNode(nodes, edges, signalNode);
 
         edges.Add(new VisualEdge(

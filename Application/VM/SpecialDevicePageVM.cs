@@ -39,6 +39,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
     private TiaPlcInfo? _selectedTiaPlc;
     private int _selectedDeviceIndex = -1;
     private string _statusText = "SpecialDevices2FEE ist bereit.";
+    private int _deviceGenerationProgress;
+    private string _deviceGenerationProgressText = string.Empty;
 
     public SpecialDevicePageVM(
         ITiaBridgeClient tiaClient,
@@ -589,6 +591,26 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
         StatusText = "Die Special-Device-Warteschlange wurde geleert.";
     }
 
+    public int DeviceGenerationProgress
+    {
+        get => _deviceGenerationProgress;
+        private set
+        {
+            _deviceGenerationProgress = Math.Clamp(value, 0, 100);
+            OnPropertyChanged();
+        }
+    }
+
+    public string DeviceGenerationProgressText
+    {
+        get => _deviceGenerationProgressText;
+        private set
+        {
+            _deviceGenerationProgressText = value;
+            OnPropertyChanged();
+        }
+    }
+
     private void LoadReverseSnapshot()
     {
         var dialog = new OpenFileDialog
@@ -647,17 +669,30 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
 
         IsBusyCreateDevices = true;
         var created = new List<SpecialDevice>();
+        var alreadyPresent = new List<SpecialDevice>();
         var failures = new List<string>();
         try
         {
             // FEE object creation is intentionally serialized. The underlying
             // SDK keeps a shared connection and is more reliable than an
             // unbounded parallel write burst.
-            foreach (var device in SpecialDevices.ToArray())
+            var pendingDevices = SpecialDevices.ToArray();
+            DeviceGenerationProgress = 0;
+            for (var index = 0; index < pendingDevices.Length; index++)
             {
+                var device = pendingDevices[index];
+                DeviceGenerationProgressText =
+                    $"Gerät {index + 1} von {pendingDevices.Length}: {device.DevicePrefix} wird geprüft …";
                 try
                 {
-                    if (await device.CreateAsync())
+                    if (await device.ExistsInFeeAsync())
+                    {
+                        alreadyPresent.Add(device);
+                        _log.Information(
+                            "SpecialDevices2FEE",
+                            $"{device.DevicePrefix}: gleichnamiger Geräte-BasicFrame ist bereits vorhanden; Warteschlangeneintrag wird entfernt.");
+                    }
+                    else if (await device.CreateAsync())
                         created.Add(device);
                     else
                         failures.Add($"{device.DevicePrefix}: FEE hat keine erfolgreiche Erstellung bestätigt.");
@@ -668,6 +703,8 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                     _log.Error("SpecialDevices2FEE", $"Gerät {device.DevicePrefix} konnte nicht erzeugt werden.", exception);
                 }
 
+                DeviceGenerationProgress = (index + 1) * 100 / pendingDevices.Length;
+
                 // A failed attempt can already have created partial FEE
                 // objects. Stop here so later queue entries are not attempted
                 // against an uncertain shared SDK state.
@@ -675,11 +712,14 @@ public sealed class SpecialDevicePageVM : MvvmBase, IAsyncDisposable
                     break;
             }
 
-            foreach (var device in created)
+            foreach (var device in created.Concat(alreadyPresent))
                 SpecialDevices.Remove(device);
             StatusText = failures.Count == 0
-                ? $"{created.Count} Special Device(s) wurden erstellt."
-                : $"{created.Count} Gerät(e) erstellt; {failures.Count} Gerät(e) bleiben zur Prüfung in der Warteschlange.";
+                ? $"{created.Count} Special Device(s) wurden erstellt; {alreadyPresent.Count} bereits vorhandene aus der Warteschlange entfernt."
+                : $"{created.Count} Gerät(e) erstellt, {alreadyPresent.Count} bereits vorhanden; {failures.Count} Gerät(e) bleiben zur Prüfung in der Warteschlange.";
+            DeviceGenerationProgressText = failures.Count == 0
+                ? "FEE-Erzeugung abgeschlossen."
+                : "FEE-Erzeugung mit Fehler beendet; Details stehen im Status und Protokoll.";
         }
         finally
         {

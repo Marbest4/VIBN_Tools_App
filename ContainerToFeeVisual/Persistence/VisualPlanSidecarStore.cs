@@ -6,7 +6,7 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 /// <summary>Versioned, portable representation of user-edited visual-plan data.</summary>
 internal sealed class VisualPlanSidecarDocument
 {
-    public const int CurrentSchemaVersion = 4;
+    public const int CurrentSchemaVersion = 5;
 
     public int SchemaVersion { get; init; } = CurrentSchemaVersion;
 
@@ -21,6 +21,8 @@ internal sealed class VisualPlanSidecarDocument
     public List<VisualGenerationSelection> GenerationSelections { get; init; } = [];
 
     public List<VisualSignalCreationSelection> SignalCreationSelections { get; init; } = [];
+
+    public List<VisualSignalAssignment> SignalAssignments { get; init; } = [];
 
     public VisualExistingInterfaceSelection? ExistingInterfaceSelection { get; init; }
 }
@@ -63,6 +65,7 @@ internal sealed class VisualPlanSidecarStore(IVisualPlanLogger logger)
             CreationRequests = [.. plan.CreationRequests],
             GenerationSelections = [.. plan.GenerationSelections],
             SignalCreationSelections = [.. plan.SignalCreationSelections],
+            SignalAssignments = [.. plan.SignalAssignments],
             ExistingInterfaceSelection = plan.ExistingInterfaceSelection,
         };
 

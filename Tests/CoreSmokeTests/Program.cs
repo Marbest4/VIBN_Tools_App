@@ -881,9 +881,9 @@ static async Task VerifyKanbanizeRefreshApiAsync(string temporaryRoot)
            !handler.Requests.Any(url => url.StartsWith("/api/v2/cards?", StringComparison.Ordinal) &&
                                        url.Contains("fields=", StringComparison.OrdinalIgnoreCase)),
         "The card query must omit the API instance's incompatible fields parameter.");
-    Assert(handler.Requests.Any(url => url.Contains("expand=subtasks", StringComparison.OrdinalIgnoreCase)) &&
+    Assert(handler.Requests.Any(url => url.Contains("expand=custom_fields", StringComparison.OrdinalIgnoreCase)) &&
            handler.Requests.Contains("/api/v2/cards/501/subtasks", StringComparer.Ordinal),
-        "The authoritative card-level endpoint must also be read for web-created KONFIGURATION subtasks.");
+        "The workstation query must load project start fields while the authoritative card-level endpoint remains responsible for KONFIGURATION subtasks.");
 
     using var cache = JsonDocument.Parse(await File.ReadAllTextAsync(
         Path.Combine(cacheRoot, "WorkstationBoardCache.json")));
@@ -1242,7 +1242,7 @@ sealed class KanbanizeRefreshHttpMessageHandler : HttpMessageHandler
         {
             "/api/v2/boards/1541/lanes" => "{\"data\":[{\"lane_id\":28125,\"name\":\"GM12345 Tool PC\"}]}",
             var value when value.StartsWith("/api/v2/cards?board_ids=1541", StringComparison.Ordinal) =>
-                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\",\"start_date\":\"2026-09-01T00:00:00Z\",\"deadline\":\"2026-09-30T00:00:00Z\"}],\"pagination\":{\"all_pages\":1}}}",
+                "{\"data\":{\"data\":[{\"card_id\":501,\"lane_id\":28125,\"column_id\":29373,\"title\":\"Arbeitsplatz KONFIGURATION\",\"subtasks\":[{\"card_id\":601,\"description\":\"STANDORT: Werk 1\"}]},{\"card_id\":502,\"lane_id\":28125,\"column_id\":29375,\"title\":\"GM9000/01-001\",\"custom_fields\":[{\"field_id\":508,\"value\":\"2026-09-01T00:00:00Z\"}],\"deadline\":\"2026-09-30T00:00:00Z\"}],\"pagination\":{\"all_pages\":1}}}",
             "/api/v2/cards/501/subtasks" =>
                 "{\"data\":{\"subtasks\":{\"601\":{\"subtask_id\":601,\"description\":\"STANDORT: Werk 1\"},\"602\":{\"description\":{\"text\":\"SW: TIA V20\"}}}}}",
             var value when value.StartsWith("/api/v2/cards?board_ids=846", StringComparison.Ordinal) =>

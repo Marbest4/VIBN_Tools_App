@@ -32,9 +32,11 @@ public sealed record Fee2SpecialDeviceDiscoveryResult(
     IReadOnlyList<Fee2SpecialDeviceDiscoveryIssue> Issues);
 
 /// <summary>
-/// Reads top-level BasicFrames. Tagged roots use the exact reverse snapshot;
-/// older roots are reconstructed only when a known device logic definition is
-/// identified unambiguously.
+/// Reads every BasicFrame in the scene hierarchy. Tagged roots use the exact
+/// reverse snapshot; older roots are reconstructed only when a known device
+/// logic definition is identified unambiguously. Scanning nested frames is
+/// required because SpecialDevices2FEE roots may be grouped below a project
+/// frame in older models.
 /// </summary>
 public sealed class Fee2SpecialDevicesService
 {
@@ -61,13 +63,21 @@ public sealed class Fee2SpecialDevicesService
         var roots = new List<Fee2SpecialDeviceRoot>();
         var issues = new List<Fee2SpecialDeviceDiscoveryIssue>();
         var ignored = 0;
+        var logicDefinitions = await Services.ApiInstance.Logic.GetAllAvailableLogicDefinitionsAsync();
+        var logicNames = logicDefinitions
+            .Where(item => Guid.TryParse(item.Guid, out _))
+            .GroupBy(item => Guid.Parse(item.Guid))
+            .ToDictionary(group => group.Key, group => group.First().Name ?? string.Empty);
+        var knownDevices = BuildKnownDeviceDefinitions();
         var guidValues = await Services.ApiInstance.Object
             .GetSceneObjectGuidsOfTypeAsync(nameof(BasicFrame));
-        var topLevel = await FeeTopLevelBasicFrameDiscovery.DiscoverAsync(guidValues, cancellationToken);
-        issues.AddRange(topLevel.Issues.Select(message =>
-            new Fee2SpecialDeviceDiscoveryIssue(null, string.Empty, message)));
+        var basicFrames = guidValues
+            .Select(value => Guid.TryParse(value, out var guid) ? guid : Guid.Empty)
+            .Where(guid => guid != Guid.Empty)
+            .Distinct()
+            .ToArray();
 
-        foreach (var guid in topLevel.Roots)
+        foreach (var guid in basicFrames)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var name = guid.ToString("D");
@@ -77,17 +87,15 @@ public sealed class Fee2SpecialDevicesService
                     guid,
                     nameof(FS.SDK.SceneObject.Name));
                 name = Services.ApiInstance.XmlHelper.ConvertToString(nameXml);
-                var tagsXml = await Services.ApiInstance.Object.GetPropertyAsync(
-                    guid,
-                    nameof(TagComponent.TagEntries),
-                    nameof(TagComponent));
-                var tags = Services.ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+                var tags = await ReadOptionalTagsAsync(guid);
                 if (!tags.ContainsKey(FeeSpecialDeviceProvenanceCodec.SchemaKey))
                 {
                     var reconstructed = await TryReconstructAsync(
                         guid,
                         name,
                         variables.Values.ToArray(),
+                        logicNames,
+                        knownDevices,
                         cancellationToken);
                     if (reconstructed.Root is null)
                     {
@@ -146,16 +154,54 @@ public sealed class Fee2SpecialDevicesService
             }
         }
 
+        // A top-level ancestor can contain exactly the same device logic as its
+        // nested device frame. Prefer provenance, then the frame whose own name
+        // contains the reconstructed prefix, so one physical device is shown once.
+        var uniqueRoots = roots
+            .GroupBy(root => (
+                Prefix: root.Snapshot.Prefix.Trim().ToUpperInvariant(),
+                Manufacturer: root.Snapshot.Manufacturer.Trim().ToUpperInvariant(),
+                DeviceType: root.Snapshot.DeviceType.Trim().ToUpperInvariant()))
+            .Select(group => group
+                .OrderByDescending(root => root.HasProvenance)
+                .ThenByDescending(root => root.Name.Contains(
+                    root.Snapshot.Prefix,
+                    StringComparison.OrdinalIgnoreCase))
+                .ThenBy(root => root.Name.Length)
+                .First())
+            .OrderBy(root => root.Name, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
         return new Fee2SpecialDeviceDiscoveryResult(
-            roots.OrderBy(root => root.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
+            uniqueRoots,
             ignored,
             issues);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, string>> ReadOptionalTagsAsync(Guid guid)
+    {
+        try
+        {
+            var tagsXml = await Services.ApiInstance!.Object.GetPropertyAsync(
+                guid,
+                nameof(TagComponent.TagEntries),
+                nameof(TagComponent));
+            return Services.ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+        }
+        catch
+        {
+            // Legacy/manual BasicFrames may not own a TagComponent at all.
+            // Missing provenance must lead to structural reconstruction, not
+            // to dropping the node from discovery.
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
     }
 
     private static async Task<(Fee2SpecialDeviceRoot? Root, string? Issue)> TryReconstructAsync(
         Guid rootGuid,
         string rootName,
         IReadOnlyList<FeeInterfaceSignal> variables,
+        IReadOnlyDictionary<Guid, string> logicNames,
+        IReadOnlyList<KnownDeviceDefinition> knownDevices,
         CancellationToken cancellationToken)
     {
         var childGuids = (await ApiInstance!.Object
@@ -167,12 +213,6 @@ public sealed class Fee2SpecialDevicesService
             return (null, null);
 
         var xmlTexts = (await ApiInstance.Object.GetSceneObjectsAsXmlAsync(childGuids)).ToArray();
-        var logicDefinitions = await ApiInstance.Logic.GetAllAvailableLogicDefinitionsAsync();
-        var logicNames = logicDefinitions
-            .Where(item => Guid.TryParse(item.Guid, out _))
-            .GroupBy(item => Guid.Parse(item.Guid))
-            .ToDictionary(group => group.Key, group => group.First().Name ?? string.Empty);
-        var knownDevices = BuildKnownDeviceDefinitions();
         var matches = new List<(Guid LogicGuid, string ObjectName, KnownDeviceDefinition Device)>();
         for (var index = 0; index < Math.Min(childGuids.Length, xmlTexts.Length); index++)
         {

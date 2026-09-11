@@ -85,6 +85,95 @@ namespace VIBN_Tools.SpecialDevices
 
 
         // Create Special Device
+        public async Task<bool> ExistsInFeeAsync()
+        {
+            var expectedName = DeviceBasicFrame?.Name?.Trim();
+            if (string.IsNullOrWhiteSpace(expectedName))
+                return false;
+
+            var guidTexts = (await ApiInstance.Object
+                    .GetSceneObjectGuidsOfTypeAsync(nameof(FS.SDK.Scene.Objects.BasicFrame)))
+                .ToArray();
+            if (guidTexts.Length == 0)
+                return false;
+
+            var names = (await ApiInstance.Object.GetPropertiesAsync(
+                    guidTexts,
+                    nameof(FS.SDK.SceneObject.Name)))
+                .Select(ApiInstance.XmlHelper.ConvertToString)
+                .ToArray();
+            var matchingRoots = guidTexts
+                .Zip(names, (guid, name) => (GuidText: guid, Name: name))
+                .Where(item => string.Equals(
+                    item.Name?.Trim(),
+                    expectedName,
+                    StringComparison.OrdinalIgnoreCase))
+                .Where(item => Guid.TryParse(item.GuidText, out _))
+                .ToArray();
+            if (matchingRoots.Length == 0)
+                return false;
+
+            var definitions = await ApiInstance.Logic.GetAllAvailableLogicDefinitionsAsync();
+            var expectedDefinitionGuid = definitions
+                .Where(definition => string.Equals(
+                    definition.Name,
+                    DeviceLogicObject?.LogicDefinitionName,
+                    StringComparison.OrdinalIgnoreCase))
+                .Select(definition => Guid.TryParse(definition.Guid, out var guid) ? guid : Guid.Empty)
+                .FirstOrDefault(guid => guid != Guid.Empty);
+
+            foreach (var root in matchingRoots)
+            {
+                var rootGuid = Guid.Parse(root.GuidText);
+                try
+                {
+                    var tagsXml = await ApiInstance.Object.GetPropertyAsync(
+                        rootGuid,
+                        nameof(FS.SDK.Components.TagComponent.TagEntries),
+                        nameof(FS.SDK.Components.TagComponent));
+                    var tags = ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+                    if (FeeSpecialDeviceProvenanceCodec.TryRead(tags, out _, out _))
+                        return true;
+                }
+                catch
+                {
+                    // Older models do not necessarily have a TagComponent.
+                    // Fall back to the known device logic below.
+                }
+
+                if (expectedDefinitionGuid == Guid.Empty)
+                    continue;
+                var children = (await ApiInstance.Object
+                        .GetAllChildrenFromSceneObjectAsync(root.GuidText))
+                    .Where(value => Guid.TryParse(value, out _))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+                if (children.Length == 0)
+                    continue;
+                var xmlTexts = await ApiInstance.Object.GetSceneObjectsAsXmlAsync(children);
+                if (xmlTexts.Any(xml =>
+                {
+                    try
+                    {
+                        var value = System.Xml.Linq.XElement.Parse(xml)
+                            .Element("Logic")?
+                            .Element("PersistedLogicGuid")?
+                            .Value;
+                        return Guid.TryParse(value, out var guid) && guid == expectedDefinitionGuid;
+                    }
+                    catch (System.Xml.XmlException)
+                    {
+                        return false;
+                    }
+                }))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         public async Task<bool> CreateAsync()
         {
             if (!await CreateDeviceBaseAsync())

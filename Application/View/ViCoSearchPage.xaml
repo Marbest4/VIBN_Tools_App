@@ -5,6 +5,23 @@
     <UserControl.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
         <behaviors:BindingProxy x:Key="ViewModelProxy" Data="{Binding}" />
+        <DataTemplate x:Key="ViCoProjectCardTemplate">
+            <TextBlock Margin="2,1" TextWrapping="Wrap" ToolTip="{Binding DateSummary}">
+                <Hyperlink IsEnabled="{Binding CanOpenCard}"
+                           Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                           CommandParameter="{Binding}">
+                    <Run Text="{Binding Title, Mode=OneWay}" />
+                </Hyperlink>
+                <TextBlock.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Zur Kanbanize-Karte springen"
+                                  IsEnabled="{Binding PlacementTarget.DataContext.CanOpenCard, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                  Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                    </ContextMenu>
+                </TextBlock.ContextMenu>
+            </TextBlock>
+        </DataTemplate>
     </UserControl.Resources>
 
     <Grid Margin="14">
@@ -157,26 +174,34 @@
                                             Visibility="{Binding Data.PlanningColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ItemsControl ItemsSource="{Binding PlanningProjects}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Margin="1" Padding="4,2" HorizontalContentAlignment="Left"
-                                                    Content="{Binding Title}" ToolTip="{Binding DateSummary}"
-                                                    IsEnabled="{Binding CanOpenCard}"
-                                                    Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
-                                                    CommandParameter="{Binding}">
-                                                <Button.ContextMenu>
-                                                    <ContextMenu>
-                                                        <MenuItem Header="Zur Kanbanize-Karte springen"
-                                                                  IsEnabled="{Binding PlacementTarget.DataContext.CanOpenCard, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                                                  Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
-                                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
-                                                    </ContextMenu>
-                                                </Button.ContextMenu>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <Grid>
+                                    <ItemsControl ItemsSource="{Binding PlanningProjects}"
+                                                  ItemTemplate="{StaticResource ViCoProjectCardTemplate}">
+                                        <ItemsControl.Style>
+                                            <Style TargetType="ItemsControl">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UseCollapsedActiveProjectPresentation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ItemsControl.Style>
+                                    </ItemsControl>
+                                    <Expander Header="{Binding PlanningProjectHeader}">
+                                        <Expander.Style>
+                                            <Style TargetType="Expander">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UseCollapsedActiveProjectPresentation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Expander.Style>
+                                        <ItemsControl Margin="4,3,2,4" ItemsSource="{Binding PlanningProjects}"
+                                                      ItemTemplate="{StaticResource ViCoProjectCardTemplate}" />
+                                    </Expander>
+                                </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
@@ -184,33 +209,45 @@
                                             Visibility="{Binding Data.WorkingColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <ItemsControl ItemsSource="{Binding WorkingProjects}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Button Margin="1" Padding="4,2" HorizontalContentAlignment="Left"
-                                                    Content="{Binding Title}" ToolTip="{Binding DateSummary}"
-                                                    IsEnabled="{Binding CanOpenCard}"
-                                                    Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
-                                                    CommandParameter="{Binding}">
-                                                <Button.ContextMenu>
-                                                    <ContextMenu>
-                                                        <MenuItem Header="Zur Kanbanize-Karte springen"
-                                                                  IsEnabled="{Binding PlacementTarget.DataContext.CanOpenCard, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
-                                                                  Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
-                                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
-                                                    </ContextMenu>
-                                                </Button.ContextMenu>
-                                            </Button>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <Grid>
+                                    <ItemsControl ItemsSource="{Binding WorkingProjects}"
+                                                  ItemTemplate="{StaticResource ViCoProjectCardTemplate}">
+                                        <ItemsControl.Style>
+                                            <Style TargetType="ItemsControl">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UseCollapsedActiveProjectPresentation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </ItemsControl.Style>
+                                    </ItemsControl>
+                                    <Expander Header="{Binding WorkingProjectHeader}">
+                                        <Expander.Style>
+                                            <Style TargetType="Expander">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UseCollapsedActiveProjectPresentation}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Expander.Style>
+                                        <ItemsControl Margin="4,3,2,4" ItemsSource="{Binding WorkingProjects}"
+                                                      ItemTemplate="{StaticResource ViCoProjectCardTemplate}" />
+                                    </Expander>
+                                </Grid>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Startdatum" Binding="{Binding ProjectStartSummary, Mode=OneWay}" Width="220" SortMemberPath="ProjectStartSummary"
-                                        Visibility="{Binding Data.StartColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
-                    <DataGridTextColumn Header="Enddatum" Binding="{Binding ProjectEndSummary, Mode=OneWay}" Width="220" SortMemberPath="ProjectEndSummary"
-                                        Visibility="{Binding Data.EndColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <DataGridTemplateColumn Header="Startdatum" Width="260" SortMemberPath="ProjectStartSummary"
+                                            Visibility="{Binding Data.StartColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Margin="2" Text="{Binding ProjectStartSummary}" TextWrapping="Wrap" ToolTip="{Binding ProjectStartSummary}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTemplateColumn Header="Enddatum" Width="260" SortMemberPath="ProjectEndSummary"
+                                            Visibility="{Binding Data.EndColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DataGridTemplateColumn.CellTemplate><DataTemplate><TextBlock Margin="2" Text="{Binding ProjectEndSummary}" TextWrapping="Wrap" ToolTip="{Binding ProjectEndSummary}" /></DataTemplate></DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
                     <DataGridTemplateColumn Header="Abgeschlossene Projekte" Width="230" SortMemberPath="AdditionalProjects"
                                             Visibility="{Binding Data.CompletedColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>

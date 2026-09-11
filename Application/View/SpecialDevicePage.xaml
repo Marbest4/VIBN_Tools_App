@@ -58,7 +58,7 @@
 
             <GroupBox Grid.Column="2" Header="Warteschlange / in FEE erzeugen" Padding="12">
                 <Grid>
-                    <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="*" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
                     <DataGrid ItemsSource="{Binding SpecialDevices}" SelectedIndex="{Binding SelectedDeviceIndex}" AutoGenerateColumns="False" IsReadOnly="True" EnableRowVirtualization="True" EnableColumnVirtualization="True" RowHeight="30" ColumnHeaderHeight="34">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Präfix" Binding="{Binding DevicePrefix, Mode=OneWay}" Width="*" MinWidth="120" />
@@ -75,6 +75,11 @@
                         <Button MinWidth="115" MinHeight="38" Margin="7,0,0,0" Content="Alle entfernen" Command="{Binding DeleteAllDevicesCommand}" IsEnabled="{Binding CanModifyDeviceQueue}" ToolTip="{Binding DeviceQueueUnavailableReason}" ToolTipService.ShowOnDisabled="True" />
                         <TextBlock Margin="15,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold" Text="{Binding SpecialDevices.Count, StringFormat={}Anzahl: {0}}" />
                     </WrapPanel>
+                    <Grid Grid.Row="2" Margin="0,8,0,0" Visibility="{Binding IsBusyCreateDevices, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                        <ProgressBar Height="9" Minimum="0" Maximum="100" Value="{Binding DeviceGenerationProgress, Mode=OneWay}" />
+                        <TextBlock Grid.Row="1" Margin="0,4,0,0" Text="{Binding DeviceGenerationProgressText}" TextWrapping="Wrap" />
+                    </Grid>
                 </Grid>
             </GroupBox>
         </Grid>

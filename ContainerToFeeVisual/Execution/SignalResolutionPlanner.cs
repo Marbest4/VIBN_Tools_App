@@ -6,7 +6,8 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 public sealed record SignalResolutionRequest(
     string ContainerId,
     string ContainerName,
-    FeeInterfaceSignal Signal);
+    FeeInterfaceSignal Signal,
+    string? NodeId = null);
 
 public sealed record ExistingSignalBinding(
     SignalResolutionRequest Request,
@@ -66,7 +67,8 @@ public static class SignalResolutionPlanner
 {
     public static SignalResolutionPlan Build(
         IEnumerable<SignalResolutionRequest> requests,
-        IEnumerable<FeeInterface> interfaces)
+        IEnumerable<FeeInterface> interfaces,
+        IEnumerable<VisualSignalAssignment>? manualAssignments = null)
     {
         ArgumentNullException.ThrowIfNull(requests);
         ArgumentNullException.ThrowIfNull(interfaces);
@@ -80,9 +82,36 @@ public static class SignalResolutionPlanner
         var missing = new List<SignalResolutionRequest>();
         var missingAliases = new List<MissingSignalAlias>();
         var issues = new List<VisualIssue>();
+        var manualByNode = (manualAssignments ?? [])
+            .GroupBy(item => item.SignalNodeId, StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Last(), StringComparer.Ordinal);
 
         foreach (var request in requests)
         {
+            if (request.NodeId is not null && manualByNode.TryGetValue(request.NodeId, out var manual))
+            {
+                var manualMatches = available.Where(item => string.Equals(
+                        item.Signal.Guid.ToString("D"),
+                        manual.FeeSignalGuid,
+                        StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+                if (manualMatches.Length == 1)
+                {
+                    bindings.Add(new ExistingSignalBinding(
+                        request,
+                        manualMatches[0].Signal,
+                        manualMatches[0].Parent));
+                    continue;
+                }
+
+                issues.Add(new VisualIssue(
+                    VisualIssueSeverity.Error,
+                    "MANUAL_SIGNAL_NOT_AVAILABLE",
+                    $"Das ausdrücklich zugeordnete FEE-Signal '{manual.FeeSignalTag}' ist nicht mehr verfügbar. FEE aktualisieren und erneut zuordnen.",
+                    request.NodeId));
+                continue;
+            }
+
             var result = FindMatches(request.Signal, available);
             if (result.Conflict is not null)
             {
@@ -203,7 +232,9 @@ public static class SignalResolutionPlanner
             candidates.Take(5).Select(item =>
                 $"{item.Parent.Name}: {SignalIdentity(item.Signal)} [{SignalLocation(item.Signal)}]"));
         return $"Signal '{SignalIdentity(request.Signal)}' aus Container '{request.ContainerName}' " +
-               $"konnte nicht eindeutig und widerspruchsfrei aufgelöst werden. Treffer: {locations}.";
+               $"erwartet die Quelle '{SignalLocation(request.Signal)}', konnte aber nicht eindeutig und " +
+               $"widerspruchsfrei aufgelöst werden. Vorhandene Treffer: {locations}. " +
+               "Die bestehende Variable wird nicht automatisch überschrieben oder mit einer abweichenden Quelle verknüpft.";
     }
 
     private static bool HasLocation(FeeInterfaceSignal signal) =>

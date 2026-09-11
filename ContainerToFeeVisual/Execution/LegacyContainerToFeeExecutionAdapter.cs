@@ -19,6 +19,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
         IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
         IReadOnlyList<VisualIssue> acceptedValidationErrors,
+        IProgress<VisualGenerationProgress>? progress,
         CancellationToken cancellationToken)
     {
         if (Services.Connection?.CanUseFeeFeatures != true)
@@ -27,20 +28,9 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new VisualGenerationProgress(5, "Generierungsplan und ModelValidation werden geprüft …"));
             var forcedRun = acceptedValidationErrors.Any(issue => issue.Severity == VisualIssueSeverity.Error);
-            var excludedContainerIds = ResolveAffectedContainers(plan, acceptedValidationErrors);
-            var unscopedErrors = acceptedValidationErrors
-                .Where(issue => issue.Severity == VisualIssueSeverity.Error)
-                .Where(issue => ResolveAffectedContainer(plan, issue.NodeId) is null)
-                .ToArray();
-            if (forcedRun && unscopedErrors.Length > 0)
-            {
-                return new VisualExecutionResult(
-                    false,
-                    "Der bestätigte Fehler betrifft den gesamten Plan und kann keinem Container sicher zugeordnet werden. " +
-                    "Eine Teilgenerierung wäre nicht deterministisch.",
-                    unscopedErrors);
-            }
+            var excludedContainerIds = new HashSet<string>(StringComparer.Ordinal);
 
             var binding = RuntimeVisualPlanBinder.Bind(plan, runtimeObjects, excludedContainerIds);
             if (!binding.Success)
@@ -67,23 +57,18 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                     "Die Generierung wurde vor dem Schreiben abgebrochen, weil Voraussetzungen der ModelValidation fehlen.",
                     modelPreflightIssues);
             }
-            if (forcedRun)
-            {
-                foreach (var containerId in modelPreflightIssues
-                             .Where(issue => issue.Severity == VisualIssueSeverity.Error)
-                             .Select(issue => issue.NodeId)
-                             .OfType<string>())
-                    excludedContainerIds.Add(containerId);
-                selectedBindings = selectedBindings
-                    .Where(item => !excludedContainerIds.Contains(item.PlanNode.Id))
-                    .ToArray();
-            }
+            // In an explicitly confirmed forced run the user requested a
+            // best-effort creation of these containers. Model preflight errors
+            // remain persisted below the root instead of silently excluding the
+            // affected container. Deterministic runtime conflicts still stop.
+            var usedSignalNodeIds = new HashSet<string>(StringComparer.Ordinal);
             var signalRequests = selectedBindings
                 .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
                     new SignalResolutionRequest(
                         binding.PlanNode.Id,
                         binding.PlanNode.Name,
-                        signal)))
+                        signal,
+                        FindSignalNodeId(plan, binding.PlanNode.Id, signal, usedSignalNodeIds))))
                 .Concat(binding.UnknownSignals.Select(signal =>
                     new SignalResolutionRequest(
                         "unknown-signals",
@@ -92,7 +77,8 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 .ToArray();
             var signalPlan = SignalResolutionPlanner.Build(
                 signalRequests,
-                runtimeInterfaces.Values);
+                runtimeInterfaces.Values,
+                plan.SignalAssignments);
             if (!signalPlan.IsValid)
             {
                 return new VisualExecutionResult(
@@ -101,6 +87,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                     signalPlan.Issues);
             }
             signalPlan.ApplyExistingBindings();
+            progress?.Report(new VisualGenerationProgress(18, "Vorhandene Signale wurden eindeutig aufgelöst."));
 
             // Missing variables require the installed generation provider, not
             // an existing interface instance with a fixed display name. The
@@ -114,10 +101,18 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             if (signalPlan.MissingSignals.Count > 0)
             {
                 var providers = await Services.ApiInstance.Interface.GetProvidersOfProjectAsync();
-                var providerResolution = GrobGenerationInterfaceResolver.ResolveProvider(
-                    providers.Select(provider => new GrobGenerationProviderIdentity(
+                var providerIdentities = providers.Select(provider => new GrobGenerationProviderIdentity(
                         provider.ProviderGuid,
-                        provider.ProviderName ?? string.Empty)));
+                        provider.ProviderName ?? string.Empty))
+                    .Concat(runtimeInterfaces.Values
+                        .Where(item => item.ProviderGuid != Guid.Empty)
+                        .Select(item => new GrobGenerationProviderIdentity(
+                            item.ProviderGuid,
+                            item.ProviderName ?? string.Empty)))
+                    .DistinctBy(item => item.ProviderGuid)
+                    .ToArray();
+                var providerResolution = GrobGenerationInterfaceResolver.ResolveProvider(
+                    providerIdentities);
                 if (!providerResolution.IsValid)
                 {
                     var issue = providerResolution.Issue!;
@@ -130,6 +125,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                         "Das Grob Generation Interface konnte nicht als neue FEE-Interfaceinstanz angelegt werden.",
                         "GROB_GENERATION_INTERFACE_CREATE_FAILED");
                 }
+                progress?.Report(new VisualGenerationProgress(28, "Grob Generation Interface wurde bereitgestellt."));
             }
 
             var selectedContainers = selectedBindings
@@ -157,6 +153,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 }
             }
             signalPlan.ApplyCreatedBindings(generationInterface);
+            progress?.Report(new VisualGenerationProgress(40, "Signale wurden wiederverwendet oder erzeugt."));
 
             if (selectedContainers.Length > 0 || forcedRun)
             {
@@ -203,7 +200,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 var basicFrame = new FeeBasicFrame
                 {
                     Name = forcedRun
-                        ? $"Auto Generated (at {timestamp}) - Fehler übersprungen"
+                        ? $"Auto Generated (at {timestamp}) - Trotz Validierungsfehlern erstellt"
                         : $"Auto Generated (at {timestamp})",
                     PersistentTags = persistentTags,
                 };
@@ -211,10 +208,41 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 await basicFrame.SendAndWaitAsync();
                 cancellationToken.ThrowIfCancellationRequested();
 
+                if (forcedRun)
+                {
+                    var persistedErrors = acceptedValidationErrors
+                        .Concat(modelPreflightIssues)
+                        .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                        .DistinctBy(issue => (issue.Code, issue.Message, issue.NodeId))
+                        .ToArray();
+                    for (var index = 0; index < persistedErrors.Length; index++)
+                    {
+                        var error = persistedErrors[index];
+                        var errorText = $"[{error.Code}] {error.Message}";
+                        var errorFrame = new FeeBasicFrame
+                        {
+                            Parent = basicFrame,
+                            Name = $"Fehler {index + 1:000} - {Truncate(errorText, 160)}",
+                            PersistentTags = new Dictionary<string, string>(StringComparer.Ordinal)
+                            {
+                                ["vibn.validation.error.code"] = error.Code,
+                                ["vibn.validation.error.message"] = error.Message,
+                                ["vibn.validation.error.node"] = error.NodeId ?? string.Empty,
+                            },
+                        };
+                        await errorFrame.CreateAsync();
+                        await errorFrame.SendAndWaitAsync();
+                    }
+                }
+                progress?.Report(new VisualGenerationProgress(50, "Generierungs-BasicFrame und Fehlerhinweise wurden erstellt."));
+
                 await ContainerToFeeService.CreateAllContainersAsync(
                     sortedContainers,
                     generationInterface,
-                    basicFrame);
+                    basicFrame,
+                    (completed, total, name) => progress?.Report(new VisualGenerationProgress(
+                        total == 0 ? 90 : 50 + completed * 40 / total,
+                        $"Container {completed} von {total} erstellt: {name}")));
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -236,10 +264,11 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 $"{signalPlan.MissingSignals.Count} neu zu erzeugende Signale), " +
                 $"{binding.UnknownSignals.Count} unbekannte Signale. " +
                 "Der erzeugte BasicFrame enthält Container2FEE-Provenienz für FEE2Container.");
+            progress?.Report(new VisualGenerationProgress(100, "FEE-Generierung vollständig abgeschlossen."));
             return new VisualExecutionResult(
                 true,
                 (forcedRun
-                    ? $"ACHTUNG: Teilgenerierung mit bestätigten Fehlern abgeschlossen; {excludedContainerIds.Count} fehlerhafte Container wurden übersprungen. "
+                    ? "ACHTUNG: Bestätigte Generierung trotz Validierungsfehlern abgeschlossen. "
                     : "Generierung abgeschlossen: ") +
                 $"{selectedContainers.Length} Container wurden verarbeitet; " +
                 $"{signalPlan.ExistingBindings.Count} Signale wurden wiederverwendet und " +
@@ -265,6 +294,32 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
 
     private static VisualExecutionResult Failure(string message, string code, string? nodeId = null) =>
         new(false, message, [new VisualIssue(VisualIssueSeverity.Error, code, message, nodeId)]);
+
+    private static string Truncate(string value, int maximumLength) =>
+        value.Length <= maximumLength ? value : value[..(maximumLength - 1)] + "…";
+
+    private static string? FindSignalNodeId(
+        VisualPlan plan,
+        string containerId,
+        FeeInterfaceSignal signal,
+        ISet<string> usedNodeIds)
+    {
+        var identity = !string.IsNullOrWhiteSpace(signal.Tag)
+            ? signal.Tag
+            : !string.IsNullOrWhiteSpace(signal.Path)
+                ? signal.Path
+                : signal.Address;
+        var candidate = plan.Nodes
+            .Where(node => node.ContainerId == containerId &&
+                           node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal &&
+                           !usedNodeIds.Contains(node.Id))
+            .OrderByDescending(node => string.Equals(node.Name, identity, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(node => string.Equals(node.TypeName, signal.IOTypeString, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+        if (candidate is not null)
+            usedNodeIds.Add(candidate.Id);
+        return candidate?.Id;
+    }
 
     private static HashSet<string> ResolveAffectedContainers(
         VisualPlan plan,

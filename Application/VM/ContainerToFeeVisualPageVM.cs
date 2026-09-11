@@ -36,6 +36,9 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     private string _sourceXmlPath = string.Empty;
     private bool _isApplyingPlan;
     private IReadOnlyList<VisualIssue> _lastExecutionIssues = Array.Empty<VisualIssue>();
+    private int _generationProgress;
+    private string _generationProgressText = string.Empty;
+    private readonly HashSet<string> _verifiedContainerIds = new(StringComparer.Ordinal);
 
     public ContainerToFeeVisualPageVM()
         : this(new ContainerToFeeVisualPlanService(), ResolveConnection(), ApplicationLogService.Instance)
@@ -126,6 +129,8 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     public ObservableCollection<ContainerToFeeVisualFeeObjectVM> AvailableFeeObjects { get; } = new();
 
     public ObservableCollection<ContainerToFeeVisualFeeInterfaceVM> AvailableFeeInterfaces { get; } = new();
+
+    public ObservableCollection<VisualFeeSignal> AvailableFeeSignals { get; } = new();
 
     public ObservableCollection<VisualIssue> Issues { get; } = new();
 
@@ -471,12 +476,23 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
                 await _planService.DiscoverFeeInterfacesAsync(cancellationToken);
             RefreshFeeObjectProjection(objects);
             RefreshFeeInterfaceProjection(interfaces);
-            FeeObjectsView.Refresh();
+            ReplaceCollection(AvailableFeeSignals, _planService.DiscoveredFeeSignals);
+            // Auto-assignment raises PlanChanged and rebuilds the tree. Apply
+            // live discovery colours only afterwards so complete-container
+            // verification is not lost again in that rebuild.
             int automaticAssignments = _planService.AutoAssignMatches();
+            ApplyDiscoveredSignalStates(_planService.DiscoveredFeeSignals);
+            var verifiedContainers = await _planService
+                .DiscoverVerifiedContainerIdsAsync(cancellationToken);
+            _verifiedContainerIds.Clear();
+            _verifiedContainerIds.UnionWith(verifiedContainers);
+            ApplyVerifiedContainerStates(verifiedContainers);
+            FeeObjectsView.Refresh();
             StatusText = automaticAssignments > 0
-                ? $"{objects.Count} FEE-SimObjects und {interfaces.Count} Interfaces geladen; " +
-                  $"{automaticAssignments} automatisch zugeordnet."
-                : $"{objects.Count} FEE-SimObjects und {interfaces.Count} Interfaces geladen.";
+                ? $"{objects.Count} FEE-SimObjects, {_planService.DiscoveredFeeSignals.Count} Signale und {interfaces.Count} Interfaces geladen; " +
+                  $"{automaticAssignments} automatisch zugeordnet; {verifiedContainers.Count} Container vollständig verifiziert."
+                : $"{objects.Count} FEE-SimObjects, {_planService.DiscoveredFeeSignals.Count} Signale und {interfaces.Count} Interfaces geladen; " +
+                  $"{verifiedContainers.Count} Container vollständig verifiziert.";
             _log.Information(LogArea, StatusText);
             InvalidateCommands();
         });
@@ -520,10 +536,11 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
                 "ACHTUNG: Der Plan ist ungültig. Eine reguläre Generierung ist gesperrt." +
                 Environment.NewLine + Environment.NewLine + details +
                 Environment.NewLine + Environment.NewLine +
-                "Wenn Sie trotzdem fortfahren, werden eindeutig betroffene Container NICHT erzeugt. " +
-                "Der erzeugte erste BasicFrame erhält den Zusatz „Fehler übersprungen“; alle bestätigten " +
-                "Fehler werden als persistente Text-Tags gespeichert. Globale, nicht sicher zuordenbare " +
-                "Fehler brechen den Vorgang weiterhin ab." +
+                "Wenn Sie trotzdem fortfahren, wird eine ausdrücklich bestätigte Best-Effort-Generierung " +
+                "auch für auffällige Container versucht. Der erzeugte erste BasicFrame erhält den Zusatz " +
+                "„Trotz Validierungsfehlern erstellt“. Zusätzlich wird pro bestätigtem Fehler ein eigener " +
+                "BasicFrame als Kind mit Fehlercode und Meldung angelegt. Nicht deterministisch auflösbare " +
+                "Laufzeitkonflikte (zum Beispiel widersprüchliche Signale) brechen weiterhin sicher ab." +
                 Environment.NewLine + Environment.NewLine +
                 "Fehlerhafte Teilgenerierung ausdrücklich starten?",
                 "UNGÜLTIGE GENERIERUNG ERZWINGEN",
@@ -541,16 +558,39 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
         await RunBusyAsync("Container werden mit dem bestehenden Executor erzeugt …", async cancellationToken =>
         {
-            VisualExecutionResult result = await _planService.ExecuteAsync(acceptedErrors, cancellationToken);
+            GenerationProgress = 0;
+            GenerationProgressText = "Generierung wird vorbereitet …";
+            var progress = new Progress<VisualGenerationProgress>(update =>
+            {
+                GenerationProgress = update.Percent;
+                GenerationProgressText = update.Message;
+            });
+            VisualExecutionResult result = await _planService.ExecuteAsync(
+                acceptedErrors,
+                progress,
+                cancellationToken);
             _lastExecutionIssues = result.Issues
                 .Where(issue => issue.Severity == VisualIssueSeverity.Error)
                 .ToArray();
             PublishIssues(result.Issues);
             StatusText = result.Message;
             if (result.Success)
+            {
+                MarkSelectedTreeNodesVerified();
+                GenerationProgress = 100;
+                GenerationProgressText = "FEE-Generierung abgeschlossen.";
                 _log.Information(LogArea, result.Message);
+                MessageBox.Show(
+                    result.Message,
+                    "Container2FEE Visual",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
             else
+            {
+                GenerationProgressText = "Generierung nicht vollständig abgeschlossen.";
                 _log.Warning(LogArea, result.Message);
+            }
         });
     }
 
@@ -588,6 +628,26 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         _log.Information(LogArea, StatusText);
     }
 
+    public int GenerationProgress
+    {
+        get => _generationProgress;
+        private set
+        {
+            _generationProgress = Math.Clamp(value, 0, 100);
+            OnPropertyChanged();
+        }
+    }
+
+    public string GenerationProgressText
+    {
+        get => _generationProgressText;
+        private set
+        {
+            _generationProgressText = value;
+            OnPropertyChanged();
+        }
+    }
+
     private void SetAllCreationRequested(bool requested)
     {
         var changed = _planService.SetAllCreationRequested(requested);
@@ -611,6 +671,23 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
     private void HandleDrop(ContainerToFeeVisualDropRequest? request)
     {
+        if (request?.Source is VisualFeeSignal signal &&
+            request.Target is ContainerToFeeVisualTreeNodeVM signalTarget &&
+            signalTarget.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal)
+        {
+            var signalResult = _planService.TryAssignSignal(signalTarget.Id, signal.GuidString);
+            PublishIssues(signalResult.Issues);
+            if (!signalResult.Success)
+            {
+                Reject(signalResult.Message);
+                return;
+            }
+            signalTarget.ApplyExecutionState(ContainerToFeeVisualNodeState.Verified);
+            StatusText = signalResult.Message;
+            _log.Information(LogArea, signalResult.Message);
+            return;
+        }
+
         if (request?.Target is not ContainerToFeeVisualTargetVM target)
             return;
 
@@ -641,7 +718,16 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
     private bool CanHandleDrop(ContainerToFeeVisualDropRequest? request)
     {
-        if (IsBusy || request?.Target is not ContainerToFeeVisualTargetVM target)
+        if (IsBusy || request is null)
+            return false;
+
+        if (request.Source is VisualFeeSignal &&
+            request.Target is ContainerToFeeVisualTreeNodeVM signalTarget)
+        {
+            return signalTarget.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal;
+        }
+
+        if (request.Target is not ContainerToFeeVisualTargetVM target)
             return false;
 
         return request.Source switch
@@ -741,6 +827,8 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     {
         string? selectedNodeId = SelectedTreeNode?.Id;
         string? selectedTargetId = SelectedTarget?.Id;
+        if (!string.Equals(SourceXmlPath, plan.SourceXmlPath, StringComparison.OrdinalIgnoreCase))
+            _verifiedContainerIds.Clear();
         _isApplyingPlan = true;
         try
         {
@@ -750,6 +838,9 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             ReplaceCollection(TreeRoots, plan.Roots.Select(node => BuildTree(node, plan, validation.Issues)));
             RefreshFeeObjectProjection(_planService.DiscoveredFeeObjects);
             RefreshFeeInterfaceProjection(_planService.DiscoveredFeeInterfaces);
+            ReplaceCollection(AvailableFeeSignals, _planService.DiscoveredFeeSignals);
+            ApplyDiscoveredSignalStates(_planService.DiscoveredFeeSignals);
+            ApplyVerifiedContainerStates(_verifiedContainerIds);
             PublishIssues(validation.Issues);
             ApplyTreeFilter();
 
@@ -795,7 +886,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             node.Children.Select(child => BuildTree(child, plan, issues)),
             plan.IsGenerationSelected(node.Id),
             node.Kind == VisualNodeKind.Container && ContainerMetadataCatalog.TryGet(node.TypeName, out _),
-            GetContainerSimObjectState(node, plan),
+            GetNodeState(node, plan),
             GetNodeErrors(node, plan, issues),
             SetGenerationSelected);
 
@@ -812,25 +903,95 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         .Distinct(StringComparer.Ordinal)
         .ToArray();
 
-    private static ContainerToFeeVisualNodeState GetContainerSimObjectState(
+    private static ContainerToFeeVisualNodeState GetNodeState(
         VisualNode node,
         VisualPlan plan)
     {
+        if (node.Kind == VisualNodeKind.SimObjectTarget)
+        {
+            var assigned = plan.Assignments.Any(assignment => assignment.TargetId == node.Id);
+            return assigned
+                ? ContainerToFeeVisualNodeState.Verified
+                : plan.IsCreationRequested(node.ContainerId ?? string.Empty)
+                    ? ContainerToFeeVisualNodeState.Planned
+                    : ContainerToFeeVisualNodeState.Missing;
+        }
+
+        if (node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal &&
+            plan.SignalAssignments.Any(assignment => assignment.SignalNodeId == node.Id))
+            return ContainerToFeeVisualNodeState.Verified;
+
         if (node.Kind != VisualNodeKind.Container)
-            return ContainerToFeeVisualNodeState.None;
+            return node.ContainerId is not null && plan.IsGenerationSelected(node.ContainerId)
+                ? ContainerToFeeVisualNodeState.Planned
+                : ContainerToFeeVisualNodeState.None;
 
         var targets = plan.Targets.Where(target => target.ContainerId == node.Id).ToArray();
         if (targets.Length == 0)
-            return ContainerToFeeVisualNodeState.None;
+            return plan.IsGenerationSelected(node.Id)
+                ? ContainerToFeeVisualNodeState.Planned
+                : ContainerToFeeVisualNodeState.None;
 
         var assignedTargetIds = plan.Assignments
             .Select(assignment => assignment.TargetId)
             .ToHashSet(StringComparer.Ordinal);
-        return targets.All(target => assignedTargetIds.Contains(target.Id))
-            ? ContainerToFeeVisualNodeState.Assigned
-            : plan.IsCreationRequested(node.Id)
-                ? ContainerToFeeVisualNodeState.CreationPending
-                : ContainerToFeeVisualNodeState.Missing;
+        return targets.All(target => assignedTargetIds.Contains(target.Id)) || plan.IsCreationRequested(node.Id)
+            ? ContainerToFeeVisualNodeState.Planned
+            : ContainerToFeeVisualNodeState.Missing;
+    }
+
+    private void ApplyDiscoveredSignalStates(IReadOnlyList<VisualFeeSignal> signals)
+    {
+        foreach (var node in TreeRoots.SelectMany(root => root.SelfAndDescendants())
+                     .Where(node => node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal))
+        {
+            if (_planService.CurrentPlan?.SignalAssignments.Any(assignment =>
+                    assignment.SignalNodeId == node.Id) == true)
+            {
+                node.ApplyExecutionState(ContainerToFeeVisualNodeState.Verified);
+                continue;
+            }
+            var matches = signals.Where(signal => string.Equals(
+                    signal.Tag,
+                    node.Name,
+                    StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            var exactMatches = string.IsNullOrWhiteSpace(node.SourceLocation)
+                ? matches
+                : matches.Where(signal => string.Equals(
+                    signal.Location,
+                    node.SourceLocation,
+                    StringComparison.OrdinalIgnoreCase)).ToArray();
+            node.ApplyExecutionState((matches.Length, exactMatches.Length) switch
+            {
+                (0, _) => ContainerToFeeVisualNodeState.Planned,
+                (_, 1) => ContainerToFeeVisualNodeState.Verified,
+                _ => ContainerToFeeVisualNodeState.Ambiguous,
+            });
+        }
+    }
+
+    private void MarkSelectedTreeNodesVerified()
+    {
+        var plan = _planService.CurrentPlan;
+        if (plan is null)
+            return;
+        var selected = plan.Nodes
+            .Where(node => node.Kind == VisualNodeKind.Container && plan.IsGenerationSelected(node.Id))
+            .Select(node => node.Id)
+            .ToHashSet(StringComparer.Ordinal);
+        foreach (var node in TreeRoots.SelectMany(root => root.SelfAndDescendants())
+                     .Where(node => node.ContainerId is not null && selected.Contains(node.ContainerId)))
+            node.ApplyExecutionState(ContainerToFeeVisualNodeState.Verified);
+        _verifiedContainerIds.UnionWith(selected);
+    }
+
+    private void ApplyVerifiedContainerStates(IReadOnlySet<string> verifiedContainerIds)
+    {
+        foreach (var node in TreeRoots.SelectMany(root => root.SelfAndDescendants())
+                     .Where(node => node.ContainerId is not null &&
+                                    verifiedContainerIds.Contains(node.ContainerId)))
+            node.ApplyExecutionState(ContainerToFeeVisualNodeState.Verified);
     }
 
     private void SetGenerationSelected(string containerId, bool selected)
@@ -1092,12 +1253,14 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 public sealed record ContainerToFeeVisualNodeState(string Background, string Description)
 {
     public static ContainerToFeeVisualNodeState None { get; } = new("Transparent", string.Empty);
-    public static ContainerToFeeVisualNodeState Assigned { get; } =
-        new("#FFC6EFCE", "Alle benötigten FEE-SimObjects sind zugeordnet.");
-    public static ContainerToFeeVisualNodeState CreationPending { get; } =
-        new("#FFFFE1E1", "Mindestens ein SimObject fehlt und wird bei der Generierung erzeugt.");
+    public static ContainerToFeeVisualNodeState Verified { get; } =
+        new("#FFC6EFCE", "In FEE eindeutig gefunden oder in dieser Sitzung erfolgreich erzeugt.");
+    public static ContainerToFeeVisualNodeState Planned { get; } =
+        new("#FFFFF2CC", "Wird bei der nächsten Generierung erzeugt oder vervollständigt.");
     public static ContainerToFeeVisualNodeState Missing { get; } =
         new("#FFEF9A9A", "Mindestens ein benötigtes FEE-SimObject fehlt; automatische Erzeugung ist deaktiviert.");
+    public static ContainerToFeeVisualNodeState Ambiguous { get; } =
+        new("#FFEF9A9A", "Mehrere widersprüchliche FEE-Treffer gefunden; eindeutige Zuordnung erforderlich.");
 }
 
 public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
@@ -1108,6 +1271,7 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
     private readonly Action<string, bool> _setGenerationSelected;
     private readonly bool _canSelectGeneration;
     private IReadOnlyList<string> _validationErrors = Array.Empty<string>();
+    private ContainerToFeeVisualNodeState _executionState;
 
     public ContainerToFeeVisualTreeNodeVM(
         VisualNode model,
@@ -1122,7 +1286,7 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
         Children = new ObservableCollection<ContainerToFeeVisualTreeNodeVM>(children);
         _isGenerationSelected = isGenerationSelected;
         _canSelectGeneration = canSelectGeneration;
-        SimObjectState = simObjectState;
+        _executionState = simObjectState;
         _validationErrors = validationErrors.ToArray();
         _setGenerationSelected = setGenerationSelected;
         _isExpanded = !model.IsTechnical && model.Kind is VisualNodeKind.Root or VisualNodeKind.Container;
@@ -1134,13 +1298,14 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
     public string Name => Model.Name;
     public string TypeName => Model.TypeName;
     public string Slot => Model.Slot ?? string.Empty;
+    public string SourceLocation => Model.SourceLocation;
     public VisualNodeKind Kind => Model.Kind;
     public bool IsTechnical => Model.IsTechnical;
     public bool SupportsCreation => Model.SupportsCreation;
     public bool CanSelectGeneration => _canSelectGeneration;
-    public ContainerToFeeVisualNodeState SimObjectState { get; }
-    public string StateBackground => HasValidationError ? "#FFFFCDD2" : SimObjectState.Background;
-    public string SimObjectStateDescription => SimObjectState.Description;
+    public ContainerToFeeVisualNodeState SimObjectState => _executionState;
+    public string StateBackground => HasValidationError ? "#FFFFCDD2" : _executionState.Background;
+    public string SimObjectStateDescription => _executionState.Description;
     public IReadOnlyList<string> ValidationErrors => _validationErrors;
     public bool HasValidationError => ValidationErrors.Count > 0;
     public string ValidationErrorText => string.Join(Environment.NewLine, ValidationErrors);
@@ -1167,6 +1332,16 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
         OnPropertyChanged(nameof(HasValidationError));
         OnPropertyChanged(nameof(ValidationErrorText));
         OnPropertyChanged(nameof(StateBackground));
+    }
+
+    public void ApplyExecutionState(ContainerToFeeVisualNodeState state)
+    {
+        if (Equals(_executionState, state))
+            return;
+        _executionState = state;
+        OnPropertyChanged(nameof(SimObjectState));
+        OnPropertyChanged(nameof(StateBackground));
+        OnPropertyChanged(nameof(SimObjectStateDescription));
     }
     public ObservableCollection<ContainerToFeeVisualTreeNodeVM> Children { get; }
 

@@ -1,6 +1,7 @@
 using System.Net.Http.Headers;
 using System.Net;
 using System.Text.Json;
+using VIBN_Tools.Core.Kanbanize;
 using VIBN_Tools.Core.ViCo;
 
 namespace VIBN_Tools.Infrastructure.ViCo;
@@ -158,7 +159,7 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
 
     private static string BuildCardsUrl(int boardId, int page, int pageSize, bool expandSubtasks) =>
         $"/cards?board_ids={boardId}&page={page}&per_page={pageSize}" +
-        (expandSubtasks ? "&expand=subtasks" : string.Empty);
+        (expandSubtasks ? "&expand=custom_fields" : string.Empty);
 
     /// <summary>
     /// This Businessmap API does not accept positional fields or subtasks in
@@ -309,7 +310,13 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
                 LaneId = TryGetScalar(card, "lane_id", out var laneId) ? laneId : string.Empty,
                 ColumnId = TryGetScalar(card, "column_id", out var columnId) ? columnId : string.Empty,
                 Title = TryGetScalar(card, "title", out var title) ? title : string.Empty,
-                StartDate = TryGetDate(card, "start_date"),
+                // On the workstation board the project start is maintained in
+                // the established custom field 508. Keep the legacy property as
+                // a fallback for old cache/test payloads.
+                StartDate = TryGetCustomDate(
+                                card,
+                                VibnWorkplaceSynchronizationPolicy.WorkplaceStartDateFieldId)
+                            ?? TryGetDate(card, "start_date"),
                 Deadline = TryGetDate(card, "deadline"),
                 Subtasks = GetSubtasks(card, isEndpointPayload: false)
             })
@@ -381,6 +388,35 @@ public sealed class KanbanizeRefreshService : IViCoOnlineRefreshService
         }
 
         return parsed;
+    }
+
+    private static DateTimeOffset? TryGetCustomDate(JsonElement card, int fieldId)
+    {
+        if (card.ValueKind != JsonValueKind.Object ||
+            !card.TryGetProperty("custom_fields", out var fields) ||
+            fields.ValueKind != JsonValueKind.Array)
+        {
+            return null;
+        }
+
+        foreach (var field in fields.EnumerateArray())
+        {
+            if (TryGetInt(field, "field_id", "id") != fieldId)
+                continue;
+            if (!TryGetScalar(field, "value", out var raw) ||
+                !DateTimeOffset.TryParse(
+                    raw,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    System.Globalization.DateTimeStyles.AssumeUniversal,
+                    out var parsed))
+            {
+                return null;
+            }
+
+            return parsed;
+        }
+
+        return null;
     }
 
     private static string MapStatus(string columnId) => columnId switch

@@ -306,6 +306,7 @@ internal static class Program
         var buttonGuid = Guid.NewGuid();
         var notGuid = Guid.NewGuid();
         var ignoredGuid = Guid.NewGuid();
+        var unassignedGuid = Guid.NewGuid();
         var sensorSignal1 = Guid.NewGuid();
         var sensorSignal2 = Guid.NewGuid();
         var buttonSignal = Guid.NewGuid();
@@ -317,6 +318,7 @@ internal static class Program
                 new FeeContainerLiveObject(sensorGuid, "Sensor_1", "LogicObject", "Grob_Sensor"),
                 new FeeContainerLiveObject(buttonGuid, "Button_1", "Button"),
                 new FeeContainerLiveObject(notGuid, "Return_1", "BoolNot"),
+                new FeeContainerLiveObject(unassignedGuid, "Air_1", "VersionedLogic", "Grob_PneumaticSupply"),
                 new FeeContainerLiveObject(ignoredGuid, "Unrelated", "Decoration"),
             ],
             [
@@ -333,14 +335,16 @@ internal static class Program
             ]);
 
         var containers = result.Snapshot.ContainerDocument.Descendants("Container").ToArray();
-        if (result.Snapshot.ContainerCount != 3 || result.Snapshot.SignalCount != 4 ||
-            result.IgnoredObjectCount != 1 || result.Issues.Count != 1 ||
+        if (result.Snapshot.ContainerCount != 4 || result.Snapshot.SignalCount != 4 ||
+            result.IgnoredObjectCount != 1 || result.Issues.Count != 2 ||
             containers.Single(item => item.Element("Type")?.Value == "Sensor")
                 .Descendants("Entry").Count() != 2 ||
             containers.Single(item => item.Element("Type")?.Value == "Button")
                 .Descendants("Slot").Single().Value != "PLC_IN_NO" ||
             containers.Single(item => item.Element("Type")?.Value == "ReturnCircuit")
-                .Descendants("Slot").Single().Value != "PLC_OUT_Signal")
+                .Descendants("Slot").Single().Value != "PLC_OUT_Signal" ||
+            containers.Single(item => item.Element("Type")?.Value == "PneumaticSupply")
+                .Descendants("Note").Single().Value.Contains("PRÜFEN", StringComparison.Ordinal) == false)
         {
             throw new InvalidOperationException(
                 "Existing FEE BasicFrame reconstruction lost a supported container, fan-in, or slot mapping.");

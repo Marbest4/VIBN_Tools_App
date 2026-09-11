@@ -52,15 +52,21 @@ namespace VIBN_Tools.ContainerToFee
 
 
 
-        public static async Task CreateAllContainersAsync(IEnumerable<ContainerBaseClass> containers, FeeInterface targetInterface, FeeAbstractObject parentObject)
+        public static async Task CreateAllContainersAsync(
+            IEnumerable<ContainerBaseClass> containers,
+            FeeInterface targetInterface,
+            FeeAbstractObject parentObject,
+            Action<int, int, string>? progress = null)
         {
+            var allContainers = containers.ToList();
+            var completed = 0;
             // Split all containers into cabinet containers (no parallel generation) and other containers (parallel generation)
-            var cabinetContainers = containers
+            var cabinetContainers = allContainers
                 .OfType<ICabinetElementOwner>()
                 .Cast<ContainerBaseClass>()
                 .ToList();
 
-            var otherContainers = containers
+            var otherContainers = allContainers
                 .Except(cabinetContainers)
                 .ToList();
 
@@ -69,6 +75,8 @@ namespace VIBN_Tools.ContainerToFee
                 if (_factories.TryGetValue(container.GetType(), out var factory))
                 {
                     await factory.CreateContainerAsync(container, targetInterface, parentObject);
+                    var current = Interlocked.Increment(ref completed);
+                    progress?.Invoke(current, allContainers.Count, container.ComponentName ?? container.GetType().Name);
                 }
             });
 
@@ -78,6 +86,8 @@ namespace VIBN_Tools.ContainerToFee
                 if (_factories.TryGetValue(container.GetType(), out var factory))
                 {
                     await factory.CreateContainerAsync(container, targetInterface, parentObject);
+                    var current = Interlocked.Increment(ref completed);
+                    progress?.Invoke(current, allContainers.Count, container.ComponentName ?? container.GetType().Name);
                 }
             }
 

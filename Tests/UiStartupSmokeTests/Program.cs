@@ -544,6 +544,22 @@ internal static class Program
         if (conflict.IsValid || conflict.Issues.Single().Code != "EXISTING_SIGNAL_IDENTITY_CONFLICT")
             throw new InvalidOperationException("Conflicting tag/address identity must block before FEE writes.");
 
+        var explicitlyMapped = new FeeInterfaceSignal { Tag = "Ready", Address = "%I9.9" };
+        var manualPlan = SignalResolutionPlanner.Build(
+            [new SignalResolutionRequest("container-3", "Sensor 3", explicitlyMapped, "signal-node-3")],
+            [existingInterface],
+            [new VisualSignalAssignment(
+                "signal-node-3",
+                existingInterface.Signals[0].Guid.ToString("D"),
+                "Ready",
+                existingInterface.Name)]);
+        manualPlan.ApplyExistingBindings();
+        if (!manualPlan.IsValid || explicitlyMapped.Guid != existingInterface.Signals[0].Guid)
+        {
+            throw new InvalidOperationException(
+                "An explicit drag/drop signal assignment must resolve a reviewed identity conflict deterministically.");
+        }
+
         var generationResolution = GrobGenerationInterfaceResolver.Resolve(
             [generationInterface, existingInterface]);
         if (!generationResolution.IsValid ||

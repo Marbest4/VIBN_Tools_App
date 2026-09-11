@@ -77,11 +77,7 @@ public sealed class Fee2ContainerService
                     nameof(FS.SDK.SceneObject.Name));
                 name = Services.ApiInstance.XmlHelper.ConvertToString(nameXml);
 
-                var tagsXml = await Services.ApiInstance.Object.GetPropertyAsync(
-                    guid,
-                    nameof(TagComponent.TagEntries),
-                    nameof(TagComponent));
-                var tags = Services.ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+                var tags = await ReadOptionalTagsAsync(guid);
                 if (!tags.ContainsKey(FeeContainerProvenanceCodec.SchemaKey))
                 {
                     ignored++;
@@ -144,6 +140,24 @@ public sealed class Fee2ContainerService
             roots.OrderBy(root => root.Name, StringComparer.OrdinalIgnoreCase).ToArray(),
             ignored,
             issues);
+    }
+
+    private static async Task<IReadOnlyDictionary<string, string>> ReadOptionalTagsAsync(Guid guid)
+    {
+        try
+        {
+            var tagsXml = await Services.ApiInstance!.Object.GetPropertyAsync(
+                guid,
+                nameof(TagComponent.TagEntries),
+                nameof(TagComponent));
+            return Services.ApiInstance.XmlHelper.ConvertToDictionaryStringString(tagsXml);
+        }
+        catch
+        {
+            // Older/manual roots do not necessarily expose a TagComponent.
+            // They are still valid selectable scopes for live reconstruction.
+            return new Dictionary<string, string>(StringComparer.Ordinal);
+        }
     }
 
     public async Task<Fee2ContainerExportResult> CreateExportAsync(

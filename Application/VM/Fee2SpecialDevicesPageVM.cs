@@ -112,8 +112,8 @@ public sealed class Fee2SpecialDevicesPageVM : MvvmBase
                 Issues.Add($"{issue.RootName}: {issue.Message}".TrimStart(':', ' '));
             SelectedRoot = Roots.FirstOrDefault();
             StatusText = result.Roots.Count == 0
-                ? $"Keine eindeutig exportierbaren Geräte gefunden. {result.IgnoredWithoutProvenance} Top-Level-BasicFrames waren nicht rekonstruierbar."
-                : $"{result.Roots.Count} Gerät(e) gefunden; {result.IgnoredWithoutProvenance} Top-Level-Roots nicht eindeutig rekonstruierbar; {result.Issues.Count} Hinweis(e).";
+                ? $"Keine eindeutig exportierbaren Geräte gefunden. {result.IgnoredWithoutProvenance} BasicFrames waren nicht rekonstruierbar."
+                : $"{result.Roots.Count} Gerät(e) in der gesamten BasicFrame-Hierarchie gefunden; {result.IgnoredWithoutProvenance} Frames nicht eindeutig rekonstruierbar; {result.Issues.Count} Hinweis(e).";
             ApplicationLogService.Instance.Information("FEE2SpecialDevices", StatusText);
         }
         catch (Exception exception)

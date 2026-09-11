@@ -48,6 +48,10 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
         .ToArray();
     public string PlanningProjectSummary => string.Join(" | ", Model.PlanningProjects);
     public string WorkingProjectSummary => string.Join(" | ", Model.WorkingProjects);
+    public bool UseCollapsedActiveProjectPresentation =>
+        string.Equals(PcName, "Angelegt (Tool)", StringComparison.OrdinalIgnoreCase);
+    public string PlanningProjectHeader => FormatProjectHeader(PlanningProjects.Count);
+    public string WorkingProjectHeader => FormatProjectHeader(WorkingProjects.Count);
     public string ProjectStartSummary => FormatDates(Model.ProjectCardDetails, card => card.StartDate);
     public string ProjectEndSummary => FormatDates(Model.ProjectCardDetails, card => card.Deadline);
     public bool HasActiveProjects => Model.HasActiveProjects;
@@ -211,8 +215,16 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
         string.Join(" | ", cards
             .Where(card => card.Status is "Planung" or "In Arbeit")
             .Select(card => (Card: card, Date: selectDate(card)))
-            .Where(item => item.Date is not null)
-            .Select(item => $"{ProjectIdentity.CleanDisplay(item.Card.Title)}: {item.Date!.Value.LocalDateTime:dd.MM.yyyy}"));
+            .Select(item =>
+                $"{ProjectIdentity.CleanDisplay(item.Card.Title)} (Karte #{item.Card.CardId}): " +
+                (item.Date is null ? "nicht angegeben" : $"{item.Date.Value.LocalDateTime:dd.MM.yyyy}")));
+
+    private static string FormatProjectHeader(int count) => count switch
+    {
+        0 => "Keine",
+        1 => "1 Projekt",
+        _ => $"{count} Projekte"
+    };
 }
 
 public sealed record ViCoProjectCardItemVM(int CardId, string Title, string Status, string Start, string End)

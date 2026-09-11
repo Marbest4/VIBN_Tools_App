@@ -54,7 +54,8 @@ public sealed class VisualNode
         string typeName,
         string? slot,
         bool isTechnical,
-        bool supportsCreation = false)
+        bool supportsCreation = false,
+        string? sourceLocation = null)
     {
         Id = id;
         ParentId = parentId;
@@ -65,6 +66,7 @@ public sealed class VisualNode
         Slot = slot;
         IsTechnical = isTechnical;
         SupportsCreation = supportsCreation;
+        SourceLocation = sourceLocation ?? string.Empty;
     }
 
     public string Id { get; }
@@ -92,6 +94,9 @@ public sealed class VisualNode
     /// simulation object when no suitable existing object is assigned.
     /// </summary>
     public bool SupportsCreation { get; }
+
+    /// <summary>Signal address or symbolic path from the source XML, if applicable.</summary>
+    public string SourceLocation { get; }
 
     public IReadOnlyList<VisualNode> Children => _children;
 
@@ -166,6 +171,20 @@ public sealed class VisualFeeInterface
     public int SignalCount { get; }
 }
 
+/// <summary>Read-only identity of one signal found in an existing FEE interface.</summary>
+public sealed record VisualFeeSignal(
+    string GuidString,
+    string InterfaceGuidString,
+    string InterfaceName,
+    string Tag,
+    string Address,
+    string Path,
+    string DataType,
+    string Usage)
+{
+    public string Location => string.IsNullOrWhiteSpace(Path) ? Address : Path;
+}
+
 /// <summary>A typed drop target declared by the unchanged legacy container.</summary>
 public sealed class VisualSimObjectTarget
 {
@@ -205,6 +224,13 @@ public sealed record VisualAssignment(
     string FeeObjectName,
     string FeeObjectTypeName);
 
+/// <summary>Explicit user-approved binding of a plan signal to an existing FEE variable.</summary>
+public sealed record VisualSignalAssignment(
+    string SignalNodeId,
+    string FeeSignalGuid,
+    string FeeSignalTag,
+    string FeeInterfaceName);
+
 /// <summary>
 /// Per-container override for creating a missing default simulation object.
 /// Missing entries mean <c>true</c>; only opt-outs are persisted.
@@ -237,6 +263,7 @@ public sealed class VisualPlan
     private readonly List<VisualCreationRequest> _creationRequests;
     private readonly List<VisualGenerationSelection> _generationSelections;
     private readonly List<VisualSignalCreationSelection> _signalCreationSelections;
+    private readonly List<VisualSignalAssignment> _signalAssignments;
     private readonly List<VisualEdge> _edges;
 
     internal VisualPlan(
@@ -251,6 +278,7 @@ public sealed class VisualPlan
         IReadOnlyList<VisualCreationRequest>? creationRequests,
         IReadOnlyList<VisualGenerationSelection>? generationSelections,
         IReadOnlyList<VisualSignalCreationSelection>? signalCreationSelections,
+        IReadOnlyList<VisualSignalAssignment>? signalAssignments,
         VisualExistingInterfaceSelection? existingInterfaceSelection,
         IReadOnlyList<VisualIssue> issues)
     {
@@ -265,6 +293,7 @@ public sealed class VisualPlan
         _creationRequests = creationRequests is null ? [] : [.. creationRequests];
         _generationSelections = generationSelections is null ? [] : [.. generationSelections];
         _signalCreationSelections = signalCreationSelections is null ? [] : [.. signalCreationSelections];
+        _signalAssignments = signalAssignments is null ? [] : [.. signalAssignments];
         ExistingInterfaceSelection = existingInterfaceSelection;
         Issues = issues;
     }
@@ -291,6 +320,8 @@ public sealed class VisualPlan
 
     public IReadOnlyList<VisualSignalCreationSelection> SignalCreationSelections =>
         _signalCreationSelections;
+
+    public IReadOnlyList<VisualSignalAssignment> SignalAssignments => _signalAssignments;
 
     public VisualExistingInterfaceSelection? ExistingInterfaceSelection { get; private set; }
 
@@ -342,6 +373,12 @@ public sealed class VisualPlan
         _signalCreationSelections.AddRange(selections.Where(selection => !selection.CreateSignals));
     }
 
+    internal void ReplaceSignalAssignments(IEnumerable<VisualSignalAssignment> assignments)
+    {
+        _signalAssignments.Clear();
+        _signalAssignments.AddRange(assignments);
+    }
+
     internal void SetExistingInterfaceSelection(VisualExistingInterfaceSelection? selection) =>
         ExistingInterfaceSelection = selection;
 
@@ -377,6 +414,14 @@ public sealed record VisualExecutionResult(
     bool Success,
     string Message,
     IReadOnlyList<VisualIssue> Issues);
+
+public sealed record VisualSignalAssignmentResult(
+    bool Success,
+    string Message,
+    VisualSignalAssignment? Assignment,
+    IReadOnlyList<VisualIssue> Issues);
+
+public sealed record VisualGenerationProgress(int Percent, string Message);
 
 public sealed class VisualPlanChangedEventArgs(VisualPlan plan) : EventArgs
 {
