@@ -49,12 +49,20 @@
                 <TextBlock Margin="5,0,8,0" VerticalAlignment="Center" Text="Minuten" />
                 <Button MinWidth="95" MinHeight="28" Padding="8,2" Content="Übernehmen"
                         Command="{Binding SaveAutoRefreshIntervalCommand}" />
-                <CheckBox Margin="18,0,0,0"
-                          VerticalAlignment="Center"
-                          Content="Projekt-IP und Sonstiges anzeigen"
-                          IsChecked="{Binding ShowExtendedInformation, Mode=TwoWay}"
-                          Command="{Binding SaveDisplayPreferencesCommand}"
-                          ToolTip="Blendet die zwei optionalen Spalten ein oder aus und speichert die Auswahl für den aktuellen Windows-Benutzer." />
+                <Menu Margin="18,0,0,0" VerticalAlignment="Center">
+                    <MenuItem Header="Spalten ein-/ausblenden"
+                              ToolTip="Die Auswahl wird für den aktuellen Windows-Benutzer gespeichert."
+                              ItemsSource="{Binding ColumnOptions}">
+                        <MenuItem.ItemContainerStyle>
+                            <Style TargetType="MenuItem">
+                                <Setter Property="Header" Value="{Binding Title}" />
+                                <Setter Property="IsCheckable" Value="True" />
+                                <Setter Property="StaysOpenOnClick" Value="True" />
+                                <Setter Property="IsChecked" Value="{Binding IsVisible, Mode=TwoWay}" />
+                            </Style>
+                        </MenuItem.ItemContainerStyle>
+                    </MenuItem>
+                </Menu>
             </WrapPanel>
         </Grid>
 
@@ -68,6 +76,9 @@
             <DataGrid Grid.Column="0"
                       ItemsSource="{Binding Results}"
                       SelectedItem="{Binding SelectedWorkstation}"
+                      SelectionMode="Extended"
+                      SelectionUnit="FullRow"
+                      SelectionChanged="OnWorkstationSelectionChanged"
                       AutoGenerateColumns="False"
                       IsReadOnly="True"
                       EnableRowVirtualization="True"
@@ -104,20 +115,24 @@
                                               ToolTipService.ShowOnDisabled="True" />
                                     <MenuItem Header="Simulation (Server)"
                                               Command="{Binding ContextOpenSimulationCommand}"
-                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.HasActiveProjects, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                                     <MenuItem Header="PLC-Projekt (Server)"
                                               Command="{Binding ContextOpenCommissioningCommand}"
-                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.HasActiveProjects, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                                     <MenuItem Header="Planung (Server)"
                                               Command="{Binding ContextOpenPlanningCommand}"
-                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                              CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                              IsEnabled="{Binding PlacementTarget.DataContext.HasActiveProjects, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
                                 </ContextMenu>
                             </Setter.Value>
                         </Setter>
                     </Style>
                 </DataGrid.RowStyle>
                 <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="Belegung" Width="90">
+                    <DataGridTemplateColumn Header="Belegung" Width="90" SortMemberPath="Status"
+                                            Visibility="{Binding Data.OccupancyColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Margin="3" Padding="5,3" Background="{Binding StatusBackground, Mode=OneWay}" CornerRadius="3">
@@ -126,8 +141,10 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="PC" Binding="{Binding PcName, Mode=OneWay}" Width="94" />
-                    <DataGridTemplateColumn Header="Online" Width="82">
+                    <DataGridTextColumn Header="PC" Binding="{Binding PcName, Mode=OneWay}" Width="94" SortMemberPath="PcName"
+                                        Visibility="{Binding Data.PcColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <DataGridTemplateColumn Header="Online" Width="82" SortMemberPath="OnlineStatus"
+                                            Visibility="{Binding Data.OnlineColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Border Margin="3" Padding="5,3" Background="{Binding OnlineStatusBackground, Mode=OneWay}" CornerRadius="3">
@@ -136,16 +153,66 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Projekt(e)" Width="330">
+                    <DataGridTemplateColumn Header="Planung" Width="240" SortMemberPath="PlanningProjectSummary"
+                                            Visibility="{Binding Data.PlanningColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
-                                <TextBlock Text="{Binding ProjectSummary, Mode=OneWay}"
-                                           TextTrimming="CharacterEllipsis"
-                                           ToolTip="{Binding ProjectSummary, Mode=OneWay}" />
+                                <ItemsControl ItemsSource="{Binding PlanningProjects}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Margin="1" Padding="4,2" HorizontalContentAlignment="Left"
+                                                    Content="{Binding Title}" ToolTip="{Binding DateSummary}"
+                                                    IsEnabled="{Binding CanOpenCard}"
+                                                    Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Zur Kanbanize-Karte springen"
+                                                                  IsEnabled="{Binding PlacementTarget.DataContext.CanOpenCard, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                  Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Abgeschlossene Projekte" Width="230">
+                    <DataGridTemplateColumn Header="In Arbeit" Width="240" SortMemberPath="WorkingProjectSummary"
+                                            Visibility="{Binding Data.WorkingColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <ItemsControl ItemsSource="{Binding WorkingProjects}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Button Margin="1" Padding="4,2" HorizontalContentAlignment="Left"
+                                                    Content="{Binding Title}" ToolTip="{Binding DateSummary}"
+                                                    IsEnabled="{Binding CanOpenCard}"
+                                                    Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                                                    CommandParameter="{Binding}">
+                                                <Button.ContextMenu>
+                                                    <ContextMenu>
+                                                        <MenuItem Header="Zur Kanbanize-Karte springen"
+                                                                  IsEnabled="{Binding PlacementTarget.DataContext.CanOpenCard, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}"
+                                                                  Command="{Binding Data.OpenKanbanizeCardCommand, Source={StaticResource ViewModelProxy}}"
+                                                                  CommandParameter="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource AncestorType={x:Type ContextMenu}}}" />
+                                                    </ContextMenu>
+                                                </Button.ContextMenu>
+                                            </Button>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                    <DataGridTextColumn Header="Startdatum" Binding="{Binding ProjectStartSummary, Mode=OneWay}" Width="220" SortMemberPath="ProjectStartSummary"
+                                        Visibility="{Binding Data.StartColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <DataGridTextColumn Header="Enddatum" Binding="{Binding ProjectEndSummary, Mode=OneWay}" Width="220" SortMemberPath="ProjectEndSummary"
+                                        Visibility="{Binding Data.EndColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <DataGridTemplateColumn Header="Abgeschlossene Projekte" Width="230" SortMemberPath="AdditionalProjects"
+                                            Visibility="{Binding Data.CompletedColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <Expander Header="{Binding CompletedProjectHeader, Mode=OneWay}"
@@ -164,18 +231,22 @@
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Software" Width="175">
+                    <DataGridTemplateColumn Header="Software" Width="175" SortMemberPath="ConfigurationSoftware"
+                                            Visibility="{Binding Data.SoftwareColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ConfigurationSoftware, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationSoftware, Mode=OneWay}" />
                             </DataTemplate>
                         </DataGridTemplateColumn.CellTemplate>
                     </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Benutzer" Binding="{Binding UserName, Mode=OneWay}" Width="150" />
-                    <DataGridTextColumn Header="Standort" Binding="{Binding ConfigurationLocation, Mode=OneWay}" Width="135" />
+                    <DataGridTextColumn Header="Benutzer" Binding="{Binding UserName, Mode=OneWay}" Width="150" SortMemberPath="UserName"
+                                        Visibility="{Binding Data.UserColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                    <DataGridTextColumn Header="Standort" Binding="{Binding ConfigurationLocation, Mode=OneWay}" Width="135" SortMemberPath="ConfigurationLocation"
+                                        Visibility="{Binding Data.LocationColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                     <DataGridTemplateColumn Header="Sonstiges"
                                             Width="170"
-                                            Visibility="{Binding Data.ShowExtendedInformation, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                            SortMemberPath="ConfigurationOther"
+                                            Visibility="{Binding Data.OtherColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <DataGridTemplateColumn.CellTemplate>
                             <DataTemplate>
                                 <TextBlock Text="{Binding ConfigurationOther, Mode=OneWay}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ConfigurationOther, Mode=OneWay}" />
@@ -185,7 +256,8 @@
                     <DataGridTextColumn Header="Projekt-IP"
                                         Binding="{Binding ConfigurationProjectIp, Mode=OneWay}"
                                         Width="130"
-                                        Visibility="{Binding Data.ShowExtendedInformation, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        SortMemberPath="ConfigurationProjectIp"
+                                        Visibility="{Binding Data.ProjectIpColumn.IsVisible, Source={StaticResource ViewModelProxy}, Converter={StaticResource BooleanToVisibilityConverter}}" />
                 </DataGrid.Columns>
             </DataGrid>
 
@@ -333,10 +405,10 @@
 
         <WrapPanel Grid.Row="2" Margin="0,10,0,0" Orientation="Horizontal">
             <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="Kartenstatus:" />
-            <Border Margin="8,0,0,0" Padding="7,3" Background="#FFE3E7ED" CornerRadius="3"><TextBlock Text="[B] Backlog" /></Border>
-            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFFFF2CC" CornerRadius="3"><TextBlock Text="[P] Planung" /></Border>
-            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFDDEBF7" CornerRadius="3"><TextBlock Text="[W] In Arbeit" /></Border>
-            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFE2F0D9" CornerRadius="3"><TextBlock Text="[D] Erledigt" /></Border>
+            <Border Margin="8,0,0,0" Padding="7,3" Background="#FFE3E7ED" CornerRadius="3"><TextBlock Text="Backlog" /></Border>
+            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFFFF2CC" CornerRadius="3"><TextBlock Text="Planung" /></Border>
+            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFDDEBF7" CornerRadius="3"><TextBlock Text="In Arbeit" /></Border>
+            <Border Margin="6,0,0,0" Padding="7,3" Background="#FFE2F0D9" CornerRadius="3"><TextBlock Text="Erledigt" /></Border>
             <Border Margin="16,0,0,0" Padding="7,3" Background="#FFE2F0D9" CornerRadius="3"><TextBlock Text="Frei: nur Backlog/Erledigt" /></Border>
             <Border Margin="6,0,0,0" Padding="7,3" Background="#FFFCE4D6" CornerRadius="3"><TextBlock Text="Belegt: Planung/In Arbeit" /></Border>
             <TextBlock Margin="16,0,0,0" VerticalAlignment="Center" Foreground="#FF666666" Text="Online = grün, Offline = rot. RDP-Informationen sind bei fehlender Berechtigung als „Nicht abrufbar“ gekennzeichnet." />

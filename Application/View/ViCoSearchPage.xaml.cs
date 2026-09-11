@@ -30,4 +30,10 @@ public partial class ViCoSearchPage : UserControl
             System.Windows.Application.Current.Exit -= OnApplicationExit;
         _viewModel.Dispose();
     }
+
+    private void OnWorkstationSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (sender is DataGrid grid)
+            _viewModel.SetSelectedWorkstations(grid.SelectedItems);
+    }
 }

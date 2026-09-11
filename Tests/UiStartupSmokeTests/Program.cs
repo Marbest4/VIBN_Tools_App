@@ -739,7 +739,12 @@ internal static class Program
                             "Siemens Safety Advanced V20",
                             "20.0",
                             @"C:\Program Files\Siemens\Safety",
-                            "fixture:safety")
+                            "fixture:safety"),
+                        new InstalledProductEvidence(
+                            "SIMATIC STEP 7 Professional V20",
+                            "V20.0",
+                            @"C:\Program Files\Siemens\Automation\Portal V20",
+                            "fixture:tia-registry-duplicate")
                     ],
                     []));
             var inventory = discovery.Discover();
@@ -757,6 +762,12 @@ internal static class Program
                     component.Version == "20.0.1") != 1)
             {
                 throw new InvalidOperationException("Duplicate 32-/64-bit automation product entries were not collapsed.");
+            }
+            if (inventory.Components.Count(component =>
+                    component.Kind == AutomationComponentKind.TiaPortal &&
+                    component.Version.Contains("20", StringComparison.OrdinalIgnoreCase)) != 1)
+            {
+                throw new InvalidOperationException("Folder and registry evidence for the same TIA Portal version were not collapsed.");
             }
             if (AutomationInstallationDiscovery.ClassifyInstalledProduct("Unrelated Editor") is not null)
                 throw new InvalidOperationException("An unrelated installed product was classified as automation software.");

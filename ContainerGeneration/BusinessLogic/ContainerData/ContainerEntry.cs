@@ -154,6 +154,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData
         private ContainerEntryReviewState _reviewState;
         private string _reviewMessage = string.Empty;
         private bool _isManuallyEdited;
+        private string _validationError = string.Empty;
 
         /// <summary>
         /// Runtime-only provenance used by the safe reimport workflow.
@@ -186,6 +187,21 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData
             set => SetPropertyChange(ref _isManuallyEdited, value);
         }
 
+        /// <summary>Runtime-only validation detail used to mark this row in the editor.</summary>
+        [XmlIgnore]
+        public string ValidationError
+        {
+            get => _validationError;
+            set
+            {
+                if (SetPropertyChange(ref _validationError, value ?? string.Empty))
+                    OnPropertyChanged(nameof(HasValidationError));
+            }
+        }
+
+        [XmlIgnore]
+        public bool HasValidationError => !string.IsNullOrWhiteSpace(ValidationError);
+
         [XmlIgnore]
         public string ReviewStateText => ReviewState switch
         {
@@ -216,6 +232,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData
             clone.ReviewState = this.ReviewState;
             clone.ReviewMessage = this.ReviewMessage;
             clone.IsManuallyEdited = this.IsManuallyEdited;
+            clone.ValidationError = this.ValidationError;
 
             return clone;
         }

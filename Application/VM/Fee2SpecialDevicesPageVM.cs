@@ -85,11 +85,11 @@ public sealed class Fee2SpecialDevicesPageVM : MvvmBase
         ? (IsBusy ? "Ein FEE2SpecialDevices-Vorgang läuft bereits." : string.Empty)
         : Connection.UnavailableReason;
     public string ExportUnavailableReason => SelectedRoot is null
-        ? "Zuerst einen durch SpecialDevices2FEE erzeugten Root auswählen."
+        ? "Zuerst einen erkannten Special-Device-Root auswählen."
         : IsBusy ? "Ein FEE2SpecialDevices-Vorgang läuft bereits." : string.Empty;
     public string SelectionSummary => SelectedRoot is null
         ? "Kein Root ausgewählt."
-        : $"{SelectedRoot.Snapshot.Manufacturer} / {SelectedRoot.Snapshot.DeviceType}; " +
+        : $"{SelectedRoot.SourceKind}; {SelectedRoot.Snapshot.Manufacturer} / {SelectedRoot.Snapshot.DeviceType}; " +
           $"{SelectedRoot.Snapshot.Signals.Count} Signale, {SelectedRoot.UpdatedSignalCount} aktuell, " +
           $"{SelectedRoot.MissingSignalCount} fehlend.";
 
@@ -112,8 +112,8 @@ public sealed class Fee2SpecialDevicesPageVM : MvvmBase
                 Issues.Add($"{issue.RootName}: {issue.Message}".TrimStart(':', ' '));
             SelectedRoot = Roots.FirstOrDefault();
             StatusText = result.Roots.Count == 0
-                ? $"Keine exportierbaren Geräte gefunden. {result.IgnoredWithoutProvenance} ältere/manuelle BasicFrames wurden ignoriert."
-                : $"{result.Roots.Count} Gerät(e) gefunden; {result.IgnoredWithoutProvenance} ältere/manuelle Roots ignoriert; {result.Issues.Count} Hinweis(e).";
+                ? $"Keine eindeutig exportierbaren Geräte gefunden. {result.IgnoredWithoutProvenance} Top-Level-BasicFrames waren nicht rekonstruierbar."
+                : $"{result.Roots.Count} Gerät(e) gefunden; {result.IgnoredWithoutProvenance} Top-Level-Roots nicht eindeutig rekonstruierbar; {result.Issues.Count} Hinweis(e).";
             ApplicationLogService.Instance.Information("FEE2SpecialDevices", StatusText);
         }
         catch (Exception exception)

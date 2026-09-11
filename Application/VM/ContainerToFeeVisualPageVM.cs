@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows;
 using Microsoft.Win32;
 using VIBN_Tools.Application.Behaviors;
 using VIBN_Tools.ContainerToFeeVisual;
@@ -34,6 +35,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     private string _statusText = "Container-XML öffnen, um eine Vorschau zu erstellen.";
     private string _sourceXmlPath = string.Empty;
     private bool _isApplyingPlan;
+    private IReadOnlyList<VisualIssue> _lastExecutionIssues = Array.Empty<VisualIssue>();
 
     public ContainerToFeeVisualPageVM()
         : this(new ContainerToFeeVisualPlanService(), ResolveConnection(), ApplicationLogService.Instance)
@@ -172,7 +174,7 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
     public bool IsFeeObjectDiscoveryAvailable => Connection.CanUseFeeFeatures && HasPlan && !IsBusy;
 
     public bool CanStartGeneration => HasPlan && Connection.CanUseFeeFeatures && !IsBusy &&
-                                      !HasValidationErrors && SelectedContainerCount > 0;
+                                      SelectedContainerCount > 0;
 
     public bool CanLinkOnly => HasPlan && Connection.CanUseFeeFeatures && !IsBusy &&
                                !HasValidationErrors && SelectedAssignmentCount > 0;
@@ -498,17 +500,51 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         }
 
         VisualValidationResult validation = _planService.Validate();
-        PublishIssues(validation.Issues);
-        if (!validation.IsValid)
+        var currentIssues = validation.Issues
+            .Concat(_lastExecutionIssues)
+            .DistinctBy(issue => (issue.Severity, issue.Code, issue.Message, issue.NodeId))
+            .ToArray();
+        PublishIssues(currentIssues);
+        IReadOnlyList<VisualIssue>? acceptedErrors = null;
+        if (currentIssues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
         {
-            StatusText = "Generierung abgebrochen: Der Plan enthält Fehler.";
-            _log.Warning(LogArea, StatusText);
-            return;
+            var errors = currentIssues
+                .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                .ToArray();
+            var details = string.Join(
+                Environment.NewLine,
+                errors.Take(12).Select(issue => $"• [{issue.Code}] {issue.Message}"));
+            if (errors.Length > 12)
+                details += $"{Environment.NewLine}• … und {errors.Length - 12} weitere Fehler";
+            var answer = MessageBox.Show(
+                "ACHTUNG: Der Plan ist ungültig. Eine reguläre Generierung ist gesperrt." +
+                Environment.NewLine + Environment.NewLine + details +
+                Environment.NewLine + Environment.NewLine +
+                "Wenn Sie trotzdem fortfahren, werden eindeutig betroffene Container NICHT erzeugt. " +
+                "Der erzeugte erste BasicFrame erhält den Zusatz „Fehler übersprungen“; alle bestätigten " +
+                "Fehler werden als persistente Text-Tags gespeichert. Globale, nicht sicher zuordenbare " +
+                "Fehler brechen den Vorgang weiterhin ab." +
+                Environment.NewLine + Environment.NewLine +
+                "Fehlerhafte Teilgenerierung ausdrücklich starten?",
+                "UNGÜLTIGE GENERIERUNG ERZWINGEN",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Error,
+                MessageBoxResult.No);
+            if (answer != MessageBoxResult.Yes)
+            {
+                StatusText = "Generierung abgebrochen: Der ungültige Plan wurde nicht bestätigt.";
+                _log.Warning(LogArea, StatusText);
+                return;
+            }
+            acceptedErrors = errors;
         }
 
         await RunBusyAsync("Container werden mit dem bestehenden Executor erzeugt …", async cancellationToken =>
         {
-            VisualExecutionResult result = await _planService.ExecuteAsync(cancellationToken);
+            VisualExecutionResult result = await _planService.ExecuteAsync(acceptedErrors, cancellationToken);
+            _lastExecutionIssues = result.Issues
+                .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                .ToArray();
             PublishIssues(result.Issues);
             StatusText = result.Message;
             if (result.Success)
@@ -708,11 +744,13 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         _isApplyingPlan = true;
         try
         {
+            _lastExecutionIssues = Array.Empty<VisualIssue>();
             SourceXmlPath = plan.SourceXmlPath;
-            ReplaceCollection(TreeRoots, plan.Roots.Select(node => BuildTree(node, plan)));
+            var validation = _planService.Validate();
+            ReplaceCollection(TreeRoots, plan.Roots.Select(node => BuildTree(node, plan, validation.Issues)));
             RefreshFeeObjectProjection(_planService.DiscoveredFeeObjects);
             RefreshFeeInterfaceProjection(_planService.DiscoveredFeeInterfaces);
-            PublishIssues(_planService.Validate().Issues);
+            PublishIssues(validation.Issues);
             ApplyTreeFilter();
 
             SelectedTreeNode = FindTreeNode(selectedNodeId) ?? TreeRoots.FirstOrDefault();
@@ -748,14 +786,31 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
         InvalidateCommands();
     }
 
-    private ContainerToFeeVisualTreeNodeVM BuildTree(VisualNode node, VisualPlan plan) =>
+    private ContainerToFeeVisualTreeNodeVM BuildTree(
+        VisualNode node,
+        VisualPlan plan,
+        IReadOnlyList<VisualIssue> issues) =>
         new(
             node,
-            node.Children.Select(child => BuildTree(child, plan)),
+            node.Children.Select(child => BuildTree(child, plan, issues)),
             plan.IsGenerationSelected(node.Id),
             node.Kind == VisualNodeKind.Container && ContainerMetadataCatalog.TryGet(node.TypeName, out _),
             GetContainerSimObjectState(node, plan),
+            GetNodeErrors(node, plan, issues),
             SetGenerationSelected);
+
+    private static IReadOnlyList<string> GetNodeErrors(
+        VisualNode node,
+        VisualPlan plan,
+        IEnumerable<VisualIssue> issues) => issues
+        .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+        .Where(issue =>
+            string.Equals(issue.NodeId, node.Id, StringComparison.Ordinal) ||
+            (node.Kind == VisualNodeKind.Container &&
+             plan.FindTarget(issue.NodeId ?? string.Empty)?.ContainerId == node.Id))
+        .Select(issue => $"[{issue.Code}] {issue.Message}")
+        .Distinct(StringComparer.Ordinal)
+        .ToArray();
 
     private static ContainerToFeeVisualNodeState GetContainerSimObjectState(
         VisualNode node,
@@ -814,7 +869,8 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             Targets.Add(new ContainerToFeeVisualTargetVM(
                 target,
                 assignments,
-                plan.IsCreationRequested(containerId)));
+                plan.IsCreationRequested(containerId),
+                Issues.Where(issue => string.Equals(issue.NodeId, target.Id, StringComparison.Ordinal))));
         }
 
         HashSet<string> nodeIds = plan.Nodes
@@ -879,7 +935,17 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
 
     private void PublishIssues(IEnumerable<VisualIssue> issues)
     {
-        ReplaceCollection(Issues, issues);
+        var issueList = issues.ToArray();
+        ReplaceCollection(Issues, issueList);
+        var plan = _planService.CurrentPlan;
+        if (plan is not null)
+        {
+            foreach (var node in TreeRoots.SelectMany(root => root.SelfAndDescendants()))
+                node.ApplyValidationErrors(GetNodeErrors(node.Model, plan, issueList));
+            foreach (var target in Targets)
+                target.ApplyValidationErrors(issueList.Where(issue =>
+                    string.Equals(issue.NodeId, target.Id, StringComparison.Ordinal)));
+        }
         OnPropertyChanged(nameof(HasValidationErrors));
         OnPropertyChanged(nameof(CanStartGeneration));
         OnPropertyChanged(nameof(CanLinkOnly));
@@ -919,7 +985,9 @@ public sealed class ContainerToFeeVisualPageVM : MvvmBase
             return Connection.UnavailableReason;
         var blockingIssue = Issues.FirstOrDefault(issue => issue.Severity == VisualIssueSeverity.Error);
         if (blockingIssue is not null)
-            return blockingIssue.Message;
+            return linkOnly
+                ? blockingIssue.Message
+                : $"Fehler vorhanden: {blockingIssue.Message} Beim Start ist eine ausdrückliche Bestätigung erforderlich.";
         if (SelectedContainerCount == 0)
             return "Mindestens einen unterstützten Container auswählen.";
         if (linkOnly && SelectedAssignmentCount == 0)
@@ -1039,6 +1107,7 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
     private bool _isGenerationSelected;
     private readonly Action<string, bool> _setGenerationSelected;
     private readonly bool _canSelectGeneration;
+    private IReadOnlyList<string> _validationErrors = Array.Empty<string>();
 
     public ContainerToFeeVisualTreeNodeVM(
         VisualNode model,
@@ -1046,6 +1115,7 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
         bool isGenerationSelected,
         bool canSelectGeneration,
         ContainerToFeeVisualNodeState simObjectState,
+        IEnumerable<string> validationErrors,
         Action<string, bool> setGenerationSelected)
     {
         Model = model;
@@ -1053,6 +1123,7 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
         _isGenerationSelected = isGenerationSelected;
         _canSelectGeneration = canSelectGeneration;
         SimObjectState = simObjectState;
+        _validationErrors = validationErrors.ToArray();
         _setGenerationSelected = setGenerationSelected;
         _isExpanded = !model.IsTechnical && model.Kind is VisualNodeKind.Root or VisualNodeKind.Container;
     }
@@ -1068,8 +1139,35 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
     public bool SupportsCreation => Model.SupportsCreation;
     public bool CanSelectGeneration => _canSelectGeneration;
     public ContainerToFeeVisualNodeState SimObjectState { get; }
-    public string StateBackground => SimObjectState.Background;
+    public string StateBackground => HasValidationError ? "#FFFFCDD2" : SimObjectState.Background;
     public string SimObjectStateDescription => SimObjectState.Description;
+    public IReadOnlyList<string> ValidationErrors => _validationErrors;
+    public bool HasValidationError => ValidationErrors.Count > 0;
+    public string ValidationErrorText => string.Join(Environment.NewLine, ValidationErrors);
+    public string ExecutionDescription => Kind switch
+    {
+        VisualNodeKind.Container =>
+            $"Erzeugt den Container „{Name}“ mit der Containerlogik „{TypeName}“, den benötigten Objekten und Signal-Slot-Verknüpfungen.",
+        VisualNodeKind.SimObjectTarget =>
+            $"Sucht ein kompatibles FEE-SimObject für „{Name}“ und verknüpft es mit diesem Logikziel.",
+        VisualNodeKind.Signal =>
+            $"Sucht das Interface-Signal „{Name}“; fehlt es, wird es im Grob Generation Interface erzeugt und dem angegebenen Slot zugewiesen.",
+        VisualNodeKind.Logic => $"Erzeugt bzw. verwendet die Logik „{Name}“ vom Typ „{TypeName}“.",
+        VisualNodeKind.BasicFrame => $"Erzeugt den BasicFrame „{Name}“ als Strukturknoten.",
+        _ => $"Planobjekt „{Name}“ ({TypeName})."
+    };
+
+    public void ApplyValidationErrors(IEnumerable<string> errors)
+    {
+        var next = errors.Distinct(StringComparer.Ordinal).ToArray();
+        if (_validationErrors.SequenceEqual(next, StringComparer.Ordinal))
+            return;
+        _validationErrors = next;
+        OnPropertyChanged(nameof(ValidationErrors));
+        OnPropertyChanged(nameof(HasValidationError));
+        OnPropertyChanged(nameof(ValidationErrorText));
+        OnPropertyChanged(nameof(StateBackground));
+    }
     public ObservableCollection<ContainerToFeeVisualTreeNodeVM> Children { get; }
 
     public bool IsGenerationSelected
@@ -1117,17 +1215,24 @@ public sealed class ContainerToFeeVisualTreeNodeVM : NotifyBase
     }
 }
 
-public sealed class ContainerToFeeVisualTargetVM
+public sealed class ContainerToFeeVisualTargetVM : MvvmBase
 {
+    private IReadOnlyList<string> _validationErrors = Array.Empty<string>();
     public ContainerToFeeVisualTargetVM(
         VisualSimObjectTarget model,
         IEnumerable<VisualAssignment> assignments,
-        bool isCreationRequested)
+        bool isCreationRequested,
+        IEnumerable<VisualIssue> issues)
     {
         Model = model;
         Assignments = new ObservableCollection<ContainerToFeeVisualAssignmentVM>(
             assignments.Select(assignment => new ContainerToFeeVisualAssignmentVM(assignment, model.AllowedTypeName)));
         IsCreationRequested = isCreationRequested;
+        _validationErrors = issues
+            .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+            .Select(issue => $"[{issue.Code}] {issue.Message}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
     }
 
     public VisualSimObjectTarget Model { get; }
@@ -1138,16 +1243,46 @@ public sealed class ContainerToFeeVisualTargetVM
     public ObservableCollection<ContainerToFeeVisualAssignmentVM> Assignments { get; }
     public bool IsAssigned => Assignments.Count > 0;
     public bool IsCreationRequested { get; }
+    public IReadOnlyList<string> ValidationErrors => _validationErrors;
+    public bool HasValidationError => ValidationErrors.Count > 0;
+    public string ValidationErrorText => string.Join(Environment.NewLine, ValidationErrors);
     public string AssignmentState => IsAssigned
         ? "Vorhandenes FEE-SimObject zugeordnet"
         : IsCreationRequested
             ? "Wird bei der Generierung erzeugt"
             : "Simulationsobjekt fehlt – Zuordnung erforderlich";
-    public string StateBackground => IsAssigned
+    public string StateBackground => HasValidationError
+        ? "#FFFFCDD2"
+        : IsAssigned
         ? "#FFC6EFCE"
         : IsCreationRequested
             ? "#FFFFE1E1"
             : "#FFEF9A9A";
+    public string ExecutionDescription => IsAssigned
+        ? $"Verwendet {Assignments.Count} vorhandene(s) FEE-SimObject(s) und schreibt die Zuordnung zum Ziel „{DisplayName}“ ({AllowedTypeName})."
+        : IsCreationRequested
+            ? $"Erzeugt ein neues kompatibles FEE-SimObject vom Typ „{AllowedTypeName}“ und verknüpft es mit „{DisplayName}“."
+            : $"Sucht ein vorhandenes FEE-SimObject vom Typ „{AllowedTypeName}“ für die Verknüpfung mit „{DisplayName}“.";
+    public string ToolTipText => HasValidationError
+        ? ExecutionDescription + Environment.NewLine + ValidationErrorText
+        : ExecutionDescription;
+
+    public void ApplyValidationErrors(IEnumerable<VisualIssue> issues)
+    {
+        var next = issues
+            .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+            .Select(issue => $"[{issue.Code}] {issue.Message}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        if (_validationErrors.SequenceEqual(next, StringComparer.Ordinal))
+            return;
+        _validationErrors = next;
+        OnPropertyChanged(nameof(ValidationErrors));
+        OnPropertyChanged(nameof(HasValidationError));
+        OnPropertyChanged(nameof(ValidationErrorText));
+        OnPropertyChanged(nameof(StateBackground));
+        OnPropertyChanged(nameof(ToolTipText));
+    }
 }
 
 /// <summary>Presentation wrapper for one existing FEE interface.</summary>

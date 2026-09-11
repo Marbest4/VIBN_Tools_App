@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData;
 
 namespace VIBN_Tools.ContainerGeneration.Models;
@@ -95,7 +96,10 @@ public static class WorkspaceValidationAnalyzer
         var details = new List<string>();
 
         foreach (var entry in allEntries)
+        {
             entry.EnsureSignalId();
+            entry.ValidationError = string.Empty;
+        }
 
         var invalidContainers = containerList.Where(container => !container.IsValid).ToList();
         var containersToReview = containerList.Where(container => container.RequiresReview).ToList();
@@ -113,7 +117,9 @@ public static class WorkspaceValidationAnalyzer
             var duplicateGroups = container.DataList
                 .Where(entry => !string.IsNullOrWhiteSpace(entry.Slot))
                 .GroupBy(entry => entry.Slot, StringComparer.OrdinalIgnoreCase)
-                .Where(group => group.Count() > 1)
+                .Where(group => ContainerSlotMultiplicityPolicy.GetDuplicateError(
+                    group.Key,
+                    group.Count()) is not null)
                 .ToList();
             duplicateSlots += duplicateGroups.Sum(group => group.Count() - 1);
 
@@ -126,6 +132,10 @@ public static class WorkspaceValidationAnalyzer
 
             foreach (var group in duplicateGroups)
             {
+                foreach (var entry in group)
+                    AddEntryError(
+                        entry,
+                        ContainerSlotMultiplicityPolicy.GetDuplicateError(group.Key, group.Count())!);
                 details.Add(
                     $"Container „{DisplayContainer(container)}“ verwendet Slot " +
                     $"„{group.Key}“ {group.Count()}-mal.");
@@ -133,18 +143,30 @@ public static class WorkspaceValidationAnalyzer
         }
 
         foreach (var entry in allEntries.Where(entry => string.IsNullOrWhiteSpace(entry.Signal)))
+        {
+            AddEntryError(entry, "Signalname fehlt.");
             details.Add($"Signal-ID {entry.SignalId}: Signalname fehlt.");
+        }
 
         foreach (var entry in assigned.Where(entry => string.IsNullOrWhiteSpace(entry.Slot)))
+        {
+            AddEntryError(entry, "Slot fehlt.");
             details.Add($"Signal „{DisplaySignal(entry)}“: Slot fehlt.");
+        }
 
-        var duplicateSignalIds = allEntries
+        var duplicateSignalIdGroups = allEntries
             .Where(entry => !string.IsNullOrWhiteSpace(entry.SignalId))
             .GroupBy(entry => entry.SignalId, StringComparer.Ordinal)
             .Where(group => group.Count() > 1)
-            .Sum(group => group.Count() - 1);
+            .ToArray();
+        var duplicateSignalIds = duplicateSignalIdGroups.Sum(group => group.Count() - 1);
         if (duplicateSignalIds > 0)
+        {
+            foreach (var group in duplicateSignalIdGroups)
+            foreach (var entry in group)
+                AddEntryError(entry, $"Interne Signal-ID „{group.Key}“ ist nicht eindeutig.");
             details.Add($"{duplicateSignalIds} doppelte interne Signal-ID(s) erkannt.");
+        }
 
         foreach (var container in containersToReview.Where(container => container.IsValid))
         {
@@ -186,4 +208,47 @@ public static class WorkspaceValidationAnalyzer
         string.IsNullOrWhiteSpace(reason)
             ? "keine Detailangabe"
             : reason.Replace(Environment.NewLine, " ", StringComparison.Ordinal).Trim();
+
+    private static void AddEntryError(ContainerEntry entry, string error)
+    {
+        entry.ValidationError = string.IsNullOrWhiteSpace(entry.ValidationError)
+            ? error
+            : entry.ValidationError + Environment.NewLine + error;
+    }
+}
+
+/// <summary>
+/// Adds an explicit, schema-compatible quarantine container when a user
+/// deliberately exports an invalid workspace. Downstream tools can detect the
+/// marker without parsing a comment or relying on a file name.
+/// </summary>
+public static class WorkspaceValidationOverrideMarker
+{
+    public const string ContainerId = "VIBN-VALIDATION-ERRORS";
+    public const string Component = "Fehler";
+    public const string Type = "Fehler";
+
+    public static ComponentContainer Create(WorkspaceValidationSummary summary)
+    {
+        ArgumentNullException.ThrowIfNull(summary);
+        var messages = summary.Details.Count > 0
+            ? summary.Details
+            : new[] { summary.ToStatusText() };
+        return new ComponentContainer
+        {
+            Id = ContainerId,
+            Component = Component,
+            Type = Type,
+            DataList = new ObservableCollection<ContainerEntry>(messages.Select((message, index) =>
+                new ContainerEntry
+                {
+                    ID = $"ERROR-{index + 1:000}",
+                    Address = string.Empty,
+                    DataType = "String",
+                    Signal = "VALIDATION_ERROR",
+                    Slot = $"ERROR_{index + 1:000}",
+                    Note = message
+                }))
+        };
+    }
 }

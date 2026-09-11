@@ -41,6 +41,8 @@
                         <TextBlock Text="{Binding TypeName, StringFormat=Typ: {0}}" />
                         <TextBlock Text="{Binding Slot, StringFormat=Slot: {0}}" />
                         <TextBlock Text="{Binding SimObjectStateDescription}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ExecutionDescription}" TextWrapping="Wrap" />
+                        <TextBlock Text="{Binding ValidationErrorText}" Foreground="#FFC62828" FontWeight="SemiBold" TextWrapping="Wrap" />
                     </StackPanel>
                 </Setter.Value>
             </Setter>
@@ -257,6 +259,7 @@
                             <DataTemplate>
                                 <Border Padding="9" BorderBrush="#C7D7EA" BorderThickness="1" CornerRadius="4"
                                         Background="{Binding StateBackground}"
+                                        ToolTip="{Binding ToolTipText}"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.IsDropTarget="True"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.DropTarget="{Binding}"
                                         behaviors:ContainerToFeeVisualDragDropBehavior.DropCommand="{Binding DataContext.DropCommand, RelativeSource={RelativeSource AncestorType={x:Type UserControl}}}">

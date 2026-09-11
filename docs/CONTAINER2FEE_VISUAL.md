@@ -17,7 +17,7 @@ Die visuelle Seite kann eine Container-XML bereits ohne FEE-Verbindung lesen und
 5. In der linken Struktur pro vollständigem Container festlegen, ob er verarbeitet wird. **Alle selektieren** und **Alle deselektieren** ändern diese Auswahl gemeinsam. Kindobjekte erben die Containerentscheidung, weil Logik, Signale und technische Hilfsobjekte keine unabhängig ausführbaren Legacy-Einheiten sind.
 6. **Fehlende SimObjects bei der Generierung erzeugen** ist standardmäßig aktiv. Die Einstellung kann je Container oder über **Alle/Keine** für alle erzeugbaren Container geändert werden. Ein ausgewählter Container mit SimObjectTarget benötigt entweder eine grüne Zuordnung oder diese Erzeugungsoption; andernfalls bleibt das Ziel dunkelrot und die Validierung erklärt den Fehler.
 7. Änderungen mit **Rückgängig/Wiederholen** korrigieren und über **Plan speichern** sichern.
-8. Für eine vollständige Neuerzeugung **Start Generation** drücken. Wenn Container/Logiken bereits existieren, kann stattdessen **Nur SimObjects verknüpfen** verwendet werden.
+8. Für eine vollständige Neuerzeugung **Start Generation** drücken. Fehlerhafte Knoten sind rot markiert; ihre Tooltips erklären sowohl das vorgesehene FEE-Objekt beziehungsweise die gesuchte Verknüpfung als auch den Fehler. Wenn Container/Logiken bereits existieren, kann stattdessen **Nur SimObjects verknüpfen** verwendet werden.
 
 Technische Objekte sind im Baum standardmäßig eingeklappt. **Alles aufklappen/Alles zuklappen** wirkt auf die kombinierte Container- und Objektstruktur. Die Suchfelder filtern Plan beziehungsweise FEE-Objekte. **Nur kompatible Objekte** bezieht sich auf das aktuell ausgewählte Ziel.
 
@@ -52,7 +52,7 @@ Dieser Link-only-Modus benötigt keine Interface-Auswahl, weil er weder Signale 
 
 ## ModelValidation-Vertrag
 
-Vor der vollständigen Erzeugung prüft Container2FEE Visual die aus dem ContainerFile eindeutig ableitbaren Pflichtbeziehungen der vorhandenen `ModelValidation`. Fehlt eine erforderliche Signal- oder SimObject-Beziehung, wird vor dem ersten FEE-Schreibzugriff abgebrochen.
+Vor der vollständigen Erzeugung prüft Container2FEE Visual die aus dem ContainerFile eindeutig ableitbaren Pflichtbeziehungen der vorhandenen `ModelValidation`. Fehlt eine erforderliche Signal- oder SimObject-Beziehung, ist die normale Generierung gesperrt. Eine ausdrücklich bestätigte Fehler-Teilgenerierung überspringt ausschließlich eindeutig betroffene Container. Globale, keinem Container sicher zuordenbare Fehler bleiben nicht übersteuerbar. Der erste erzeugte BasicFrame trägt dann den Zusatz **Fehler übersprungen**; Fehlercode und -text werden als persistente `vibn.validation.*`-Tags gespeichert. ModelValidation-Fehler, die erst beim Preflight erkannt werden, erscheinen nach dem Versuch am betroffenen Knoten und können in einem zweiten, erneut zu bestätigenden Lauf übersprungen werden.
 
 Alle geschriebenen Variablen- und Slotverknüpfungen werden über die FEE-API zurückgelesen. Eine nicht übernommene Verbindung gilt als Fehler. Beim Stopper wird `Floor.CollisionSlot` für neue und vorhandene Floors vor dem Verbinden aktiviert und ebenfalls zurückgelesen. Die Größen bleiben die Werte des bisherigen Container2FEE-Generators: Floor `0,01 × 0,2 × 0,05`, Sensor `0,01 × 0,03 × 0,01`, Surface `2 × 0,5 × 0,05`, MotionJoint/Button `0,5 × 0,5 × 0,5` und PickAndPlace `0,1 × 0,1 × 0,1`. Fehlende Bewegungsparameter erhalten prüfbare Startwerte.
 

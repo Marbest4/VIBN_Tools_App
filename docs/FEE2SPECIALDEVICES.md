@@ -25,9 +25,9 @@ Der Export erfolgt atomar als `*.specialdevice.json`. Das JSON ist eine versioni
 
 Der Gerätekatalog bleibt bei einer erneuten Erzeugung die autoritative Quelle für Signale. Weichen die aus FEE exportierten Tags, Adressen, Datentypen oder Richtungen von dieser Definition ab, wird das Gerät zwar zur bewussten Prüfung eingereiht, die Oberfläche warnt aber ausdrücklich: Die manuell veränderten Signalwerte werden nicht stillschweigend als neue Generierungsregel verwendet. Der JSON-Snapshot bleibt der Soll-Ist-Nachweis.
 
-## Grenzen
+## Rekonstruktion älterer Projekte und Grenzen
 
-- Nur künftig mit dieser Version vollständig erzeugte Geräte sind erkennbar.
-- Ältere oder manuell erstellte BasicFrames werden nicht anhand von Namen oder Logikdefinitionen geraten.
+- Angezeigt werden ausschließlich BasicFrames der obersten Hierarchieebene. Bei älteren Roots ohne Provenienz wird ein Gerät nur dann rekonstruiert, wenn genau eine Logikdefinition eindeutig einem Eintrag des bestehenden `DeviceFactory`-Katalogs entspricht. Präfix, aktuelle Variablenzuweisungen, Richtungen und Startadressen werden aus FEE gelesen. Für Atlas-Copco-Geräte muss zusätzlich ABB/Fanuc/Kuka eindeutig aus den Adressformaten folgen; andernfalls wird kein Snapshot geraten.
+- Die Provenienz bleibt der garantierte Round-Trip. Eine Rekonstruktion wird als `FEE-Struktur (Rekonstruktion)` gekennzeichnet und muss fachlich mit der katalogisierten Gerätedefinition verglichen werden.
 - Der kontrollierte Reimport stellt Hersteller, Gerätetyp, Präfix, Robotertyp und Startadressen wieder her. Manuell abweichende Signale werden diagnostiziert, nicht ungeprüft in den Gerätekatalog geschrieben. Ein eigenständiger semantischer Hardwarevergleich ist noch nicht freigegeben.
 - Die Codec- und Exportlogik ist automatisiert getestet. Lesen nach echtem FEE-Save/Reload bleibt eine Live-Abnahme mit der installierten FEE-Laufzeit.

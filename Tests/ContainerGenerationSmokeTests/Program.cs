@@ -46,12 +46,14 @@ internal static class Program
         await ValidateGoldenMasterCorpusAsync();
 
         ValidateWorkspacePersistenceAndAutoSaveSettings();
+        ValidateWorkspaceBlockingMarker();
         ValidateSlotMultiplicityPolicy();
         await ValidateContainerToFeeModelContractsAsync();
         ValidatePlcInputFanInParsing();
         ValidateContainerFileComparison();
         await ValidateFee2ContainerProvenanceRoundTripAsync();
         ValidateFee2ContainerLiveReconstruction();
+        ValidateTopLevelBasicFrameSelection();
         ValidateFee2SpecialDevicesProvenanceRoundTrip();
         ValidateRuleSuggestionWorkflow();
         await ValidateRequirementsRulePatchWorkflowAsync();
@@ -342,6 +344,71 @@ internal static class Program
         {
             throw new InvalidOperationException(
                 "Existing FEE BasicFrame reconstruction lost a supported container, fan-in, or slot mapping.");
+        }
+
+        var root = result.Snapshot.ContainerDocument.Root
+            ?? throw new InvalidOperationException("Reconstructed ContainerFile has no document root.");
+        if (root.Attribute("autoCreateFile") is null || root.Attribute("zuli") is null ||
+            root.Attribute("source") is not null || root.Attribute("feeRootGuid") is not null)
+        {
+            throw new InvalidOperationException("Reconstructed ContainerFile does not match the production CAAResult schema attributes.");
+        }
+    }
+
+    private static void ValidateTopLevelBasicFrameSelection()
+    {
+        var top = Guid.NewGuid();
+        var nested = Guid.NewGuid();
+        var secondTop = Guid.NewGuid();
+        var selected = FeeTopLevelBasicFrameDiscovery.SelectTopLevel(
+            [top, nested, secondTop],
+            new Dictionary<Guid, IReadOnlySet<Guid>>
+            {
+                [top] = new HashSet<Guid> { nested },
+                [nested] = new HashSet<Guid>(),
+                [secondTop] = new HashSet<Guid>()
+            });
+        if (!selected.ToHashSet().SetEquals([top, secondTop]))
+            throw new InvalidOperationException("Nested BasicFrames were offered as FEE2Container roots.");
+    }
+
+    private static void ValidateWorkspaceBlockingMarker()
+    {
+        var permittedFanIn = CreateContainerWithDuplicateSlot("PLC_IN_StatusWord");
+        var permittedSummary = WorkspaceValidationAnalyzer.Analyze([permittedFanIn], [], []);
+        if (permittedSummary.DuplicateSlots != 0 || permittedSummary.HasBlockingIssues)
+            throw new InvalidOperationException("Permitted PLC_IN fan-in was incorrectly blocked by workspace validation.");
+
+        var invalid = new ContainerData
+        {
+            Component = "Invalid",
+            Type = "Sensor",
+            DataList = new([
+                new ContainerEntry { Signal = string.Empty, Slot = string.Empty, DataType = "Bool" }
+            ])
+        };
+        var summary = WorkspaceValidationAnalyzer.Analyze([invalid], [], []);
+        var marker = WorkspaceValidationOverrideMarker.Create(summary);
+        if (!summary.HasBlockingIssues ||
+            !invalid.DataList.Single().HasValidationError ||
+            marker.Id != WorkspaceValidationOverrideMarker.ContainerId ||
+            marker.DataList.Count == 0 ||
+            marker.DataList.Any(entry => string.IsNullOrWhiteSpace(entry.Note)))
+        {
+            throw new InvalidOperationException("Invalid workspace entries or the explicit error export marker were not produced.");
+        }
+
+        var diagnosticPath = Path.Combine(Path.GetTempPath(), $"vibn-validation-{Guid.NewGuid():N}.xml");
+        try
+        {
+            var writeResult = XmlHandler.WriteContainerXml([marker], diagnosticPath, "AutoCreate.xml", "Interface.xlsx");
+            if (!writeResult.IsSuccess)
+                throw new InvalidOperationException("The validation-error container is not schema-compatible.");
+        }
+        finally
+        {
+            if (File.Exists(diagnosticPath))
+                File.Delete(diagnosticPath);
         }
     }
 

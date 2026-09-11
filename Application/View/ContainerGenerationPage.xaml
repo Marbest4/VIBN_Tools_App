@@ -80,6 +80,12 @@
                     <DataTrigger Binding="{Binding ReviewState}" Value="ManuallyEdited">
                         <Setter Property="Background" Value="#FFFFF8E1"/>
                     </DataTrigger>
+                    <DataTrigger Binding="{Binding HasValidationError}" Value="True">
+                        <Setter Property="Background" Value="#FFFFCDD2"/>
+                        <Setter Property="BorderBrush" Value="#FFC62828"/>
+                        <Setter Property="BorderThickness" Value="2"/>
+                        <Setter Property="ToolTip" Value="{Binding ValidationError}"/>
+                    </DataTrigger>
                 </Style.Triggers>
             </Style>
 

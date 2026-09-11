@@ -97,6 +97,15 @@ public static class FeeContainerLiveReconstructor
             if (string.IsNullOrWhiteSpace(componentName))
                 componentName = $"FEE-Objekt {candidate.Object.Guid:D}";
 
+            if (resolved.Length == 0)
+            {
+                issues.Add(new FeeContainerReconstructionIssue(
+                    candidate.Object.Guid,
+                    $"'{componentName}' wurde als {candidate.XmlType} erkannt, besitzt aber keine " +
+                    "eindeutig rücklesbare Variablenzuordnung und wurde nicht in die schema-konforme Datei übernommen."));
+                continue;
+            }
+
             var dataList = new XElement("DataList");
             var containerIndex = containerElements.Count;
             foreach (var entry in resolved)
@@ -117,14 +126,6 @@ public static class FeeContainerLiveReconstructor
                     variable.VariableGuid));
             }
 
-            if (resolved.Length == 0)
-            {
-                issues.Add(new FeeContainerReconstructionIssue(
-                    candidate.Object.Guid,
-                    $"'{componentName}' wurde als {candidate.XmlType} erkannt, besitzt aber keine " +
-                    "eindeutig rücklesbare Variablenzuordnung."));
-            }
-
             containerElements.Add(new XElement("Container",
                 new XAttribute("id", $"fee:{candidate.Object.Guid:D}"),
                 new XElement("Component", componentName),
@@ -137,9 +138,8 @@ public static class FeeContainerLiveReconstructor
             new XElement("CAAMergeResult",
                 new XAttribute("version", "1.0.0.0"),
                 new XAttribute("createdAt", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss")),
-                new XAttribute("source", "FEE"),
-                new XAttribute("feeRootGuid", rootGuid.ToString("D")),
-                new XAttribute("feeRootName", rootName ?? string.Empty),
+                new XAttribute("autoCreateFile", string.Empty),
+                new XAttribute("zuli", string.Empty),
                 new XElement("ContainerList", containerElements)));
         var snapshot = new FeeContainerProvenanceSnapshot(
             new Dictionary<string, string>(StringComparer.Ordinal),
@@ -151,7 +151,7 @@ public static class FeeContainerLiveReconstructor
         return new FeeContainerReconstructionResult(
             snapshot,
             sourceObjects.Length,
-            sourceObjects.Length - candidates.Count,
+            sourceObjects.Length - containerElements.Count,
             issues);
     }
 

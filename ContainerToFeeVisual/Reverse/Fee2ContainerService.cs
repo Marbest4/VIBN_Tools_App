@@ -36,7 +36,7 @@ public sealed record Fee2ContainerDiscoveryResult(
     IReadOnlyList<Fee2ContainerDiscoveryIssue> Issues);
 
 /// <summary>
-/// Lists all BasicFrames as selectable scopes. Roots carrying versioned
+/// Lists only top-level BasicFrames as selectable scopes. Roots carrying versioned
 /// Container2FEE metadata use the exact round-trip; other roots can be
 /// reconstructed from supported descendants and their live assignments.
 /// </summary>
@@ -53,6 +53,9 @@ public sealed class Fee2ContainerService
         var ignored = 0;
         var guidValues = await Services.ApiInstance.Object
             .GetSceneObjectGuidsOfTypeAsync(nameof(BasicFrame));
+        var topLevel = await FeeTopLevelBasicFrameDiscovery.DiscoverAsync(guidValues, cancellationToken);
+        issues.AddRange(topLevel.Issues.Select(message =>
+            new Fee2ContainerDiscoveryIssue(null, string.Empty, message)));
         var currentVariables = (await Services.ApiInstance.Interface.GetAllVariablesAsync())
             .Select(variable => new FeeContainerVariableState(
                 variable.VariableGuid,
@@ -63,19 +66,10 @@ public sealed class Fee2ContainerService
                 variable.Comment ?? string.Empty))
             .ToArray();
 
-        foreach (var guidText in guidValues)
+        foreach (var guid in topLevel.Roots)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            if (!Guid.TryParse(guidText, out var guid))
-            {
-                issues.Add(new Fee2ContainerDiscoveryIssue(
-                    null,
-                    string.Empty,
-                    $"FEE lieferte eine ungültige BasicFrame-ID: '{guidText}'."));
-                continue;
-            }
-
-            string name = guidText;
+            string name = guid.ToString("D");
             try
             {
                 var nameXml = await Services.ApiInstance.Object.GetPropertyAsync(

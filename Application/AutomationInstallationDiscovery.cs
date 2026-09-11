@@ -116,12 +116,7 @@ public sealed class AutomationInstallationDiscovery : IAutomationInstallationDis
         }
 
         var distinct = components
-            .GroupBy(component => new
-            {
-                component.Kind,
-                Product = component.Product.Trim().ToUpperInvariant(),
-                Version = component.Version.Trim().ToUpperInvariant()
-            })
+            .GroupBy(BuildIdentityKey, StringComparer.OrdinalIgnoreCase)
             // The same uninstall entry is frequently registered in the 32- and
             // 64-bit views with an empty path in one view. Show the product once
             // and retain the evidence with the most useful installation path.
@@ -140,6 +135,46 @@ public sealed class AutomationInstallationDiscovery : IAutomationInstallationDis
             diagnostics.Add("Keine unterstützte lokale Automatisierungsinstallation wurde erkannt.");
         return new AutomationInstallationInventory(distinct, diagnostics.Distinct().ToArray());
     }
+
+    /// <summary>
+    /// Collapses the folder and uninstall-registry evidence for the same
+    /// installation. Product labels differ between both sources (for example
+    /// "Portal V20" and "SIMATIC STEP 7 Professional V20"), therefore the
+    /// technical product family and detected major version form the identity.
+    /// Siemens extensions keep their normalized product name so unrelated
+    /// add-ons with the same version are never merged.
+    /// </summary>
+    public static string BuildIdentityKey(InstalledAutomationComponent component)
+    {
+        ArgumentNullException.ThrowIfNull(component);
+        var version = NormalizeVersion(component.Version, component.Product);
+        var product = component.Kind == AutomationComponentKind.SiemensExtension
+            ? NormalizeProduct(component.Product)
+            : component.Kind.ToString();
+        return $"{component.Kind}|{product}|{version}";
+    }
+
+    private static string NormalizeVersion(string version, string product)
+    {
+        var source = $"{version} {product}";
+        var tia = Regex.Match(source, @"(?<![A-Z0-9])V\s*(\d{1,2})(?:\.\d+)?", RegexOptions.IgnoreCase);
+        if (tia.Success)
+            return $"V{tia.Groups[1].Value}";
+
+        var numeric = Regex.Match(source, @"(?<!\d)(\d{1,3}(?:\.\d+){0,3})(?!\d)");
+        if (!numeric.Success)
+            return "UNVERSIONED";
+        var parts = numeric.Groups[1].Value.Split('.').ToList();
+        while (parts.Count > 1 && parts[^1] == "0")
+            parts.RemoveAt(parts.Count - 1);
+        return string.Join('.', parts);
+    }
+
+    private static string NormalizeProduct(string value) => new(
+        (value ?? string.Empty)
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToUpperInvariant)
+            .ToArray());
 
     public static AutomationComponentKind? ClassifyInstalledProduct(string displayName)
     {

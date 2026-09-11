@@ -25,7 +25,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 ## Wichtige Eigenschaften
 
 - ViCo verwendet einen gemeinsamen, dynamischen PC-/Benutzerbestand aus Kanbanize; es gibt keine fest kompilierte PC-Benutzer-Zuordnung.
-- Die ViCo-Übersicht zeigt alle Karten der jeweiligen Arbeitsplatz-Lane. Die Zustandskennung `[B]`, `[P]`, `[W]` oder `[D]` bleibt sichtbar; die `KONFIGURATION`-Karte wird separat angezeigt und bearbeitet.
+- Die ViCo-Übersicht trennt aktive Karten in **Planung** und **In Arbeit**, zeigt Start/Ende und öffnet die konkrete Kanbanize-Karte über ihre ID; Statusmarker werden nicht mehr im Projektnamen angezeigt.
 - Der normale Button **Remote Desktop** legt den lokalen Credential-Manager-Eintrag aus `VIBN_RDP_PASSWORD` nur für den Start an und entfernt ihn nach 20 Sekunden. **RDP mit Anmeldedaten** öffnet den Windows-Anmeldedialog ohne diesen temporären Eintrag.
 - API-Key und RDP-Passwort werden verdeckt in Project Settings beziehungsweise der IBN-Oberfläche pro Windows-Benutzer konfiguriert; PowerShell ist im normalen Ablauf nicht nötig.
 - Die ViCo-Übersicht zeigt den Countdown bis zum nächsten Kanbanize-AutoUpdate; das 1–1440-Minuten-Intervall wird lokal pro Benutzer gespeichert.

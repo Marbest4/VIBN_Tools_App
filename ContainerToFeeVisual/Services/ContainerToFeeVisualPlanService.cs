@@ -506,7 +506,9 @@ public sealed class ContainerToFeeVisualPlanService
             distinct);
     }
 
-    public async Task<VisualExecutionResult> ExecuteAsync(CancellationToken cancellationToken = default)
+    public async Task<VisualExecutionResult> ExecuteAsync(
+        IReadOnlyList<VisualIssue>? acceptedValidationErrors = null,
+        CancellationToken cancellationToken = default)
     {
         var plan = CurrentPlan;
         if (plan is null)
@@ -524,7 +526,7 @@ public sealed class ContainerToFeeVisualPlanService
         }
 
         var validation = Validate();
-        if (!validation.IsValid)
+        if (!validation.IsValid && acceptedValidationErrors is null)
         {
             return new VisualExecutionResult(
                 false,
@@ -532,10 +534,37 @@ public sealed class ContainerToFeeVisualPlanService
                 validation.Issues);
         }
 
+        var currentErrors = validation.Issues
+            .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+            .ToArray();
+        if (currentErrors.Length > 0 && acceptedValidationErrors is not null)
+        {
+            var acceptedKeys = acceptedValidationErrors
+                .Select(issue => (issue.Code, issue.Message, issue.NodeId))
+                .ToHashSet();
+            var newErrors = currentErrors
+                .Where(issue => !acceptedKeys.Contains((issue.Code, issue.Message, issue.NodeId)))
+                .ToArray();
+            if (newErrors.Length > 0)
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Nach der FEE-Aktualisierung wurden zusätzliche, noch nicht bestätigte Fehler erkannt. " +
+                    "Die Generierung wurde vor dem Schreiben abgebrochen.",
+                    validation.Issues);
+            }
+        }
+
+        var effectiveAcceptedErrors = currentErrors.Length > 0
+            ? currentErrors
+            : acceptedValidationErrors?
+                .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                .ToArray() ?? [];
         return await _executor.ExecuteAsync(
             plan,
             _runtimeObjects,
             _runtimeInterfaces,
+            effectiveAcceptedErrors,
             cancellationToken);
     }
 

@@ -41,12 +41,13 @@ Diese Liste auf einem GROB-Desktop mit Netzwerkzugriff, FEE, Kanbanize-Berechtig
 - [ ] IBN startet kompakt mit ausschließlich PC/Online/Projekte; Details, RDP und Zugangsdaten bleiben über die Expander auf 480 × 340 erreichbar.
 - [ ] Ohne FEE-Verbindung sind alle dokumentierten FEE-Aktionen grau, nicht ausführbar und zeigen den Tooltip „Keine Verbindung zu FEE vorhanden.“.
 - [ ] ViCo-Suche findet PC, Benutzer und Projekt mit demselben Suchfeld.
-- [ ] Hauptspalten stehen exakt als Belegung, PC, Online, Projekt, Software, Benutzer, Standort, Sonstiges und Projekt-IP; die letzten zwei lassen sich persistent ein-/ausblenden.
-- [ ] Die Projektspalte zeigt lange Projektlisten mit größerer Breite und vollständigem Tooltip, ohne Tabellenvirtualisierung zu deaktivieren.
-- [ ] Nur Planung/In-Arbeit-Projekte stehen in der aktiven Projektauswahl; Backlog/Abschluss stehen im Detailbereich.
+- [ ] Alle ViCo-Spalten lassen sich über das Checkbox-Dropdown einzeln persistent ein-/ausblenden und sortieren.
+- [ ] Planung und In Arbeit stehen in getrennten Spalten ohne `[P]`/`[W]`; Start-/Enddatum und die ausklappbare Swimlane **Abgeschlossen** werden korrekt zugeordnet.
+- [ ] Klick beziehungsweise Kontextaktion öffnet anhand der gespeicherten Karten-ID genau die sichtbare Kanbanize-Karte.
 - [ ] Frei ist grün, Belegt rot; Online ist grün, Offline rot.
 - [ ] Offline-PCs lassen RDP, Anmeldedialog und PC-Projektordner sichtbar aber deaktiviert; vorhandene Serverpfade für Simulation, PLC und Planung bleiben nutzbar.
-- [ ] Rechtsklick auf eine Zeile bietet dieselben Aktionen wie der Detailbereich und wählt vor Ausführung genau diese Zeile aus.
+- [ ] Strg-/Umschalt-Mehrfachauswahl führt RDP-/Pfadaktionen für alle selektierten Zeilen aus; Kontextaktionen erhalten eine bestehende Mehrfachauswahl.
+- [ ] Ohne Planung/In-Arbeit-Karte sind Simulation, PLC-Projekt und Planung in Button und Kontextmenü deaktiviert.
 - [ ] Projektstart/-ende erscheinen ohne Uhrzeit oder als „nicht angegeben“; die Pfadanzeige lässt sich markieren und kopieren.
 - [ ] RDP-Sitzungsrechte fehlen: Anzeige lautet „Nicht abrufbar“, nicht „offline“.
 - [ ] Automatischer Remote-Button nutzt den Kanbanize-Benutzer; der zweite Button zeigt den Windows-Anmeldedialog.

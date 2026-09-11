@@ -18,6 +18,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         VisualPlan plan,
         IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
         IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
+        IReadOnlyList<VisualIssue> acceptedValidationErrors,
         CancellationToken cancellationToken)
     {
         if (Services.Connection?.CanUseFeeFeatures != true)
@@ -26,12 +27,28 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var binding = RuntimeVisualPlanBinder.Bind(plan, runtimeObjects);
+            var forcedRun = acceptedValidationErrors.Any(issue => issue.Severity == VisualIssueSeverity.Error);
+            var excludedContainerIds = ResolveAffectedContainers(plan, acceptedValidationErrors);
+            var unscopedErrors = acceptedValidationErrors
+                .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                .Where(issue => ResolveAffectedContainer(plan, issue.NodeId) is null)
+                .ToArray();
+            if (forcedRun && unscopedErrors.Length > 0)
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Der bestätigte Fehler betrifft den gesamten Plan und kann keinem Container sicher zugeordnet werden. " +
+                    "Eine Teilgenerierung wäre nicht deterministisch.",
+                    unscopedErrors);
+            }
+
+            var binding = RuntimeVisualPlanBinder.Bind(plan, runtimeObjects, excludedContainerIds);
             if (!binding.Success)
                 return new VisualExecutionResult(false, binding.Issue!.Message, [binding.Issue]);
 
             var selectedBindings = binding.Containers
-                .Where(item => plan.IsGenerationSelected(item.PlanNode.Id))
+                .Where(item => plan.IsGenerationSelected(item.PlanNode.Id) &&
+                               !excludedContainerIds.Contains(item.PlanNode.Id))
                 .ToArray();
             var modelPreflightIssues = selectedBindings
                 .SelectMany(item => ContainerModelValidationPreflight.Validate(item.RuntimeContainer)
@@ -43,12 +60,23 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                         $"{item.PlanNode.Name}: {issue.Message}",
                         item.PlanNode.Id)))
                 .ToArray();
-            if (modelPreflightIssues.Any(issue => issue.Severity == VisualIssueSeverity.Error))
+            if (modelPreflightIssues.Any(issue => issue.Severity == VisualIssueSeverity.Error) && !forcedRun)
             {
                 return new VisualExecutionResult(
                     false,
                     "Die Generierung wurde vor dem Schreiben abgebrochen, weil Voraussetzungen der ModelValidation fehlen.",
                     modelPreflightIssues);
+            }
+            if (forcedRun)
+            {
+                foreach (var containerId in modelPreflightIssues
+                             .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                             .Select(issue => issue.NodeId)
+                             .OfType<string>())
+                    excludedContainerIds.Add(containerId);
+                selectedBindings = selectedBindings
+                    .Where(item => !excludedContainerIds.Contains(item.PlanNode.Id))
+                    .ToArray();
             }
             var signalRequests = selectedBindings
                 .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
@@ -130,12 +158,12 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             }
             signalPlan.ApplyCreatedBindings(generationInterface);
 
-            if (selectedContainers.Length > 0)
+            if (selectedContainers.Length > 0 || forcedRun)
             {
                 var includedContainerIds = plan.Nodes
                     .Where(node => node.Kind == VisualNodeKind.Container)
                     .Where(node =>
-                        plan.IsGenerationSelected(node.Id) ||
+                        (plan.IsGenerationSelected(node.Id) && !excludedContainerIds.Contains(node.Id)) ||
                         !ContainerMetadataCatalog.TryGet(node.TypeName, out _))
                     .Select(node => node.Id)
                     .ToHashSet(StringComparer.Ordinal);
@@ -165,10 +193,19 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                         "Die Generierung wurde vor dem BasicFrame abgebrochen.",
                         "PROVENANCE_SIGNAL_BINDING_INCOMPLETE");
                 }
+                var persistentTags = new Dictionary<string, string>(provenance.Tags, StringComparer.Ordinal);
+                if (forcedRun)
+                {
+                    VisualGenerationOverrideMarker.Add(
+                        persistentTags,
+                        acceptedValidationErrors.Concat(modelPreflightIssues));
+                }
                 var basicFrame = new FeeBasicFrame
                 {
-                    Name = $"Auto Generated (at {timestamp})",
-                    PersistentTags = provenance.Tags,
+                    Name = forcedRun
+                        ? $"Auto Generated (at {timestamp}) - Fehler übersprungen"
+                        : $"Auto Generated (at {timestamp})",
+                    PersistentTags = persistentTags,
                 };
                 await basicFrame.CreateAsync();
                 await basicFrame.SendAndWaitAsync();
@@ -201,10 +238,13 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                 "Der erzeugte BasicFrame enthält Container2FEE-Provenienz für FEE2Container.");
             return new VisualExecutionResult(
                 true,
-                $"Generierung abgeschlossen: {selectedContainers.Length} Container wurden verarbeitet; " +
+                (forcedRun
+                    ? $"ACHTUNG: Teilgenerierung mit bestätigten Fehlern abgeschlossen; {excludedContainerIds.Count} fehlerhafte Container wurden übersprungen. "
+                    : "Generierung abgeschlossen: ") +
+                $"{selectedContainers.Length} Container wurden verarbeitet; " +
                 $"{signalPlan.ExistingBindings.Count} Signale wurden wiederverwendet und " +
                 $"{signalPlan.MissingSignals.Count} im Grob Generation Interface erzeugt.",
-                modelPreflightIssues);
+                acceptedValidationErrors.Concat(modelPreflightIssues).Distinct().ToArray());
         }
         catch (OperationCanceledException)
         {
@@ -225,4 +265,43 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
 
     private static VisualExecutionResult Failure(string message, string code, string? nodeId = null) =>
         new(false, message, [new VisualIssue(VisualIssueSeverity.Error, code, message, nodeId)]);
+
+    private static HashSet<string> ResolveAffectedContainers(
+        VisualPlan plan,
+        IEnumerable<VisualIssue> issues) => issues
+        .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+        .Select(issue => ResolveAffectedContainer(plan, issue.NodeId))
+        .OfType<string>()
+        .ToHashSet(StringComparer.Ordinal);
+
+    private static string? ResolveAffectedContainer(VisualPlan plan, string? nodeId)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId))
+            return null;
+        var target = plan.FindTarget(nodeId);
+        if (target is not null)
+            return target.ContainerId;
+        var node = plan.FindNode(nodeId);
+        return node?.Kind == VisualNodeKind.Container ? node.Id : node?.ContainerId;
+    }
+}
+
+internal static class VisualGenerationOverrideMarker
+{
+    public const string AcceptedKey = "vibn.validation.override";
+    public const string ErrorCountKey = "vibn.validation.error-count";
+    public const string ErrorPrefix = "vibn.validation.error.";
+
+    public static void Add(IDictionary<string, string> tags, IEnumerable<VisualIssue> issues)
+    {
+        var errors = issues
+            .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+            .Select(issue => $"[{issue.Code}] {issue.Message}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        tags[AcceptedKey] = "true";
+        tags[ErrorCountKey] = errors.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        for (var index = 0; index < errors.Length; index++)
+            tags[$"{ErrorPrefix}{index + 1:000}"] = errors[index];
+    }
 }

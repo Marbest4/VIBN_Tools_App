@@ -3,9 +3,10 @@ namespace VIBN_Tools.Core.ViCo;
 /// <summary>Persistent, non-secret preferences for the ViCo overview.</summary>
 public sealed record ViCoAutoRefreshSettings(
     int IntervalMinutes,
-    bool ShowExtendedInformation = false)
+    bool ShowExtendedInformation = false,
+    IReadOnlyList<string>? VisibleColumns = null)
 {
-    public static ViCoAutoRefreshSettings Default { get; } = new(5, false);
+    public static ViCoAutoRefreshSettings Default { get; } = new(5, false, null);
 }
 
 public static class ViCoAutoRefreshPolicy

@@ -965,16 +965,26 @@ namespace VIBN_Tools.Application.VM
         {
             var summary = CreateValidationSummary();
             StatusText = summary.ToStatusText();
+            var blockingWarning = summary.HasBlockingIssues
+                ? Environment.NewLine + Environment.NewLine +
+                  "ACHTUNG: Das ContainerFile ist technisch ungültig und darf regulär NICHT weiterverwendet werden. " +
+                  "Mit „Ja“ bestätigen Sie ausdrücklich einen Diagnoseexport. Der Export wird sichtbar mit einem " +
+                  "zusätzlichen Container „Fehler“ gekennzeichnet."
+                : string.Empty;
             var confirmation = MessageBox.Show(
                 summary.ToDisplayText() +
                 Environment.NewLine +
                 Environment.NewLine +
-                (summary.HasWarnings
+                (summary.HasBlockingIssues
+                    ? "Ungültigen Diagnoseexport wirklich erzwingen?"
+                    : summary.HasWarnings
                     ? "Es bestehen Prüfhinweise. Soll trotzdem exportiert werden?"
-                    : "Die Prüfung war ohne Hinweis. Soll jetzt exportiert werden?"),
+                    : "Die Prüfung war ohne Hinweis. Soll jetzt exportiert werden?") +
+                blockingWarning,
                 "Prüfzusammenfassung vor Export",
                 MessageBoxButton.YesNo,
-                summary.HasWarnings ? MessageBoxImage.Warning : MessageBoxImage.Information);
+                summary.HasWarnings ? MessageBoxImage.Error : MessageBoxImage.Information,
+                summary.HasWarnings ? MessageBoxResult.No : MessageBoxResult.Yes);
 
             if (confirmation != MessageBoxResult.Yes)
             {
@@ -996,8 +1006,19 @@ namespace VIBN_Tools.Application.VM
             if (!string.IsNullOrEmpty(filePath))
             {
                 List<ComponentContainer> exportContainerList = ContainerData.ToComponentContainerList(ContainerList);
-                // Add unknown container type with all unassigned entries
-                exportContainerList.Add(new ComponentContainer { Component = "unknown", Type = "unknown", DataList = UnassignedEntries });
+                // The schema requires at least one entry per DataList. Do not
+                // append an empty unknown container to otherwise valid files.
+                if (UnassignedEntries.Count > 0)
+                {
+                    exportContainerList.Add(new ComponentContainer
+                    {
+                        Component = "unknown",
+                        Type = "unknown",
+                        DataList = UnassignedEntries
+                    });
+                }
+                if (summary.HasBlockingIssues)
+                    exportContainerList.Add(WorkspaceValidationOverrideMarker.Create(summary));
 
                 Result<string> result = XmlHandler.WriteContainerXml(exportContainerList, filePath, Path.GetFileName(Settings.PathRequirementsXml), Path.GetFileName(Settings.PathZuli));
                 if (!result.IsSuccess)
@@ -1012,7 +1033,9 @@ namespace VIBN_Tools.Application.VM
                         $"{filePath} | {ContainerList.Count} Container, " +
                         $"{AssignedSignals} zugeordnete und {UnassignedEntries.Count} nicht zugeordnete Signale.");
                     StatusText =
-                        $"Export abgeschlossen. {summary.ToStatusText()}";
+                        summary.HasBlockingIssues
+                            ? $"UNGÜLTIGER Diagnoseexport abgeschlossen und mit Container „Fehler“ markiert. {summary.ToStatusText()}"
+                            : $"Export abgeschlossen. {summary.ToStatusText()}";
                 }
             }
         }

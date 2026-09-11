@@ -118,6 +118,16 @@ public sealed record ViCoWorkstation(
 
     public string ProjectSummary => string.Join(" | ", Projects);
 
+    public IReadOnlyList<ViCoProjectCardInfo> PlanningProjectCards => ActiveCards("Planung");
+
+    public IReadOnlyList<ViCoProjectCardInfo> WorkingProjectCards => ActiveCards("In Arbeit");
+
+    public IReadOnlyList<string> PlanningProjects => ActiveProjectTitles("Planung", PlanningProjectCards);
+
+    public IReadOnlyList<string> WorkingProjects => ActiveProjectTitles("In Arbeit", WorkingProjectCards);
+
+    public bool HasActiveProjects => PlanningProjects.Count > 0 || WorkingProjects.Count > 0;
+
     /// <summary>
     /// Completed project cards assigned either through the Kanbanize
     /// "Abgeschlossen" swimlane or through the legacy done status.
@@ -151,6 +161,27 @@ public sealed record ViCoWorkstation(
         Configuration ?? ViCoWorkstationConfiguration.Empty;
 
     public bool HasConfigurationCard => WorkstationConfiguration.CardId > 0;
+
+    private IReadOnlyList<ViCoProjectCardInfo> ActiveCards(string status) => ProjectCardDetails
+        .Where(card => string.Equals(card.Status, status, StringComparison.OrdinalIgnoreCase))
+        .ToArray();
+
+    private IReadOnlyList<string> ActiveProjectTitles(
+        string status,
+        IReadOnlyList<ViCoProjectCardInfo> cards)
+    {
+        if (cards.Count > 0)
+            return cards.Select(card => ProjectIdentity.CleanDisplay(card.Title)).ToArray();
+
+        // Older caches do not contain the structured card projection. Retain
+        // their status markers for classification but never show the marker.
+        return Projects
+            .Where(project => string.Equals(ProjectIdentity.GetStatus(project), status, StringComparison.OrdinalIgnoreCase))
+            .Select(ProjectIdentity.CleanDisplay)
+            .Where(project => project.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+    }
 }
 
 public sealed record ViCoWorkstationSnapshot(

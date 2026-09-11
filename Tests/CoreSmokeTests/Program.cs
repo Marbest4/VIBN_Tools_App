@@ -364,12 +364,14 @@ static async Task VerifyAutoRefreshPreferencesAsync(string temporaryRoot)
 {
     var file = Path.Combine(temporaryRoot, "preferences", "vico.json");
     var store = new JsonViCoAutoRefreshSettingsStore(file);
-    await store.SaveAsync(new ViCoAutoRefreshSettings(0, true));
+    await store.SaveAsync(new ViCoAutoRefreshSettings(0, true, ["pc", "planning", "projectIp"]));
     var normalized = await store.LoadAsync();
     Assert(normalized.IntervalMinutes == ViCoAutoRefreshPolicy.MinimumIntervalMinutes,
         "An invalid auto-refresh interval was not normalized before persistence.");
     Assert(normalized.ShowExtendedInformation,
         "The optional ViCo column preference was not persisted.");
+    Assert(normalized.VisibleColumns?.SequenceEqual(["pc", "planning", "projectIp"]) == true,
+        "The per-column ViCo visibility preference was not persisted.");
 
     await File.WriteAllTextAsync(file, "not-json");
     var recovered = await store.LoadAsync();
@@ -404,8 +406,18 @@ static void VerifyProjectIdentityAndPaths(string temporaryRoot)
         "TIA V18",
         "FEE 5",
         "LAN",
-        new[] { "[W] GM_GU1660/05-130 Customer" },
-        Array.Empty<string>());
+        new[] { "[P] GM_GU1660/05-130 Planning", "[W] GM_GU1660/05-140 Working" },
+        Array.Empty<string>(),
+        ProjectCards:
+        [
+            new ViCoProjectCardInfo(101, "[P] GM_GU1660/05-130 Planning", "Planung", new DateTimeOffset(2026, 2, 3, 0, 0, 0, TimeSpan.Zero), null),
+            new ViCoProjectCardInfo(102, "[W] GM_GU1660/05-140 Working", "In Arbeit", null, new DateTimeOffset(2026, 3, 4, 0, 0, 0, TimeSpan.Zero))
+        ]);
+
+    Assert(workstation.PlanningProjects.SequenceEqual(["GM_GU1660/05-130 Planning"]) &&
+           workstation.WorkingProjects.SequenceEqual(["GM_GU1660/05-140 Working"]) &&
+           workstation.HasActiveProjects,
+        "Planning and working Kanbanize cards were not split without legacy status markers.");
 
     var projectCard = workstation.Projects[0];
     Assert(resolver.Resolve(workstation, projectCard, ViCoRelatedPathKind.Simulation) == simulationPath,
@@ -436,6 +448,12 @@ static void VerifyRemoteDesktopProfile()
         "The normalized Kanbanize user was not written to the RDP profile.");
     Assert(lines.Contains("prompt for credentials:i:0"),
         "The RDP profile must retain the automatic Windows credential behavior.");
+    Assert(lines.Contains("redirectclipboard:i:1") &&
+           lines.Contains("redirectprinters:i:0") &&
+           lines.Contains("redirectcomports:i:0") &&
+           lines.Contains("redirectsmartcards:i:0") &&
+           lines.Contains("drivestoredirect:s:"),
+        "The RDP profile must request only the predefined clipboard resource.");
     Assert(lines.Contains("selectedmonitors:s:0,2"),
         "Selected RDP monitors were not preserved.");
     Assert(!lines.Any(line => line.Contains("password", StringComparison.OrdinalIgnoreCase) ||

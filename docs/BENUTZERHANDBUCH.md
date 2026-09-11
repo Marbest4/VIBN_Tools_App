@@ -76,13 +76,15 @@ Die Haupttabelle ist auf die Arbeitsplanung reduziert und zeigt in dieser Reihen
 | Belegung | **Frei** (grün), wenn nur Backlog/Erledigt vorliegt; **Belegt** (rot), sobald Planung oder In Arbeit vorliegt |
 | PC | dynamischer Arbeitsplatzname |
 | Online | Grün für erreichbar, Rot für offline |
-| Projekt(e) | ausschließlich Karten in Planung oder In Arbeit; Backlog und Erledigt stehen unter **Alle Kanbanize-Informationen** |
+| Planung / In Arbeit | getrennte aktive Kartenlisten; Klick oder Rechtsklick öffnet die konkrete Karte im Browser |
+| Startdatum / Enddatum | Termine der aktiven Kanbanize-Karten ohne Uhrzeit |
+| Abgeschlossene Projekte | ausklappbare Karten der Swimlane **Abgeschlossen** |
 | Software | ausschließlich der Wert der Unteraufgabe `SW:` |
 | Benutzer | bevorzugter Remote-Benutzer aus der KONFIGURATION-Karte |
 | Standort | Wert der Unteraufgabe `STANDORT:` |
 | Sonstiges, Projekt-IP | optionale Werte der `KONFIGURATION`-Karte |
 
-Die Legende verwendet `[B]` für Backlog, `[P]` für Planung, `[W]` für In Arbeit und `[D]` für Erledigt. **Projekt-IP und Sonstiges anzeigen** blendet die zwei Zusatzspalten ein und speichert diese Wahl pro Windows-Benutzer. RDP-Sitzung, letzte Anmeldung und Konfigurationsstatus stehen im Detailbereich. Der ausklappbare Bereich zeigt relevante Projektkarten; Robotik- und KONFIGURATION-Daten bleiben in ihren eigenen strukturierten Detailbereichen und werden dort nicht doppelt dargestellt.
+Die Statusmarker `[B]`, `[P]`, `[W]` und `[D]` werden in sichtbaren Projektnamen nicht mehr angezeigt. Das Dropdown **Spalten ein-/ausblenden** enthält jede Tabellenspalte als eigene Checkbox und speichert die Auswahl pro Windows-Benutzer. Alle Spalten besitzen eine Sortierung. RDP-Sitzung, letzte Anmeldung und Konfigurationsstatus stehen im Detailbereich. Der ausklappbare Bereich zeigt relevante Projektkarten; Robotik- und KONFIGURATION-Daten bleiben in ihren eigenen strukturierten Detailbereichen und werden dort nicht doppelt dargestellt.
 
 Unter dem Suchfeld zeigt ein Countdown den nächsten automatischen Kanbanize-Abruf. Das Intervall kann zwischen 1 und 1440 Minuten eingetragen und mit **Übernehmen** pro Windows-Benutzer gespeichert werden. Ohne konfigurierten API-Key steht der Zähler auf **pausiert**; sobald der Key in Project Settings gespeichert wurde, beginnt der Countdown ohne Neustart. **Daten aktualisieren** bleibt für eine sofortige manuelle Aktualisierung erhalten und startet den Zähler anschließend neu.
 
@@ -96,6 +98,10 @@ Nach Auswahl eines PCs stehen bis zu vier lokale Monitore sowie diese Aktionen b
 - **RDP mit Anmeldedaten** startet dieselbe Remote-Verbindung ohne temporären Eintrag und zeigt bewusst den Windows-Anmeldedialog.
 - **PC-Projektordner** öffnet den Pfad auf dem Arbeitsplatz und erfordert deshalb einen Online-PC.
 - **Simulation**, **PLC-Projekt** und **Planung** öffnen Serverpfade und bleiben auch bei einem Offline-PC verfügbar, sofern der Pfad aufgelöst werden konnte.
+
+Mehrere Tabellenzeilen können mit Strg/Umschalt markiert werden; RDP- und Pfadaktionen laufen anschließend für alle ausgewählten Arbeitsplätze. Simulation, PLC-Projekt und Planung bleiben deaktiviert, sobald mindestens ein Ziel weder eine Karte in Planung noch in Arbeit besitzt. Ein Klick auf eine aktive Projektkarte – oder **Zur Kanbanize-Karte springen** im Karten-Kontextmenü – öffnet deren konkrete Karten-ID im Standardbrowser.
+
+Das erzeugte RDP-Profil fordert ausschließlich die Ressource **Zwischenablage** an; Drucker, COM-Ports, Smartcards und Laufwerke bleiben aus. Auf aktuellen Windows-Versionen darf eine unsignierte `.rdp`-Datei diese neue Sicherheitsabfrage trotzdem nicht selbst überspringen. Vollständig ohne Zwischendialog funktioniert dies nur mit einer organisationsseitig signierten RDP-Datei und einem per Gruppenrichtlinie vertrauenswürdig hinterlegten Herausgeber; VIBN Tools setzt dafür bewusst keinen Registry- oder Sicherheits-Bypass.
 
 Bei einem Offline-PC bleiben die Aktionen sichtbar: Nur RDP, RDP mit Anmeldedialog und der PC-Projektordner werden mit einem konkreten Tooltip deaktiviert. Die angezeigten Pfade stehen in einem schreibgeschützten Textfeld und können markiert sowie mit **Strg+C** kopiert werden.
 
@@ -237,6 +243,8 @@ Zuli-Datei wählen, die angezeigten Optionen prüfen und **Create Interface File
 
 `Strg+Z` macht die letzte bearbeitbare Aktion rückgängig, `Strg+Y` bzw. `Strg+Umschalt+Z` wiederholt sie.
 
+Vor jedem Container-Export wird der komplette Arbeitsstand validiert. Fehlende Signalnamen/Slots, unzulässige Doppelbelegungen und doppelte Signal-IDs markieren die betroffenen Eingabefelder rot und erscheinen in der Prüfzusammenfassung. Ein regulärer Export ist damit gesperrt. Nur eine ausdrücklich bestätigte Diagnoseausgabe wird trotzdem geschrieben; sie enthält zusätzlich den schema-kompatiblen Container **Fehler** mit allen Hinweisen. Ein leerer `unknown`-Container wird nicht mehr geschrieben.
+
 Die Referenzdateien `Interface5.xlsx` und `Interface7.xlsx` sind als automatischer Importtest Bestandteil der Solution. Ein Fehler zu `SixLabors.Fonts.FontMetrics.TryGetGlyphMetrics` deutet auf einen gemischten alten Ausgabe-/Installationsordner hin; Anwendung vollständig neu bauen beziehungsweise das neue Setup vollständig installieren.
 
 ### Container2Fee
@@ -255,13 +263,13 @@ SimObjects können von rechts auf kompatible Ziele gezogen werden. Ein Einzelzie
 
 **Nur SimObjects verknüpfen** erzeugt nichts neu und verbindet zugeordnete SimObjects nur mit bereits vorhandenen, gleichnamigen LogicObjects. Eine Interface-Auswahl ist dafür technisch nicht erforderlich, weil dieser Modus keine Signale liest, anlegt oder verändert. Er benötigt aber mindestens eine Zuordnung in einem ausgewählten Container und zuvor vollständig gelesene FEE-Modelldaten über **Model Validation → Update Objects**. Details und Grenzen stehen in [CONTAINER2FEE_VISUAL.md](CONTAINER2FEE_VISUAL.md).
 
-Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbindet dann jedes Signal über ein eigenes Move-Objekt. Doppelte `PLC_OUT_`- oder sonstige Slots werden bereits beim Einlesen mit einer konkreten Fehlermeldung abgewiesen. Dadurch beginnt bei einer erkennbar ungültigen Datei keine teilweise FEE-Erzeugung.
+Mehrere Signale dürfen denselben `PLC_IN_`-Slot belegen; Container2FEE verbindet dann jedes Signal über ein eigenes Move-Objekt. Doppelte `PLC_OUT_`- oder sonstige Slots werden bereits beim Einlesen mit einer konkreten Fehlermeldung abgewiesen. Eine Fehler-Teilgenerierung ist nur nach eindringlicher Bestätigung möglich; eindeutig fehlerhafte Container werden übersprungen und der erzeugte BasicFrame samt Fehlertext dauerhaft gekennzeichnet. Globale Mehrdeutigkeiten bleiben gesperrt.
 
 Vor **Start Generation** werden außerdem die aus der ModelValidation ableitbaren Pflichtsignale und SimObject-Ziele geprüft. Beim Stopper aktiviert das Tool den `CollisionSlot`, verbindet ihn mit `SIM_Collision` und liest Eigenschaft und Verbindung aus FEE zurück. Auch alle anderen Generatorverknüpfungen werden zurückgelesen; eine fehlende SDK-Bestätigung ist ein Fehler. Neu erzeugte SimObjects behalten die Größen des bisherigen Container2FEE-Generators. Reale Positionen, Pick-/Drop-Marks und die BeltControl-Achsbeziehung bleiben fachlich einzustellen und anschließend über **Model Validation → Update Objects** zu prüfen.
 
 ### FEE2Container
 
-Der Reiter liest nach einer FEE-Verbindung alle `BasicFrame`-Roots und lässt den gewünschten Hauptknoten auswählen. Bei gültiger Container2FEE-Provenienz werden Signalname, Adresse/Pfad, Datentyp und Signal-ID über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen. Bei älteren oder manuell aufgebauten Roots werden ausschließlich unterstützte Containerobjekte innerhalb des gewählten Teilbaums sowie ihre eindeutigen Signal-/Slotzuordnungen rekonstruiert. Fachlich nicht mehr unterscheidbare Typen und nicht abbildbare Objekte erscheinen als Prüfhinweise. Das exportierte ContainerFile kann anschließend in den bestehenden Containervergleich geladen werden. Details, Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
+Der Reiter liest nach einer FEE-Verbindung nur `BasicFrame`-Roots der obersten Hierarchieebene und lässt den gewünschten Hauptknoten auswählen. Bei gültiger Container2FEE-Provenienz werden Signalname, Adresse/Pfad, Datentyp und Signal-ID über die Variablen-GUID aus dem aktuellen FEE-Stand übernommen. Bei älteren oder manuell aufgebauten Roots werden ausschließlich unterstützte Containerobjekte innerhalb des gewählten Teilbaums sowie ihre eindeutigen Signal-/Slotzuordnungen rekonstruiert. Fachlich nicht mehr unterscheidbare Typen und nicht abbildbare Objekte erscheinen als Prüfhinweise. Das exportierte ContainerFile kann anschließend in den bestehenden Containervergleich geladen werden. Details, Grenzen und der ehrliche Live-Abnahmestatus stehen in [FEE2CONTAINER.md](FEE2CONTAINER.md).
 
 ### AI-Test / Regelvorschläge
 

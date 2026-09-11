@@ -20,7 +20,8 @@ internal static class RuntimeVisualPlanBinder
 {
     public static RuntimeVisualPlanBindingResult Bind(
         VisualPlan plan,
-        IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects)
+        IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
+        IReadOnlySet<string>? excludedContainerIds = null)
     {
         var (containers, unknownSignals) =
             ContainerToFeeService.ReadInContainerXmlData(plan.SourceXmlPath);
@@ -46,6 +47,9 @@ internal static class RuntimeVisualPlanBinder
             var container = containers[index];
             var node = containerNodes[index];
             bound.Add(new BoundVisualContainer(container, node));
+
+            if (excludedContainerIds?.Contains(node.Id) == true)
+                continue;
 
             if (container is ICreatableContainer creatable)
                 creatable.IsCreationRequested = plan.IsCreationRequested(node.Id);

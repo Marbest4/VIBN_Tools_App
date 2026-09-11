@@ -238,17 +238,30 @@
                         <TextBlock Margin="10,0,0,0" VerticalAlignment="Center"
                                    Text="{Binding AutomationDiscoveryStatus}" TextWrapping="Wrap" />
                     </StackPanel>
-                    <DataGrid MinHeight="130" MaxHeight="260"
+                    <DataGrid MinHeight="130" MaxHeight="300" MinWidth="1180"
                               ItemsSource="{Binding InstalledAutomationComponents}"
                               AutoGenerateColumns="False" IsReadOnly="True"
                               CanUserAddRows="False" CanUserDeleteRows="False"
-                              EnableRowVirtualization="True">
+                              EnableRowVirtualization="True"
+                              HorizontalScrollBarVisibility="Auto">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="Kategorie" Binding="{Binding KindLabel}" Width="145" />
-                            <DataGridTextColumn Header="Produkt / Erweiterung" Binding="{Binding Product}" Width="2*" />
-                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="105" />
-                            <DataGridTextColumn Header="Installationspfad" Binding="{Binding InstallLocation}" Width="3*" />
-                            <DataGridTextColumn Header="Nachweis" Binding="{Binding Evidence}" Width="2*" />
+                            <DataGridTextColumn Header="Kategorie" Binding="{Binding KindLabel}" Width="175" />
+                            <DataGridTemplateColumn Header="Produkt / Erweiterung" Width="310">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding Product}" ToolTip="{Binding Product}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="125" />
+                            <DataGridTemplateColumn Header="Installationspfad" Width="430">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding InstallLocation}" ToolTip="{Binding InstallLocation}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
+                            <DataGridTemplateColumn Header="Nachweis" Width="300">
+                                <DataGridTemplateColumn.CellTemplate>
+                                    <DataTemplate><TextBlock Text="{Binding Evidence}" ToolTip="{Binding Evidence}" TextTrimming="CharacterEllipsis" /></DataTemplate>
+                                </DataGridTemplateColumn.CellTemplate>
+                            </DataGridTemplateColumn>
                         </DataGrid.Columns>
                     </DataGrid>
                 </DockPanel>

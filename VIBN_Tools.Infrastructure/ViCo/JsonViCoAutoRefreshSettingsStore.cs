@@ -37,7 +37,11 @@ public sealed class JsonViCoAutoRefreshSettingsStore : IViCoAutoRefreshSettingsS
             return new ViCoAutoRefreshSettings(
                 ViCoAutoRefreshPolicy.Normalize(
                     settings?.IntervalMinutes ?? ViCoAutoRefreshSettings.Default.IntervalMinutes),
-                settings?.ShowExtendedInformation ?? ViCoAutoRefreshSettings.Default.ShowExtendedInformation);
+                settings?.ShowExtendedInformation ?? ViCoAutoRefreshSettings.Default.ShowExtendedInformation,
+                settings?.VisibleColumns?
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray());
         }
         catch (JsonException)
         {
@@ -63,7 +67,11 @@ public sealed class JsonViCoAutoRefreshSettingsStore : IViCoAutoRefreshSettingsS
 
             var normalized = new ViCoAutoRefreshSettings(
                 ViCoAutoRefreshPolicy.Normalize(settings.IntervalMinutes),
-                settings.ShowExtendedInformation);
+                settings.ShowExtendedInformation,
+                settings.VisibleColumns?
+                    .Where(value => !string.IsNullOrWhiteSpace(value))
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray());
             var temporaryFile = _filePath + ".tmp";
             await using (var stream = new FileStream(
                 temporaryFile,

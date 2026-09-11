@@ -34,6 +34,23 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
     };
 
     public string ProjectSummary => Model.ProjectSummary;
+    public IReadOnlyList<ViCoProjectCardItemVM> PlanningProjects => Model.PlanningProjectCards
+        .Select(card => new ViCoProjectCardItemVM(card))
+        .Concat(Model.PlanningProjectCards.Count == 0
+            ? Model.PlanningProjects.Select(title => new ViCoProjectCardItemVM(title, "Planung"))
+            : Array.Empty<ViCoProjectCardItemVM>())
+        .ToArray();
+    public IReadOnlyList<ViCoProjectCardItemVM> WorkingProjects => Model.WorkingProjectCards
+        .Select(card => new ViCoProjectCardItemVM(card))
+        .Concat(Model.WorkingProjectCards.Count == 0
+            ? Model.WorkingProjects.Select(title => new ViCoProjectCardItemVM(title, "In Arbeit"))
+            : Array.Empty<ViCoProjectCardItemVM>())
+        .ToArray();
+    public string PlanningProjectSummary => string.Join(" | ", Model.PlanningProjects);
+    public string WorkingProjectSummary => string.Join(" | ", Model.WorkingProjects);
+    public string ProjectStartSummary => FormatDates(Model.ProjectCardDetails, card => card.StartDate);
+    public string ProjectEndSummary => FormatDates(Model.ProjectCardDetails, card => card.Deadline);
+    public bool HasActiveProjects => Model.HasActiveProjects;
     public string AdditionalProjects => Model.AdditionalProjects;
     public IReadOnlyList<string> CompletedProjects => Model.CompletedProjects;
     public string CompletedProjectHeader => Model.CompletedProjects.Count switch
@@ -186,6 +203,77 @@ public sealed class ViCoWorkstationRowVM : MvvmBase
         OnPropertyChanged(nameof(ConfigurationOther));
         OnPropertyChanged(nameof(ConfigurationStatus));
         OnPropertyChanged(nameof(ConfigurationStatusBackground));
+    }
+
+    private static string FormatDates(
+        IEnumerable<ViCoProjectCardInfo> cards,
+        Func<ViCoProjectCardInfo, DateTimeOffset?> selectDate) =>
+        string.Join(" | ", cards
+            .Where(card => card.Status is "Planung" or "In Arbeit")
+            .Select(card => (Card: card, Date: selectDate(card)))
+            .Where(item => item.Date is not null)
+            .Select(item => $"{ProjectIdentity.CleanDisplay(item.Card.Title)}: {item.Date!.Value.LocalDateTime:dd.MM.yyyy}"));
+}
+
+public sealed record ViCoProjectCardItemVM(int CardId, string Title, string Status, string Start, string End)
+{
+    public ViCoProjectCardItemVM(ViCoProjectCardInfo card)
+        : this(
+            card.CardId,
+            ProjectIdentity.CleanDisplay(card.Title),
+            card.Status,
+            Format(card.StartDate),
+            Format(card.Deadline))
+    {
+    }
+
+    public ViCoProjectCardItemVM(string title, string status)
+        : this(0, ProjectIdentity.CleanDisplay(title), status, "nicht angegeben", "nicht angegeben")
+    {
+    }
+
+    public bool CanOpenCard => CardId > 0;
+    public string DateSummary => $"Start: {Start}; Ende: {End}";
+
+    private static string Format(DateTimeOffset? value) =>
+        value is null ? "nicht angegeben" : value.Value.LocalDateTime.ToString("dd.MM.yyyy");
+}
+
+public sealed class ViCoColumnOptionVM : MvvmBase
+{
+    private readonly Action _changed;
+    private bool _isVisible;
+
+    public ViCoColumnOptionVM(string key, string title, bool isVisible, Action changed)
+    {
+        Key = key;
+        Title = title;
+        _isVisible = isVisible;
+        _changed = changed;
+    }
+
+    public string Key { get; }
+    public string Title { get; }
+
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set
+        {
+            if (_isVisible == value)
+                return;
+            _isVisible = value;
+            OnPropertyChanged();
+            _changed();
+        }
+    }
+
+    public void Apply(bool value)
+    {
+        if (_isVisible == value)
+            return;
+        _isVisible = value;
+        OnPropertyChanged(nameof(IsVisible));
     }
 }
 

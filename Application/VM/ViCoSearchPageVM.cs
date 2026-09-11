@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Collections.Concurrent;
+using System.Collections;
 using System.Windows.Input;
 using VIBN_Tools.Core.ViCo;
 using VIBN_Tools.GlobalClasses;
@@ -38,6 +39,10 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     private bool _isSavingConfiguration;
     private DateTimeOffset? _nextAutoRefreshAt;
     private bool? _lastObservedOnlineConfiguration;
+    private IReadOnlyList<ViCoWorkstationRowVM> _selectedWorkstations = Array.Empty<ViCoWorkstationRowVM>();
+    private bool _columnPreferencesLoaded;
+
+    public const string KanbanizeBoardUrl = "https://grobgroup.kanbanize.com/ctrl_board/1541";
 
     public ViCoSearchPageVM(
         IViCoWorkstationCatalog catalog,
@@ -85,11 +90,27 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         ContextOpenSimulationCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Simulation)));
         ContextOpenCommissioningCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Commissioning)));
         ContextOpenPlanningCommand = GetCommandBinding(parameter => ExecuteForRow(parameter, () => OpenRelated(ViCoRelatedPathKind.Planning)));
+        OpenKanbanizeCardCommand = GetCommandBinding(OpenKanbanizeCard);
+
+        OccupancyColumn = AddColumn("occupancy", "Belegung", true);
+        PcColumn = AddColumn("pc", "PC", true);
+        OnlineColumn = AddColumn("online", "Online", true);
+        PlanningColumn = AddColumn("planning", "Planung", true);
+        WorkingColumn = AddColumn("working", "In Arbeit", true);
+        StartColumn = AddColumn("start", "Startdatum", true);
+        EndColumn = AddColumn("end", "Enddatum", true);
+        CompletedColumn = AddColumn("completed", "Abgeschlossene Projekte", true);
+        SoftwareColumn = AddColumn("software", "Software", true);
+        UserColumn = AddColumn("user", "Benutzer", true);
+        LocationColumn = AddColumn("location", "Standort", true);
+        OtherColumn = AddColumn("other", "Sonstiges", false);
+        ProjectIpColumn = AddColumn("projectIp", "Projekt-IP", false);
     }
 
     public ObservableCollection<ViCoWorkstationRowVM> Results { get; } = new();
     public ObservableCollection<string> Projects { get; } = new();
     public ObservableCollection<ViCoConfigurationFieldVM> ConfigurationFields { get; } = new();
+    public ObservableCollection<ViCoColumnOptionVM> ColumnOptions { get; } = new();
     public ICommand RefreshCommand { get; }
     public ICommand ConnectRemoteCommand { get; }
     public ICommand ConnectRemoteWithPromptCommand { get; }
@@ -107,6 +128,20 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     public ICommand ContextOpenSimulationCommand { get; }
     public ICommand ContextOpenCommissioningCommand { get; }
     public ICommand ContextOpenPlanningCommand { get; }
+    public ICommand OpenKanbanizeCardCommand { get; }
+    public ViCoColumnOptionVM OccupancyColumn { get; }
+    public ViCoColumnOptionVM PcColumn { get; }
+    public ViCoColumnOptionVM OnlineColumn { get; }
+    public ViCoColumnOptionVM PlanningColumn { get; }
+    public ViCoColumnOptionVM WorkingColumn { get; }
+    public ViCoColumnOptionVM StartColumn { get; }
+    public ViCoColumnOptionVM EndColumn { get; }
+    public ViCoColumnOptionVM CompletedColumn { get; }
+    public ViCoColumnOptionVM SoftwareColumn { get; }
+    public ViCoColumnOptionVM UserColumn { get; }
+    public ViCoColumnOptionVM LocationColumn { get; }
+    public ViCoColumnOptionVM OtherColumn { get; }
+    public ViCoColumnOptionVM ProjectIpColumn { get; }
     public int MonitorCount => _remoteDesktop.MonitorCount;
     public bool HasMonitor2 => MonitorCount >= 2;
     public bool HasMonitor3 => MonitorCount >= 3;
@@ -137,6 +172,8 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
                 return;
             _showExtendedInformation = value;
             OnPropertyChanged();
+            OtherColumn?.Apply(value);
+            ProjectIpColumn?.Apply(value);
         }
     }
 
@@ -203,7 +240,10 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             ConfigurationFields.Clear();
             if (value is not null)
             {
-                foreach (var project in value.Model.Projects)
+                foreach (var project in value.Model.Projects
+                             .Select(ProjectIdentity.CleanDisplay)
+                             .Where(project => project.Length > 0)
+                             .Distinct(StringComparer.OrdinalIgnoreCase))
                     Projects.Add(project);
                 foreach (var configurationField in value.Model.WorkstationConfiguration.Fields)
                     ConfigurationFields.Add(new ViCoConfigurationFieldVM(configurationField));
@@ -224,34 +264,51 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     /// <summary>Compatibility property for callers that require the workstation itself to be online.</summary>
     public bool CanUseSelectedWorkstationActions => SelectedWorkstation?.IsOnline == true;
 
-    public bool CanUseRemoteActions => SelectedWorkstation?.IsOnline == true;
+    public bool CanUseRemoteActions => ActionRows.Count > 0 && ActionRows.All(row => row.IsOnline);
 
-    public bool CanOpenPcProjects => SelectedWorkstation?.IsOnline == true && _pathResolver is not null;
+    public bool CanOpenPcProjects =>
+        ActionRows.Count > 0 &&
+        ActionRows.All(row => row.IsOnline) &&
+        _pathResolver is not null;
 
-    public bool CanOpenServerPathActions => SelectedWorkstation is not null && _pathResolver is not null;
+    public bool CanOpenServerPathActions =>
+        ActionRows.Count > 0 &&
+        ActionRows.All(row => row.HasActiveProjects) &&
+        _pathResolver is not null;
 
-    public string RemoteActionUnavailableReason => SelectedWorkstation is null
+    public string RemoteActionUnavailableReason => ActionRows.Count == 0
         ? "Zuerst einen Arbeitsplatz auswählen."
-        : SelectedWorkstation.IsOnline
+        : ActionRows.All(row => row.IsOnline)
             ? "Remote Desktop öffnen."
-            : "Remote Desktop ist deaktiviert, weil der ausgewählte PC offline ist.";
+            : "Remote Desktop ist deaktiviert, weil mindestens ein ausgewählter PC offline ist.";
 
-    public string PcProjectsUnavailableReason => SelectedWorkstation is null
+    public string PcProjectsUnavailableReason => ActionRows.Count == 0
         ? "Zuerst einen Arbeitsplatz auswählen."
-        : !SelectedWorkstation.IsOnline
-            ? "Der PC-Projektordner ist deaktiviert, weil der ausgewählte PC offline ist."
+        : ActionRows.Any(row => !row.IsOnline)
+            ? "Der PC-Projektordner ist deaktiviert, weil mindestens ein ausgewählter PC offline ist."
             : _pathResolver is null
                 ? "Die Projektpfade wurden noch nicht geladen."
-                : "Projektordner auf dem ausgewählten PC öffnen.";
+                : "Projektordner auf den ausgewählten PCs öffnen.";
 
-    public string ServerPathActionUnavailableReason => SelectedWorkstation is null
+    public string ServerPathActionUnavailableReason => ActionRows.Count == 0
         ? "Zuerst einen Arbeitsplatz auswählen."
+        : ActionRows.Any(row => !row.HasActiveProjects)
+            ? "Mindestens ein ausgewählter Arbeitsplatz hat weder ein Projekt in Planung noch in Arbeit."
         : _pathResolver is null
             ? "Die Serverpfade wurden noch nicht geladen."
-            : "Der Serverpfad ist auch bei einem offline geschalteten PC verfügbar.";
+            : "Die Serverpfade der ausgewählten Arbeitsplätze öffnen.";
 
     public bool IsSelectedWorkstationOffline =>
         SelectedWorkstation is not null && !SelectedWorkstation.IsOnline;
+
+    public void SetSelectedWorkstations(IList selectedItems)
+    {
+        _selectedWorkstations = selectedItems
+            .OfType<ViCoWorkstationRowVM>()
+            .Distinct()
+            .ToArray();
+        NotifyActionAvailabilityChanged();
+    }
 
     /// <summary>An existing configuration card can be edited; missing standard subtasks are added on save.</summary>
     public bool CanEditConfiguration =>
@@ -629,7 +686,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private void NotifySelectedWorkstationAvailabilityChanged(ViCoWorkstationRowVM row)
     {
-        if (ReferenceEquals(row, SelectedWorkstation))
+        if (ReferenceEquals(row, SelectedWorkstation) || _selectedWorkstations.Contains(row))
         {
             OnPropertyChanged(nameof(CanUseSelectedWorkstationActions));
             OnPropertyChanged(nameof(CanUseRemoteActions));
@@ -652,16 +709,21 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private void StartRemote(bool promptForCredentials)
     {
-        if (SelectedWorkstation is null)
+        var rows = ActionRows;
+        if (rows.Count == 0)
             return;
-        if (!CanUseSelectedWorkstationActions)
+        if (!rows.All(row => row.IsOnline))
         {
             StatusText = RemoteActionUnavailableReason;
             return;
         }
-        if (!promptForCredentials && string.IsNullOrWhiteSpace(SelectedWorkstation.UserName))
+        var missingUsers = rows
+            .Where(row => !promptForCredentials && string.IsNullOrWhiteSpace(row.UserName))
+            .Select(row => row.PcName)
+            .ToArray();
+        if (missingUsers.Length > 0)
         {
-            StatusText = "Die Kanbanize-Karte enthält keinen gültigen Remote-Benutzer.";
+            StatusText = $"Kein gültiger Remote-Benutzer für: {string.Join(", ", missingUsers)}.";
             _log.Warning("Remote Desktop", StatusText);
             return;
         }
@@ -671,29 +733,29 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
             .Where(value => value.selected)
             .Select(value => value.index)
             .ToArray();
-        try
+        var started = new List<string>();
+        var failed = new List<string>();
+        foreach (var row in rows)
         {
-            if (promptForCredentials)
+            try
             {
-                _remoteDesktop.ConnectWithCredentialPrompt(
-                    SelectedWorkstation.PcName,
-                    SelectedWorkstation.UserName,
-                    monitors);
-                StatusText = "Remote Desktop wird mit Windows-Anmeldedialog gestartet.";
-                _log.Information("Remote Desktop", $"Anmeldedialog für {SelectedWorkstation.PcName} gestartet.");
+                if (promptForCredentials)
+                    _remoteDesktop.ConnectWithCredentialPrompt(row.PcName, row.UserName, monitors);
+                else
+                    _remoteDesktop.Connect(row.PcName, row.UserName, monitors);
+                started.Add(row.PcName);
+                _log.Information("Remote Desktop", $"Verbindung zu {row.PcName} gestartet.");
             }
-            else
+            catch (Exception exception)
             {
-                _remoteDesktop.Connect(SelectedWorkstation.PcName, SelectedWorkstation.UserName, monitors);
-                StatusText = $"Remote Desktop wird automatisch als {SelectedWorkstation.UserName} gestartet.";
-                _log.Information("Remote Desktop", $"Automatische Verbindung zu {SelectedWorkstation.PcName} als {SelectedWorkstation.UserName} gestartet.");
+                failed.Add($"{row.PcName}: {exception.Message}");
+                _log.Error("Remote Desktop", $"Verbindung zu {row.PcName} konnte nicht gestartet werden.", exception);
             }
         }
-        catch (Exception exception)
-        {
-            StatusText = $"Remote Desktop konnte nicht gestartet werden: {exception.Message}";
-            _log.Error("Remote Desktop", $"Verbindung zu {SelectedWorkstation.PcName} konnte nicht gestartet werden.", exception);
-        }
+
+        StatusText = failed.Count == 0
+            ? $"Remote Desktop für {started.Count} Arbeitsplatz/Arbeitsplätze gestartet."
+            : $"{started.Count} RDP-Verbindung(en) gestartet; {failed.Count} fehlgeschlagen: {string.Join(" | ", failed)}";
     }
 
     private async Task SaveConfigurationAsync()
@@ -764,12 +826,14 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         {
             var settings = await _autoRefreshSettingsStore.LoadAsync(_lifetimeCancellation.Token);
             AutoRefreshIntervalMinutes = ViCoAutoRefreshPolicy.Normalize(settings.IntervalMinutes);
-            ShowExtendedInformation = settings.ShowExtendedInformation;
+            ApplyColumnPreferences(settings);
+            _columnPreferencesLoaded = true;
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
             AutoRefreshIntervalMinutes = ViCoAutoRefreshSettings.Default.IntervalMinutes;
-            ShowExtendedInformation = ViCoAutoRefreshSettings.Default.ShowExtendedInformation;
+            ApplyColumnPreferences(ViCoAutoRefreshSettings.Default);
+            _columnPreferencesLoaded = true;
             _log.Warning(
                 "ViCo AutoUpdate",
                 "Das gespeicherte Aktualisierungsintervall konnte nicht gelesen werden; fünf Minuten werden verwendet.",
@@ -784,7 +848,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         try
         {
             await _autoRefreshSettingsStore.SaveAsync(
-                new ViCoAutoRefreshSettings(normalized, ShowExtendedInformation),
+                BuildDisplaySettings(normalized),
                 _lifetimeCancellation.Token);
             ScheduleNextAutoRefresh();
             StatusText = $"Kanbanize-AutoUpdate wird alle {normalized} Minute(n) ausgeführt.";
@@ -802,13 +866,9 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         try
         {
             await _autoRefreshSettingsStore.SaveAsync(
-                new ViCoAutoRefreshSettings(
-                    ViCoAutoRefreshPolicy.Normalize(AutoRefreshIntervalMinutes),
-                    ShowExtendedInformation),
+                BuildDisplaySettings(ViCoAutoRefreshPolicy.Normalize(AutoRefreshIntervalMinutes)),
                 _lifetimeCancellation.Token);
-            StatusText = ShowExtendedInformation
-                ? "Die Zusatzspalten Projekt-IP und Sonstiges werden angezeigt."
-                : "Die Zusatzspalten Projekt-IP und Sonstiges sind ausgeblendet.";
+            StatusText = $"{ColumnOptions.Count(column => column.IsVisible)} ViCo-Spalte(n) werden angezeigt.";
             _log.Information("ViCo Anzeige", StatusText);
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
@@ -891,33 +951,68 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private void OpenRelated(ViCoRelatedPathKind kind)
     {
-        if (SelectedWorkstation is null || _pathResolver is null)
+        var rows = ActionRows;
+        if (rows.Count == 0 || _pathResolver is null)
             return;
         var requiresOnlineWorkstation = kind is ViCoRelatedPathKind.WorkstationProjects or
             ViCoRelatedPathKind.WorkstationProject;
-        if (requiresOnlineWorkstation && !SelectedWorkstation.IsOnline)
+        if (requiresOnlineWorkstation && rows.Any(row => !row.IsOnline))
         {
             StatusText = PcProjectsUnavailableReason;
             return;
         }
-        var project = SelectedProject ?? SearchText;
-        var path = _pathResolver.Resolve(SelectedWorkstation.Model, project, kind);
-        if (string.IsNullOrWhiteSpace(path))
+        if (!requiresOnlineWorkstation && rows.Any(row => !row.HasActiveProjects))
         {
-            StatusText = "Für die Auswahl wurde kein passender Pfad gefunden.";
+            StatusText = "Mindestens ein ausgewählter Arbeitsplatz hat kein Projekt in Planung oder in Arbeit.";
             return;
         }
-        _launcher.Open(path);
-        StatusText = $"Geöffnet: {path}";
-        _log.Information("ViCo-Pfade", StatusText);
+
+        var opened = new List<string>();
+        var missing = new List<string>();
+        foreach (var row in rows)
+        {
+            var project = ReferenceEquals(row, SelectedWorkstation) && !string.IsNullOrWhiteSpace(SelectedProject)
+                ? SelectedProject
+                : row.Model.PlanningProjects.Concat(row.Model.WorkingProjects).FirstOrDefault() ?? SearchText;
+            var path = _pathResolver.Resolve(row.Model, project ?? string.Empty, kind);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                missing.Add(row.PcName);
+                continue;
+            }
+            _launcher.Open(path);
+            opened.Add(path);
+            _log.Information("ViCo-Pfade", $"Geöffnet: {path}");
+        }
+        StatusText = missing.Count == 0
+            ? $"{opened.Count} Pfad(e) geöffnet."
+            : $"{opened.Count} Pfad(e) geöffnet; kein passender Pfad für {string.Join(", ", missing)}.";
     }
 
     private void ExecuteForRow(object parameter, Action action)
     {
         if (parameter is not ViCoWorkstationRowVM row)
             return;
-        SelectedWorkstation = row;
+        if (!_selectedWorkstations.Contains(row))
+        {
+            _selectedWorkstations = new[] { row };
+            SelectedWorkstation = row;
+        }
         action();
+    }
+
+    private void OpenKanbanizeCard(object parameter)
+    {
+        if (parameter is not ViCoProjectCardItemVM { CanOpenCard: true } card)
+        {
+            StatusText = "Für diese Cache-Karte ist keine Kanbanize-Karten-ID verfügbar.";
+            return;
+        }
+
+        var url = $"{KanbanizeBoardUrl}/cards/{card.CardId}/details/";
+        _launcher.Open(url);
+        StatusText = $"Kanbanize-Karte {card.CardId} wurde im Browser geöffnet.";
+        _log.Information("Kanbanize", StatusText);
     }
 
     private ViCoProjectCardInfo? FindSelectedProjectCard()
@@ -961,4 +1056,59 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
 
     private static string Describe(string label, string? path) =>
         string.IsNullOrWhiteSpace(path) ? $"{label}: nicht gefunden" : $"{label}: {path}";
+
+    private IReadOnlyList<ViCoWorkstationRowVM> ActionRows => _selectedWorkstations.Count > 0
+        ? _selectedWorkstations
+        : SelectedWorkstation is null
+            ? Array.Empty<ViCoWorkstationRowVM>()
+            : new[] { SelectedWorkstation };
+
+    private ViCoColumnOptionVM AddColumn(string key, string title, bool isVisible)
+    {
+        var column = new ViCoColumnOptionVM(key, title, isVisible, OnColumnOptionChanged);
+        ColumnOptions.Add(column);
+        return column;
+    }
+
+    private void OnColumnOptionChanged()
+    {
+        _showExtendedInformation = OtherColumn?.IsVisible == true && ProjectIpColumn?.IsVisible == true;
+        OnPropertyChanged(nameof(ShowExtendedInformation));
+        if (_columnPreferencesLoaded)
+            _ = SaveDisplayPreferencesAsync();
+    }
+
+    private void ApplyColumnPreferences(ViCoAutoRefreshSettings settings)
+    {
+        if (settings.VisibleColumns is { Count: > 0 })
+        {
+            var visible = settings.VisibleColumns.ToHashSet(StringComparer.OrdinalIgnoreCase);
+            foreach (var column in ColumnOptions)
+                column.Apply(visible.Contains(column.Key));
+        }
+        else
+        {
+            OtherColumn.Apply(settings.ShowExtendedInformation);
+            ProjectIpColumn.Apply(settings.ShowExtendedInformation);
+        }
+
+        _showExtendedInformation = OtherColumn.IsVisible && ProjectIpColumn.IsVisible;
+        OnPropertyChanged(nameof(ShowExtendedInformation));
+    }
+
+    private ViCoAutoRefreshSettings BuildDisplaySettings(int intervalMinutes) => new(
+        intervalMinutes,
+        OtherColumn.IsVisible && ProjectIpColumn.IsVisible,
+        ColumnOptions.Where(column => column.IsVisible).Select(column => column.Key).ToArray());
+
+    private void NotifyActionAvailabilityChanged()
+    {
+        OnPropertyChanged(nameof(CanUseSelectedWorkstationActions));
+        OnPropertyChanged(nameof(CanUseRemoteActions));
+        OnPropertyChanged(nameof(CanOpenPcProjects));
+        OnPropertyChanged(nameof(CanOpenServerPathActions));
+        OnPropertyChanged(nameof(RemoteActionUnavailableReason));
+        OnPropertyChanged(nameof(PcProjectsUnavailableReason));
+        OnPropertyChanged(nameof(ServerPathActionUnavailableReason));
+    }
 }

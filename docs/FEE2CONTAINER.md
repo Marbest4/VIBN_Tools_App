@@ -2,7 +2,7 @@
 
 ## Zwei Auslesemodi
 
-Der Reiter zeigt alle FEE-`BasicFrame`-Objekte als auswählbare Hauptknoten. Für einen durch **Container2FEE Visual** erzeugten Root wird weiterhin die gespeicherte Provenienz als exakter Round-Trip verwendet. Fehlt sie, rekonstruiert das Tool ein ContainerFile aus den unterstützten Objekten unterhalb des gewählten Hauptknotens sowie deren aktuellen Variablen- und Slotzuordnungen.
+Der Reiter zeigt ausschließlich FEE-`BasicFrame`-Objekte der obersten Hierarchieebene als auswählbare Hauptknoten; untergeordnete BasicFrames gehören zum jeweiligen Teilbaum und erscheinen nicht doppelt. Für einen durch **Container2FEE Visual** erzeugten Root wird weiterhin die gespeicherte Provenienz als exakter Round-Trip verwendet. Fehlt sie, rekonstruiert das Tool ein ContainerFile aus den unterstützten Objekten unterhalb des gewählten Hauptknotens sowie deren aktuellen Variablen- und Slotzuordnungen.
 
 Beim Generieren legt Container2FEE auf dem neuen `BasicFrame` eine versionierte Provenienz im persistenten `FS.SDK.Components.TagComponent.TagEntries` ab. Die FEE-SDK-Dateien unter `SDK/` werden dabei weder verändert noch ersetzt. Namespaced Tags enthalten:
 
@@ -22,7 +22,7 @@ Marks und sichtbare FEE-Objektnamen werden nicht als Metadatenspeicher missbrauc
 4. Einen Root anhand Name, GUID und Quelle auswählen. Bei `FEE-Struktur (Rekonstruktion)` werden Container- und Signalanzahl erst beim Export ermittelt.
 5. **ContainerFile exportieren** wählen und den Zielpfad bestätigen.
 
-BasicFrames ohne Provenienz werden nicht mehr ignoriert. Der Export untersucht ausschließlich den ausgewählten Root und seine Nachfahren. Erkannte Container, nicht zuordenbare Objekte und fachliche Mehrdeutigkeiten erscheinen als konkrete Prüfhinweise. Werden keine unterstützten Container gefunden, wird keine leere Datei geschrieben. Der Export erfolgt über eine temporäre Datei und wird anschließend atomar ersetzt; anschließend kann die Datei im Containervergleich als bestehender Stand geladen werden.
+BasicFrames ohne Provenienz werden nicht mehr ignoriert. Der Export untersucht ausschließlich den ausgewählten Root und seine Nachfahren. Erkannte Container, nicht zuordenbare Objekte und fachliche Mehrdeutigkeiten erscheinen als konkrete Prüfhinweise. Container ohne eindeutig rücklesbare Variablenzuordnung werden nicht ausgegeben, weil das produktive Schema mindestens einen Eintrag verlangt. Die Rekonstruktion schreibt nur die im `CAAResult`-Schema erlaubten Rootattribute. Werden keine unterstützten Container gefunden, wird keine leere Datei geschrieben. Der Export erfolgt über eine temporäre Datei und wird anschließend atomar ersetzt; anschließend kann die Datei im Containervergleich als bestehender Stand geladen werden.
 
 ## Round-Trip und Grenzen
 
