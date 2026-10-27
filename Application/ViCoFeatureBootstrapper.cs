@@ -1,0 +1,320 @@
+using System.Collections.Concurrent;
+using System.IO;
+using System.Net.Http;
+using System.Security.Principal;
+using VIBN_Tools.Application.VM;
+using VIBN_Tools.Core.Kanbanize;
+using VIBN_Tools.Core.ViCo;
+using VIBN_Tools.Infrastructure.Kanbanize;
+using VIBN_Tools.Infrastructure.ViCo;
+using VIBN_Tools.Tia.Client;
+using VIBN_Tools.Settings;
+using VIBN_Tools.Application.Runtime;
+
+namespace VIBN_Tools.Application;
+
+public static class ViCoFeatureBootstrapper
+{
+    private static readonly ViCoPathsOptions SharedOptions = ViCoPathsOptions.CreateDefault();
+    private static readonly ViCoWorkspaceContext WorkspaceContext = new();
+    private static readonly LegacyWorkstationCatalog SharedWorkstationCatalog =
+        new(SharedOptions.ServerCacheRoot);
+    private static readonly IViCoUserRoleStore SharedUserRoleStore = CreateUserRoleStore();
+    private static readonly IUserCredentialConfigurationService SharedCredentialConfiguration =
+        new SecureUserCredentialConfigurationService();
+    private static readonly ConcurrentDictionary<IAsyncDisposable, byte> AsyncResources = new();
+
+    public static IWorkstationDirectory WorkstationDirectory { get; } =
+        new WorkstationDirectory(SharedWorkstationCatalog);
+
+    /// <summary>Single shared source of truth for all VIBN Tools role checks.</summary>
+    public static IViCoUserRoleStore UserRoleStore => SharedUserRoleStore;
+
+    /// <summary>Shared per-user API/RDP configuration used by all live feature adapters.</summary>
+    public static IUserCredentialConfigurationService CredentialConfigurationService =>
+        SharedCredentialConfiguration;
+
+    public static Task InitializeWorkstationDirectoryAsync(CancellationToken cancellationToken = default) =>
+        WorkstationDirectory.RefreshAsync(cancellationToken);
+
+    /// <summary>
+    /// Resolves the project currently assigned to a connected FEE computer
+    /// from the same Kanbanize workstation data shown in Rechnerübersicht.
+    /// Local development connections deliberately remain labelled localhost.
+    /// </summary>
+    public static async Task<string?> ResolveWorkingProjectForComputerAsync(
+        string? computer,
+        CancellationToken cancellationToken = default)
+    {
+        if (IsLocalComputer(computer))
+            return "localhost";
+
+        if (string.IsNullOrWhiteSpace(computer))
+            return null;
+
+        var snapshot = await SharedWorkstationCatalog.LoadAsync(cancellationToken);
+        return ResolveWorkingProjectForComputer(computer, snapshot.Workstations);
+    }
+
+    public static string? ResolveWorkingProjectForComputer(
+        string? computer,
+        IEnumerable<ViCoWorkstation> workstations)
+    {
+        if (IsLocalComputer(computer))
+            return "localhost";
+
+        var normalizedComputer = NormalizeComputerName(computer);
+        if (normalizedComputer.Length == 0)
+            return null;
+
+        var workstation = workstations.FirstOrDefault(item =>
+            string.Equals(NormalizeComputerName(item.PcName), normalizedComputer, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(NormalizeComputerName(item.DisplayName), normalizedComputer, StringComparison.OrdinalIgnoreCase));
+        if (workstation is null)
+            return null;
+
+        var projects = workstation.WorkingProjects
+            .Where(project => !string.IsNullOrWhiteSpace(project))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        return projects.Length == 0 ? null : string.Join(" | ", projects);
+    }
+
+    private static bool IsLocalComputer(string? computer)
+    {
+        var normalized = NormalizeComputerName(computer);
+        return normalized.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+               normalized.Equals("::1", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeComputerName(string? computer)
+    {
+        var value = (computer ?? string.Empty).Trim();
+        if (Uri.TryCreate(value, UriKind.Absolute, out var uri) && !string.IsNullOrWhiteSpace(uri.Host))
+            value = uri.Host;
+        value = value.Trim('\\', '/');
+        if (System.Net.IPAddress.TryParse(value, out _))
+            return value;
+        var separator = value.IndexOfAny(['\\', '/', ':']);
+        if (separator > 0)
+            value = value[..separator];
+        var domainSeparator = value.IndexOf('.');
+        return domainSeparator > 0 ? value[..domainSeparator] : value;
+    }
+
+    public static ViCoPageVM CreateViewModel()
+    {
+        var options = ViCoPathsOptions.CreateDefault();
+
+        return new ViCoPageVM(
+            new FileSystemProjectCatalogService(options),
+            new ProjectSearchService(),
+            new LegacyTextFavoritesRepository(options.FavoritesFile),
+            new WindowsPathLauncher(),
+            new WpfFolderSelectionService());
+    }
+
+    public static TiaPortalPageVM CreateTiaPortalViewModel()
+    {
+        var client = CreateTiaBridgeClient();
+
+        return Register(new TiaPortalPageVM(
+            client,
+            new TiaLibraryService(client),
+            new WpfFolderSelectionService(),
+            FindInstalledTiaVersions(),
+            ApplicationLogService.Instance,
+            new FeeSdkSignalCatalog(),
+            new FeeSdkSignalMonitor()));
+    }
+
+    /// <summary>Creates an independent bridge process for a TIA-facing page.</summary>
+    public static ITiaBridgeClient CreateTiaBridgeClient()
+    {
+        var pipeName = $"VIBN_Tools.TiaBridge.{Environment.ProcessId}.{Guid.NewGuid():N}";
+        var bridgeExecutable = Path.Combine(
+            AppContext.BaseDirectory,
+            "TiaBridge",
+            "VIBN_Tools.TiaBridge.exe");
+        return new NamedPipeTiaBridgeClient(new TiaBridgeClientOptions(
+            pipeName,
+            RequestTimeout: TimeSpan.FromMinutes(5),
+            BridgeExecutablePath: bridgeExecutable));
+    }
+
+    public static SpecialDevicePageVM CreateSpecialDeviceViewModel() =>
+        Register(new SpecialDevicePageVM(
+            CreateTiaBridgeClient(),
+            FindInstalledTiaVersions(),
+            JsonTiaHardwareMappingStore.CreateDefault(),
+            ApplicationLogService.Instance));
+
+    /// <summary>
+    /// Cancels page-owned work and closes every tool-owned bridge. This is
+    /// invoked centrally because WPF does not await async Exit event handlers.
+    /// </summary>
+    public static async Task ShutdownAsync()
+    {
+        var resources = AsyncResources.Keys.ToArray();
+        foreach (var resource in resources)
+        {
+            try
+            {
+                await resource.DisposeAsync();
+            }
+            catch (Exception exception)
+            {
+                ApplicationLogService.Instance.Warning(
+                    "Anwendungsende",
+                    "Ein Hintergrunddienst konnte nicht sauber beendet werden; die restlichen Dienste werden weiter geschlossen.",
+                    exception.Message);
+            }
+            finally
+            {
+                AsyncResources.TryRemove(resource, out _);
+            }
+        }
+    }
+
+    private static T Register<T>(T resource) where T : IAsyncDisposable
+    {
+        AsyncResources.TryAdd(resource, 0);
+        return resource;
+    }
+
+    public static ViCoCopyPageVM CreateCopyViewModel()
+    {
+        var options = ViCoPathsOptions.CreateDefault();
+        return new ViCoCopyPageVM(
+            new BoundedFileCopyService(options.MaximumParallelCopies),
+            new WpfFolderSelectionService(),
+            WorkspaceContext,
+            new StandardProjectStructureService());
+    }
+
+    public static ViCoSearchPageVM CreateSearchViewModel()
+    {
+        var options = ViCoPathsOptions.CreateDefault();
+        var remoteDesktop = new WindowsRemoteDesktopService(
+            options.WorkingDirectory,
+            new WindowsTemporaryRemoteCredentialStore(SharedCredentialConfiguration.GetRemoteDesktopPassword));
+        return new ViCoSearchPageVM(
+            SharedWorkstationCatalog,
+            new ViCoWorkstationSearch(),
+            cancellationToken => CreatePathResolverAsync(options, cancellationToken),
+            new NetworkAvailabilityService(),
+            remoteDesktop,
+            new WindowsRemoteSessionService(),
+            new WindowsPathLauncher(),
+            new KanbanizeRefreshService(
+                new HttpClient(),
+                SharedCredentialConfiguration.GetKanbanizeApiKey,
+                options.ServerCacheRoot),
+            new KanbanizeWorkstationConfigurationService(
+                new HttpClient(),
+                SharedCredentialConfiguration.GetKanbanizeApiKey),
+            new JsonViCoAutoRefreshSettingsStore(options.AutoRefreshSettingsFile),
+            new JsonViCoLastActiveSnapshotStore(options.LastActiveWorkstationsFile),
+            WorkspaceContext,
+            workstations =>
+            {
+                WorkstationDirectory.Synchronize(workstations);
+                UpdateConnectedFeeStation(workstations);
+            },
+            ApplicationLogService.Instance);
+    }
+
+    private static void UpdateConnectedFeeStation(IEnumerable<ViCoWorkstation> workstations)
+    {
+        if (GlobalClasses.Services.Connection?.IsConnected != true)
+            return;
+        var station = ResolveWorkingProjectForComputer(
+            GlobalClasses.Services.Connection.ConnectedServer,
+            workstations);
+        GlobalClasses.Services.Connection.SetConnectedStation(station);
+    }
+
+    /// <summary>
+    /// Creates the standalone card workflow. It shares the existing Kanbanize
+    /// credentials with ViCo, but has no dependency on ViCo role visibility.
+    /// </summary>
+    public static KanbanizeCardPageVM CreateKanbanizeCardViewModel()
+    {
+        IKanbanizeCardService cards = new KanbanizeCardApiService(
+            new HttpClient(),
+            SharedCredentialConfiguration.GetKanbanizeApiKey);
+        return new KanbanizeCardPageVM(
+            cards,
+            new VibnWorkplaceSynchronizationService(cards),
+            ApplicationLogService.Instance,
+            new WindowsPathLauncher());
+    }
+
+    public static ViCoAdministrationPageVM CreateAdministrationViewModel()
+    {
+        var options = ViCoPathsOptions.CreateDefault();
+        return new ViCoAdministrationPageVM(
+            SharedUserRoleStore,
+            new OutlookMeetingService(),
+            new FileSystemViCoUpdateService(options.VersionsRoot),
+            new WindowsPathLauncher(),
+            WindowsIdentity.GetCurrent().Name,
+            ApplicationLogService.Instance);
+    }
+
+    private static IViCoUserRoleStore CreateUserRoleStore()
+    {
+        return new JsonViCoUserRoleStore(
+            SharedOptions.RolesFile,
+            LoadLegacyRolesForOneTimeMigrationAsync);
+    }
+
+    /// <summary>
+    /// Reads the predecessor's encrypted assignments once when roles.json is
+    /// absent. The active application never creates requests or license files.
+    /// </summary>
+    private static async Task<IReadOnlyList<ViCoUserRole>> LoadLegacyRolesForOneTimeMigrationAsync(
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var legacy = new LegacyRoleMigrationReader(
+                SharedOptions.LegacyRoleAssignmentsRoot,
+                LegacyRoleMigrationCompatibility.ResolveKey());
+            if (!legacy.CanRead)
+                return Array.Empty<ViCoUserRole>();
+
+            var assignments = await legacy.LoadAsync(cancellationToken);
+            return assignments
+                .Select(assignment => new ViCoUserRole(
+                    assignment.UserName,
+                    assignment.Level,
+                    "Migration"))
+                .ToArray();
+        }
+        catch (Exception exception)
+        {
+            ApplicationLogService.Instance.Warning(
+                "Rollenverwaltung",
+                "Historische Rollen konnten nicht migriert werden; die zentrale roles.json wird unverändert verwendet.",
+                exception.Message);
+            return Array.Empty<ViCoUserRole>();
+        }
+    }
+
+    private static async Task<IViCoRelatedPathResolver> CreatePathResolverAsync(
+        ViCoPathsOptions options,
+        CancellationToken cancellationToken) =>
+        await ViCoRelatedPathResolver.CreateAsync(
+            options.SimulationProjectsRoot,
+            options.ServerCacheRoot,
+            cancellationToken,
+            options.CommissioningProjectsRoot,
+            options.PlanningProjectsRoot);
+
+    private static IReadOnlyList<string> FindInstalledTiaVersions()
+    {
+        return new AutomationInstallationDiscovery().Discover().TiaVersions;
+    }
+}

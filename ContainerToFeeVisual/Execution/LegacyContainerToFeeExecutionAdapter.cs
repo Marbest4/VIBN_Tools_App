@@ -1,0 +1,581 @@
+using VIBN_Tools.ContainerToFee;
+using VIBN_Tools.GlobalClasses;
+using VIBN_Tools.GlobalClasses.FeeObjects;
+using VIBN_Tools.Settings;
+using System.Xml.Linq;
+using static VIBN_Tools.GlobalClasses.Interfaces;
+
+namespace VIBN_Tools.ContainerToFeeVisual;
+
+/// <summary>
+/// Applies the visual plan to freshly parsed legacy containers and delegates
+/// all actual creation to the established Container2FEE executor. This keeps
+/// the generated FEE behavior identical to the existing tab.
+/// </summary>
+internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger logger)
+{
+    public Task<VisualExecutionResult> ExecuteAsync(
+        VisualPlan plan,
+        IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
+        IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
+        IReadOnlyList<VisualIssue> acceptedValidationErrors,
+        IProgress<VisualGenerationProgress>? progress,
+        CancellationToken cancellationToken) => FeeMutationScope.RunAsync(
+            () => ExecuteCoreAsync(plan, runtimeObjects, runtimeInterfaces, acceptedValidationErrors, progress, cancellationToken), cancellationToken);
+
+    private async Task<VisualExecutionResult> ExecuteCoreAsync(
+        VisualPlan plan,
+        IReadOnlyDictionary<string, FeeAbstractObject> runtimeObjects,
+        IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
+        IReadOnlyList<VisualIssue> acceptedValidationErrors,
+        IProgress<VisualGenerationProgress>? progress,
+        CancellationToken cancellationToken)
+    {
+        if (Services.Connection?.CanUseFeeFeatures != true)
+            return Failure(FeeConnectionService.MissingConnectionMessage, "FEE_NOT_CONNECTED");
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            progress?.Report(new VisualGenerationProgress(5, "Generierungsplan und ModelValidation werden geprüft …"));
+            var executionWarnings = new List<VisualIssue>();
+            var forcedRun = acceptedValidationErrors.Any(issue => issue.Severity == VisualIssueSeverity.Error);
+            var excludedContainerIds = new HashSet<string>(StringComparer.Ordinal);
+
+            var binding = RuntimeVisualPlanBinder.Bind(
+                plan,
+                runtimeObjects,
+                excludedContainerIds,
+                omitInvalidSlotEntries: forcedRun,
+                omitInvalidObjectAssignments: forcedRun);
+            if (!binding.Success)
+            {
+                var canOmitInvalidAssignment = binding.Issue!.Code is
+                    "ASSIGNED_FEE_OBJECT_MISSING" or
+                    "ASSIGNED_FEE_OBJECT_INCOMPATIBLE";
+                return new VisualExecutionResult(
+                    false,
+                    binding.Issue.Message,
+                    [binding.Issue],
+                    RequiresOverrideConfirmation: !forcedRun && canOmitInvalidAssignment);
+            }
+
+            var selectedBindings = binding.Containers
+                .Where(item => plan.IsGenerationSelected(item.PlanNode.Id) &&
+                               !excludedContainerIds.Contains(item.PlanNode.Id))
+                .ToArray();
+            var reuseIssues = new List<VisualIssue>();
+            var existingLogics = await ExistingSignalLinkAdapter.ReadExistingLogicsAsync(cancellationToken);
+            foreach (var item in selectedBindings.Where(item =>
+                         item.RuntimeContainer is Interfaces.ILogicOwner or Interfaces.ILogicSimObjectOwner))
+            {
+                var expectedLogic = plan.Nodes.FirstOrDefault(node =>
+                    node.ContainerId == item.PlanNode.Id && node.Kind == VisualNodeKind.Logic)?.Name;
+                var explicitLogic = ExistingContainerLogicResolver.ExplicitAssignment(plan, item.PlanNode.Id, runtimeObjects);
+                var matches = existingLogics.Where(logic => explicitLogic is not null ? logic.Guid == explicitLogic.Guid :
+                        string.Equals(logic.Name, item.RuntimeContainer.ComponentName, StringComparison.OrdinalIgnoreCase) &&
+                        (string.IsNullOrWhiteSpace(expectedLogic) ||
+                         string.Equals(logic.LogicDefinitionName, expectedLogic, StringComparison.OrdinalIgnoreCase)))
+                    .ToArray();
+                if (explicitLogic is not null && (matches.Length != 1 ||
+                    matches[0].LogicDefinitionGuid != explicitLogic.LogicDefinitionGuid))
+                    return Failure("Die ausdrücklich zugeordnete Logik wurde in FEE entfernt oder geändert. FEE aktualisieren und die Zuordnung prüfen.",
+                        "ASSIGNED_LOGIC_CHANGED", item.PlanNode.Id);
+                if (matches.Length > 1)
+                {
+                    if (forcedRun)
+                    {
+                        reuseIssues.Add(new VisualIssue(
+                            VisualIssueSeverity.Error,
+                            "EXISTING_LOGIC_AMBIGUOUS",
+                            $"Logik '{item.RuntimeContainer.ComponentName}' ({expectedLogic}) ist mehrfach vorhanden. " +
+                            "Kein vorhandener Treffer wurde automatisch ausgewählt; die Best-Effort-Erzeugung wird fortgesetzt.",
+                            item.PlanNode.Id));
+                        continue;
+                    }
+                    return Failure(
+                        $"Logik '{item.RuntimeContainer.ComponentName}' ({expectedLogic}) ist mehrfach vorhanden. " +
+                        "Die Generierung erzeugt kein weiteres Duplikat; bitte den Bestand eindeutig bereinigen.",
+                        "EXISTING_LOGIC_AMBIGUOUS",
+                        item.PlanNode.Id,
+                        requiresOverrideConfirmation: true);
+                }
+                if (matches.Length == 1 &&
+                    !ContainerExistingObjectReuse.TryAssignLogic(item.RuntimeContainer, matches[0]))
+                {
+                    if (forcedRun)
+                    {
+                        reuseIssues.Add(new VisualIssue(
+                            VisualIssueSeverity.Error,
+                            "EXISTING_LOGIC_BIND_FAILED",
+                            $"Vorhandene Logik '{item.RuntimeContainer.ComponentName}' konnte nicht wiederverwendet werden. " +
+                            "Die Best-Effort-Erzeugung wird ohne diese Wiederverwendung fortgesetzt.",
+                            item.PlanNode.Id));
+                        continue;
+                    }
+                    return Failure(
+                        $"Vorhandene Logik '{item.RuntimeContainer.ComponentName}' konnte nicht wiederverwendet werden.",
+                        "EXISTING_LOGIC_BIND_FAILED",
+                        item.PlanNode.Id,
+                        requiresOverrideConfirmation: true);
+                }
+            }
+            var existingCabinetElements = await ExistingSignalLinkAdapter.ReadExistingCabinetElementsAsync(cancellationToken);
+            foreach (var item in selectedBindings.Where(item => item.RuntimeContainer is Interfaces.ICabinetElementOwner))
+            {
+                var expectedType = ContainerExistingObjectReuse.GetExpectedCabinetElementType(item.RuntimeContainer);
+                var matches = ContainerExistingObjectReuse.FindCabinetElements(item.RuntimeContainer, existingCabinetElements);
+                if (matches.Length > 1)
+                {
+                    if (forcedRun)
+                    {
+                        reuseIssues.Add(new VisualIssue(
+                            VisualIssueSeverity.Error,
+                            "EXISTING_CABINET_ELEMENT_AMBIGUOUS",
+                            $"CabinetElement '{item.RuntimeContainer.ComponentName}' ({expectedType}) ist mehrfach vorhanden. " +
+                            "Kein vorhandener Treffer wurde automatisch ausgewählt; die Best-Effort-Erzeugung wird fortgesetzt.",
+                            item.PlanNode.Id));
+                        continue;
+                    }
+                    return Failure(
+                        $"CabinetElement '{item.RuntimeContainer.ComponentName}' ({expectedType}) ist mehrfach vorhanden. " +
+                        "Die Generierung erzeugt kein weiteres Duplikat; bitte den Bestand eindeutig bereinigen.",
+                        "EXISTING_CABINET_ELEMENT_AMBIGUOUS",
+                        item.PlanNode.Id,
+                        requiresOverrideConfirmation: true);
+                }
+                if (matches.Length == 1 &&
+                    !ContainerExistingObjectReuse.TryAssignCabinetElement(item.RuntimeContainer, matches[0]))
+                {
+                    if (forcedRun)
+                    {
+                        reuseIssues.Add(new VisualIssue(
+                            VisualIssueSeverity.Error,
+                            "EXISTING_CABINET_ELEMENT_BIND_FAILED",
+                            $"Vorhandenes CabinetElement '{item.RuntimeContainer.ComponentName}' konnte nicht wiederverwendet werden. " +
+                            "Die Best-Effort-Erzeugung wird ohne diese Wiederverwendung fortgesetzt.",
+                            item.PlanNode.Id));
+                        continue;
+                    }
+                    return Failure(
+                        $"Vorhandenes CabinetElement '{item.RuntimeContainer.ComponentName}' konnte nicht wiederverwendet werden.",
+                        "EXISTING_CABINET_ELEMENT_BIND_FAILED",
+                        item.PlanNode.Id,
+                        requiresOverrideConfirmation: true);
+                }
+            }
+            var modelPreflightIssues = reuseIssues.Concat(selectedBindings
+                .SelectMany(item => ContainerModelValidationPreflight.Validate(item.RuntimeContainer)
+                    .Select(issue => new VisualIssue(
+                        issue.Severity == ContainerPreflightSeverity.Error
+                            ? VisualIssueSeverity.Error
+                            : VisualIssueSeverity.Warning,
+                        issue.Code,
+                        $"{item.PlanNode.Name}: {issue.Message}",
+                        item.PlanNode.Id))))
+                .ToArray();
+            if (modelPreflightIssues.Any(issue => issue.Severity == VisualIssueSeverity.Error) && !forcedRun)
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Die Generierung wurde vor dem Schreiben abgebrochen, weil Voraussetzungen der ModelValidation fehlen.",
+                    modelPreflightIssues,
+                    RequiresOverrideConfirmation: true);
+            }
+            // In an explicitly confirmed forced run the user requested a
+            // best-effort creation of these containers. Model preflight errors
+            // remain persisted below the root instead of silently excluding the
+            // affected container. Ambiguous runtime identities are never
+            // selected arbitrarily; the forced path records the issue and
+            // creates an isolated replacement where that is safe.
+            var usedSignalNodeIds = new HashSet<string>(StringComparer.Ordinal);
+            var signalRequests = selectedBindings
+                .SelectMany(binding => binding.RuntimeContainer.EnumerateAssignedSignals().Select(signal =>
+                    CreateSignalResolutionRequest(
+                        plan,
+                        binding.PlanNode,
+                        signal,
+                        usedSignalNodeIds)))
+                .Concat(binding.UnknownSignals.Select(signal =>
+                    new SignalResolutionRequest(
+                        "unknown-signals",
+                        "Unbekannte Signale",
+                        signal,
+                        FindUnknownSignalNodeId(plan, signal, usedSignalNodeIds))))
+                .ToArray();
+            var selectedInterfaceGuids = plan.ExistingInterfaceSelections
+                .Select(item => item.InterfaceGuid)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var reusableInterfaces = runtimeInterfaces.Values
+                .Where(item => selectedInterfaceGuids.Contains(item.Guid.ToString("D")))
+                .ToArray();
+            var reusableSignalGuids = reusableInterfaces
+                .SelectMany(item => item.Signals ?? [])
+                .Select(signal => signal.Guid.ToString("D"))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var selectedSignalAssignments = plan.SignalAssignments
+                .Where(assignment => reusableSignalGuids.Contains(assignment.FeeSignalGuid))
+                .ToArray();
+            var signalPlan = SignalResolutionPlanner.Build(
+                signalRequests,
+                reusableInterfaces,
+                selectedSignalAssignments,
+                treatConflictsAsMissing: forcedRun);
+            var globalSignals = SignalResolutionPlanner.Build(signalRequests, runtimeInterfaces.Values, plan.SignalAssignments);
+            var missingGuids = signalPlan.MissingSignals.Select(item => item.Signal.Guid).ToHashSet();
+            if (!globalSignals.IsValid || globalSignals.ExistingBindings.Any(item => missingGuids.Contains(item.Request.Signal.Guid)))
+                return new VisualExecutionResult(false,
+                    "Ein benötigtes Signal existiert bereits außerhalb der ausgewählten Interfaces oder ist mehrdeutig. Interface auswählen bzw. die vorhandene Signalzuordnung prüfen; es wurde kein Signal dupliziert.",
+                    globalSignals.Issues.Append(new VisualIssue(VisualIssueSeverity.Warning, "EXISTING_SIGNAL_CREATION_BLOCKED",
+                        "Bereits vorhandene Signale werden nicht neu erzeugt.")).ToArray());
+            if (!signalPlan.IsValid && !forcedRun)
+            {
+                return new VisualExecutionResult(
+                    false,
+                    "Vorhandene Signale konnten nicht eindeutig aufgelöst werden.",
+                    signalPlan.Issues,
+                    RequiresOverrideConfirmation: true);
+            }
+            signalPlan.ApplyExistingBindings(allowInvalid: forcedRun);
+            if (forcedRun)
+                executionWarnings.AddRange(signalPlan.Issues);
+            progress?.Report(new VisualGenerationProgress(18, "Vorhandene Signale wurden eindeutig aufgelöst."));
+
+            // Reused signals retain their original parent interface. Missing
+            // variables are deliberately isolated in a fresh interface for
+            // this run, so selected source interfaces are never modified.
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss");
+            var generationInterface = new FeeInterface
+            {
+                Name = $"AutoGenerated {timestamp}",
+                ProviderGuid = Defines.GrobGenerationInterfaceProviderGuid,
+            };
+            if (signalPlan.MissingSignals.Count > 0)
+            {
+                // Existing interface instances are not evidence for an
+                // installed provider. Let FEE resolve the stable provider GUID
+                // while creating the interface; this also works in a project
+                // in which no interface instance exists yet.
+                if (!await generationInterface.CreateInterfaceAsync())
+                {
+                    return Failure(
+                        "Der Provider des Grob Generation Interface ist nicht verfügbar oder die neue " +
+                        "FEE-Interfaceinstanz konnte nicht angelegt werden. Es wird keine vorhandene " +
+                        "Interfaceinstanz vorausgesetzt; bitte nur die Plugininstallation prüfen.",
+                        "GROB_GENERATION_INTERFACE_CREATE_FAILED");
+                }
+                progress?.Report(new VisualGenerationProgress(
+                    28,
+                    $"Neues AutoGenerated-Interface '{generationInterface.Name}' wurde bereitgestellt."));
+            }
+
+            var selectedContainers = selectedBindings
+                .Select(item => item.RuntimeContainer)
+                .ToArray();
+            ContainerToFeeService.LinkAddonContainers(selectedContainers);
+            var sortedContainers = selectedBindings
+                .Select(item => item.RuntimeContainer)
+                .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
+                .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
+                .ToArray();
+
+            // Create only the unique missing variables before any BasicFrame,
+            // logic or SimObject is written. All later legacy calls reuse the
+            // resolved GUIDs and therefore cannot duplicate the variables.
+            foreach (var missing in signalPlan.MissingSignals)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!await missing.Signal.CreateSignalAsync(generationInterface))
+                {
+                    return Failure(
+                        $"Signal '{missing.Signal.Tag}' konnte im neuen AutoGenerated-Interface nicht erzeugt werden. " +
+                        "Bereits zuvor angelegte Signale können bestehen geblieben sein; Containerobjekte wurden noch nicht erzeugt.",
+                        "GENERATED_SIGNAL_NOT_AVAILABLE",
+                        missing.ContainerId);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+            signalPlan.ApplyCreatedBindings(generationInterface, allowInvalid: forcedRun);
+            progress?.Report(new VisualGenerationProgress(40, "Signale wurden wiederverwendet oder erzeugt."));
+
+            if (selectedContainers.Length > 0 || forcedRun)
+            {
+                var includedContainerIds = plan.Nodes
+                    .Where(node => node.Kind == VisualNodeKind.Container)
+                    .Where(node =>
+                        (plan.IsGenerationSelected(node.Id) && !excludedContainerIds.Contains(node.Id)) ||
+                        !ContainerMetadataCatalog.TryGet(node.TypeName, out _))
+                    .Select(node => node.Id)
+                    .ToHashSet(StringComparer.Ordinal);
+                var sourceDocument = RuntimeVisualPlanBinder.CreateEffectiveDocument(
+                    plan,
+                    omitInvalidSlotEntries: forcedRun);
+                var signalSources = selectedBindings.ToDictionary(
+                    item => item.PlanNode.Id,
+                    item => (IReadOnlyList<FeeContainerSignalSource>)item.RuntimeContainer
+                        .EnumerateAssignedSignals()
+                        .Select(signal => new FeeContainerSignalSource(
+                            signal.Comment ?? string.Empty,
+                            signal.Tag ?? string.Empty,
+                            string.IsNullOrWhiteSpace(signal.Path) ? signal.Address ?? string.Empty : signal.Path,
+                            signal.IOTypeString ?? string.Empty,
+                            signal.Guid))
+                        .ToArray(),
+                    StringComparer.Ordinal);
+                var provenance = FeeContainerProvenanceCodec.Create(
+                    sourceDocument,
+                    includedContainerIds,
+                    plan.SourceFingerprint,
+                    signalSources);
+                var expectedBindings = signalSources.Values.Sum(signals => signals.Count);
+                if (provenance.SignalBindings.Count != expectedBindings)
+                {
+                    return Failure(
+                        "Die Container-Einträge konnten nicht eindeutig den aufgelösten FEE-Signalen zugeordnet werden. " +
+                        "Die Generierung wurde vor dem BasicFrame abgebrochen.",
+                        "PROVENANCE_SIGNAL_BINDING_INCOMPLETE");
+                }
+                var persistentTags = new Dictionary<string, string>(provenance.Tags, StringComparer.Ordinal);
+                if (forcedRun)
+                {
+                    VisualGenerationOverrideMarker.Add(
+                        persistentTags,
+                        acceptedValidationErrors.Concat(modelPreflightIssues).Concat(signalPlan.Issues));
+                }
+                var basicFrame = new FeeBasicFrame
+                {
+                    Name = forcedRun
+                        ? $"Auto Generated (at {timestamp}) - Trotz Validierungsfehlern erstellt"
+                        : $"Auto Generated (at {timestamp})",
+                    PersistentTags = persistentTags,
+                };
+                await basicFrame.CreateAsync();
+                cancellationToken.ThrowIfCancellationRequested();
+                await basicFrame.SendAndWaitAsync();
+                if (!string.IsNullOrWhiteSpace(basicFrame.PersistentTagWarning))
+                {
+                    var warning = new VisualIssue(
+                        VisualIssueSeverity.Warning,
+                        "PROVENANCE_TAG_UNCONFIRMED",
+                        basicFrame.PersistentTagWarning,
+                        selectedBindings.FirstOrDefault()?.PlanNode.Id);
+                    executionWarnings.Add(warning);
+                    logger.Warning(
+                        "FEE hat die Root-Provenienz nicht bestätigt; die bestätigte Generierung wird fortgesetzt.",
+                        basicFrame.PersistentTagWarning);
+                }
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (forcedRun)
+                {
+                    var persistedErrors = acceptedValidationErrors
+                        .Concat(modelPreflightIssues)
+                        .Concat(signalPlan.Issues)
+                        .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+                        .DistinctBy(issue => (issue.Code, issue.Message, issue.NodeId))
+                        .ToArray();
+                    for (var index = 0; index < persistedErrors.Length; index++)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var error = persistedErrors[index];
+                        var errorText = $"[{error.Code}] {error.Message}";
+                        var errorFrame = new FeeBasicFrame
+                        {
+                            Parent = basicFrame,
+                            Name = $"Fehler {index + 1:000} - {Truncate(errorText, 160)}",
+                            PersistentTags = new Dictionary<string, string>(StringComparer.Ordinal)
+                            {
+                                ["vibn.validation.error.code"] = error.Code,
+                                ["vibn.validation.error.message"] = error.Message,
+                                ["vibn.validation.error.node"] = error.NodeId ?? string.Empty,
+                            },
+                        };
+                        await errorFrame.CreateAsync();
+                        cancellationToken.ThrowIfCancellationRequested();
+                        await errorFrame.SendAndWaitAsync();
+                        cancellationToken.ThrowIfCancellationRequested();
+                        if (!string.IsNullOrWhiteSpace(errorFrame.PersistentTagWarning))
+                        {
+                            logger.Warning(
+                                $"Der FEE-Fehlerhinweis '{errorFrame.Name}' wurde erzeugt, seine Tag-Properties " +
+                                "wurden aber nicht bestätigt.",
+                                errorFrame.PersistentTagWarning);
+                        }
+                    }
+                }
+                progress?.Report(new VisualGenerationProgress(50, "Generierungs-BasicFrame und Fehlerhinweise wurden erstellt."));
+
+                await ContainerToFeeService.CreateAllContainersAsync(
+                    sortedContainers,
+                    generationInterface,
+                    basicFrame,
+                    (completed, total, name) =>
+                    {
+                        var isStarting = name.StartsWith("Wird erstellt: ", StringComparison.Ordinal);
+                        progress?.Report(new VisualGenerationProgress(
+                            total == 0 ? 90 : 50 + (isStarting ? completed - 1 : completed) * 40 / total,
+                            isStarting
+                                ? $"Container {completed} von {total} wird erstellt: {name["Wird erstellt: ".Length..]}"
+                                : $"Container {completed} von {total} erstellt: {name}"));
+                    },
+                    cancellationToken);
+                // Store the actual generated/reused identities, including
+                // newly created targets, after successful object creation.
+                RuntimeVisualPlanBinder.AddRuntimeObjectIdentities(sourceDocument, plan, selectedBindings);
+                var completedProvenance = FeeContainerProvenanceCodec.Create(sourceDocument, includedContainerIds,
+                    plan.SourceFingerprint, signalSources);
+                var completedWrite = await FeeTagPropertyStore.TryWriteAndVerifyAsync(basicFrame.Guid, completedProvenance.Tags);
+                if (!completedWrite.Confirmed)
+                    executionWarnings.Add(new VisualIssue(VisualIssueSeverity.Warning, "PROVENANCE_OBJECTS_UNCONFIRMED",
+                        completedWrite.Warning ?? "Die erzeugten FEE-Objektidentitäten wurden nicht bestätigt."));
+            }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            logger.Information(
+                $"Visuelle Generierung abgeschlossen: {selectedContainers.Length} Container " +
+                $"({signalPlan.ExistingBindings.Count} vorhandene, " +
+                $"{signalPlan.MissingSignals.Count} neu zu erzeugende Signale), " +
+                $"{binding.UnknownSignals.Count} unbekannte Signale. " +
+                "Der erzeugte BasicFrame enthält Container2FEE-Provenienz für FEE2Container.");
+            progress?.Report(new VisualGenerationProgress(100, "FEE-Generierung vollständig abgeschlossen."));
+            return new VisualExecutionResult(
+                true,
+                (forcedRun
+                    ? "ACHTUNG: Bestätigte Generierung trotz Validierungsfehlern abgeschlossen. "
+                    : "Generierung abgeschlossen: ") +
+                $"{selectedContainers.Length} Container wurden verarbeitet; " +
+                $"{signalPlan.ExistingBindings.Count} Signale wurden wiederverwendet und " +
+                $"{signalPlan.MissingSignals.Count} in einem neuen AutoGenerated-Interface erzeugt." +
+                (executionWarnings.Count > 0
+                    ? " Hinweise aus Signalauflösung oder Provenienz stehen im Protokoll und in der Validierung."
+                    : string.Empty),
+                acceptedValidationErrors
+                    .Concat(modelPreflightIssues)
+                    .Concat(executionWarnings)
+                    .Distinct()
+                    .ToArray());
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            logger.Error("Die visuelle Container2FEE-Generierung ist fehlgeschlagen.", exception);
+            return new VisualExecutionResult(
+                false,
+                "Generierung fehlgeschlagen. Details stehen im Protokoll.",
+                [new VisualIssue(
+                    VisualIssueSeverity.Error,
+                    "LEGACY_EXECUTION_FAILED",
+                    exception.Message)]);
+        }
+    }
+
+    private static VisualExecutionResult Failure(
+        string message,
+        string code,
+        string? nodeId = null,
+        bool requiresOverrideConfirmation = false) =>
+        new(
+            false,
+            message,
+            [new VisualIssue(VisualIssueSeverity.Error, code, message, nodeId)],
+            requiresOverrideConfirmation);
+
+    private static string Truncate(string value, int maximumLength) =>
+        value.Length <= maximumLength ? value : value[..(maximumLength - 1)] + "…";
+
+    private static string? FindUnknownSignalNodeId(VisualPlan plan, FeeInterfaceSignal signal, ISet<string> usedNodeIds)
+    {
+        var location = string.IsNullOrWhiteSpace(signal.Path) ? signal.Address : signal.Path;
+        var node = plan.Nodes.Where(item => item.Kind == VisualNodeKind.UnknownSignal &&
+                !plan.IsSignalRemoved(item.Id) && !usedNodeIds.Contains(item.Id) &&
+                string.Equals(item.Name, signal.Tag, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(item => string.Equals(item.SourceLocation, location, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(item => string.Equals(item.TypeName, signal.IOTypeString, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+        if (node is not null) usedNodeIds.Add(node.Id);
+        return node?.Id;
+    }
+
+    private static string? FindSignalNodeId(
+        VisualPlan plan,
+        string containerId,
+        FeeInterfaceSignal signal,
+        ISet<string> usedNodeIds)
+    {
+        var identity = !string.IsNullOrWhiteSpace(signal.Tag)
+            ? signal.Tag
+            : !string.IsNullOrWhiteSpace(signal.Path)
+                ? signal.Path
+                : signal.Address;
+        var candidate = plan.Nodes
+            .Where(node => node.ContainerId == containerId &&
+                           node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal &&
+                           !plan.IsSignalRemoved(node.Id) &&
+                           !usedNodeIds.Contains(node.Id))
+            .OrderByDescending(node => string.Equals(node.Name, identity, StringComparison.OrdinalIgnoreCase))
+            .ThenByDescending(node => string.Equals(node.TypeName, signal.IOTypeString, StringComparison.OrdinalIgnoreCase))
+            .FirstOrDefault();
+        if (candidate is not null)
+            usedNodeIds.Add(candidate.Id);
+        return candidate?.Id;
+    }
+
+    internal static SignalResolutionRequest CreateSignalResolutionRequest(
+        VisualPlan plan,
+        VisualNode container,
+        FeeInterfaceSignal signal,
+        ISet<string> usedNodeIds)
+    {
+        var nodeId = FindSignalNodeId(plan, container.Id, signal, usedNodeIds);
+        var node = string.IsNullOrWhiteSpace(nodeId) ? null : plan.FindNode(nodeId);
+        return new SignalResolutionRequest(
+            container.Id,
+            container.Name,
+            signal,
+            nodeId,
+            node is null ? null : plan.GetEffectiveSlot(node));
+    }
+
+    private static HashSet<string> ResolveAffectedContainers(
+        VisualPlan plan,
+        IEnumerable<VisualIssue> issues) => issues
+        .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+        .Select(issue => ResolveAffectedContainer(plan, issue.NodeId))
+        .OfType<string>()
+        .ToHashSet(StringComparer.Ordinal);
+
+    private static string? ResolveAffectedContainer(VisualPlan plan, string? nodeId)
+    {
+        if (string.IsNullOrWhiteSpace(nodeId))
+            return null;
+        var target = plan.FindTarget(nodeId);
+        if (target is not null)
+            return target.ContainerId;
+        var node = plan.FindNode(nodeId);
+        return node?.Kind == VisualNodeKind.Container ? node.Id : node?.ContainerId;
+    }
+}
+
+internal static class VisualGenerationOverrideMarker
+{
+    public const string AcceptedKey = "vibn.validation.override";
+    public const string ErrorCountKey = "vibn.validation.error-count";
+    public const string ErrorPrefix = "vibn.validation.error.";
+
+    public static void Add(IDictionary<string, string> tags, IEnumerable<VisualIssue> issues)
+    {
+        var errors = issues
+            .Where(issue => issue.Severity == VisualIssueSeverity.Error)
+            .Select(issue => $"[{issue.Code}] {issue.Message}")
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        tags[AcceptedKey] = "true";
+        tags[ErrorCountKey] = errors.Length.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        for (var index = 0; index < errors.Length; index++)
+            tags[$"{ErrorPrefix}{index + 1:000}"] = errors[index];
+    }
+}

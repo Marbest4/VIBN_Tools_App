@@ -1,0 +1,144 @@
+namespace VIBN_Tools.ContainerToFeeVisual;
+
+/// <summary>
+/// Matches plan logic/cabinet nodes against a current FEE inventory. Matching
+/// follows the same component-name and definition contract as generation, so
+/// the UI does not claim that an object is missing when it will be reused.
+/// </summary>
+public static class VisualFeeContainerPresenceResolver
+{
+    public static IReadOnlyDictionary<string, VisualFeeNodePresence> Resolve(
+        VisualPlan plan,
+        IEnumerable<VisualFeeContainerObject> inventory,
+        Func<string, IReadOnlyList<VisualFeeContainerObject>>? findLogics = null)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(inventory);
+        var objects = inventory.ToArray();
+        var result = new Dictionary<string, VisualFeeNodePresence>(StringComparer.Ordinal);
+
+        foreach (var node in plan.Nodes.Where(node => node.Kind == VisualNodeKind.Logic))
+        {
+            var container = FindContainer(plan, node);
+            if (container is null)
+                continue;
+            var matches = findLogics?.Invoke(container.Id) ?? objects.Where(item =>
+                    item.Kind == VisualFeeContainerObjectKind.Logic &&
+                    string.Equals(item.Name.Trim(), container.Name.Trim(), StringComparison.OrdinalIgnoreCase) &&
+                    ContainerMetadataCatalog.IsSameLogicDefinition(node.Name, item.Definition))
+                .ToArray();
+            result[node.Id] = CreatePresence(
+                node.Id,
+                matches,
+                $"FEE-Logik '{container.Name}' ({node.Name})");
+        }
+
+        foreach (var node in plan.Nodes.Where(node => node.Kind == VisualNodeKind.TechnicalHelper))
+        {
+            var container = FindContainer(plan, node);
+            if (container is null || !ContainerMetadataCatalog.TryGet(container.TypeName, out var descriptor))
+            {
+                continue;
+            }
+
+            if (container.TypeName == "Cabinet")
+            {
+                var exact = objects.Where(item => item.Kind == VisualFeeContainerObjectKind.Cabinet &&
+                    string.Equals(item.GuidString, container.SourceObjectGuid, StringComparison.OrdinalIgnoreCase)).ToArray();
+                var candidates = exact.Length > 0 ? exact : objects.Where(item => item.Kind == VisualFeeContainerObjectKind.Cabinet &&
+                    string.Equals(item.Name, container.Name, StringComparison.OrdinalIgnoreCase)).ToArray();
+                result[node.Id] = CreatePresence(node.Id, candidates, $"Cabinet '{container.Name}'");
+                continue;
+            }
+            if (string.IsNullOrWhiteSpace(descriptor.ExpectedCabinetElementType))
+            {
+                var helperMatches = objects.Where(item => item.Kind == VisualFeeContainerObjectKind.TechnicalHelper &&
+                    VisualFeeTechnicalHelperResolver.IsExpectedType(node.Name, item.Definition) &&
+                    VisualFeeTechnicalHelperResolver.MatchesIdentity(item, container)).ToArray();
+                result[node.Id] = CreatePresence(node.Id, helperMatches, $"Hilfsobjekt '{node.Name}' für '{container.Name}'");
+                continue;
+            }
+
+            var elementMatches = objects.Where(item =>
+                    item.Kind == VisualFeeContainerObjectKind.CabinetElement &&
+                    (string.Equals(item.Name, container.Name, StringComparison.OrdinalIgnoreCase) || string.Equals(item.GuidString, container.SourceObjectGuid, StringComparison.OrdinalIgnoreCase)) &&
+                    SameDefinition(item.Definition, descriptor.ExpectedCabinetElementType) && MatchesParent(item, container))
+                .ToArray();
+
+            if (string.Equals(node.Name, "CabinetElement", StringComparison.OrdinalIgnoreCase))
+            {
+                result[node.Id] = CreatePresence(
+                    node.Id,
+                    elementMatches,
+                    $"CabinetElement '{container.Name}' ({descriptor.ExpectedCabinetElementType})");
+                continue;
+            }
+
+            // Parser carries the explicitly saved cabinet name on this helper node.
+            var cabinetName = node.Name;
+            var cabinetMatches = objects.Where(item =>
+                    item.Kind == VisualFeeContainerObjectKind.Cabinet &&
+                    string.Equals(item.Name, cabinetName, StringComparison.OrdinalIgnoreCase) &&
+                    (container.ExpectedParentGuid.Length == 0 || !objects.Any(parent => parent.Kind == VisualFeeContainerObjectKind.Cabinet &&
+                        string.Equals(parent.GuidString, container.ExpectedParentGuid, StringComparison.OrdinalIgnoreCase)) ||
+                        string.Equals(item.GuidString, container.ExpectedParentGuid, StringComparison.OrdinalIgnoreCase)))
+                .ToArray();
+            // A matching child proves that the required cabinet hierarchy is
+            // present even if a particular SDK omits Cabinet from its type query.
+            var effectiveMatches = cabinetMatches.Length > 0 ? cabinetMatches : elementMatches;
+            result[node.Id] = CreatePresence(
+                node.Id,
+                effectiveMatches,
+                $"Cabinet '{cabinetName}'");
+        }
+
+        return result;
+
+        bool MatchesParent(VisualFeeContainerObject item, VisualNode container)
+        {
+            if (container.ExpectedParentGuid.Length > 0 && objects.Any(parent => parent.Kind == VisualFeeContainerObjectKind.Cabinet &&
+                string.Equals(parent.GuidString, container.ExpectedParentGuid, StringComparison.OrdinalIgnoreCase)))
+                return string.Equals(item.ParentGuidString, container.ExpectedParentGuid, StringComparison.OrdinalIgnoreCase);
+            return container.ExpectedParentName.Length == 0 || item.ParentName.Length == 0 ||
+                string.Equals(item.ParentName, container.ExpectedParentName, StringComparison.OrdinalIgnoreCase);
+        }
+    }
+
+    private static VisualNode? FindContainer(VisualPlan plan, VisualNode node) =>
+        node.ContainerId is null ? null : plan.FindNode(node.ContainerId);
+
+    private static VisualFeeNodePresence CreatePresence(
+        string nodeId,
+        IReadOnlyCollection<VisualFeeContainerObject> matches,
+        string description) => matches.Count switch
+    {
+        0 => new VisualFeeNodePresence(
+            nodeId,
+            VisualFeeNodePresenceKind.Planned,
+            $"{description} ist noch nicht vorhanden und wird erzeugt."),
+        1 => new VisualFeeNodePresence(
+            nodeId,
+            VisualFeeNodePresenceKind.Found,
+            $"Vorhanden: {description} · GUID {matches.First().GuidString}"),
+        _ => new VisualFeeNodePresence(
+            nodeId,
+            VisualFeeNodePresenceKind.Ambiguous,
+            $"Mehrdeutig: {description} wurde {matches.Count}-mal gefunden."),
+    };
+
+    private static bool SameDefinition(string? actual, string? expected)
+    {
+        static string Normalize(string? value)
+        {
+            var normalizedPath = (value ?? string.Empty).Trim().Replace('/', '\\');
+            var fileName = normalizedPath[(normalizedPath.LastIndexOf('\\') + 1)..];
+            if (fileName.EndsWith(".xml", StringComparison.OrdinalIgnoreCase))
+                fileName = fileName[..^4];
+            return new string(fileName
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToUpperInvariant)
+            .ToArray());
+        }
+        return Normalize(actual) == Normalize(expected);
+    }
+}

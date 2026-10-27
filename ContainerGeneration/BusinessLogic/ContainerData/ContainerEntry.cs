@@ -1,0 +1,376 @@
+﻿using System.Reflection;
+using System.Xml.Serialization;
+using System.ComponentModel;
+using VIBN_Tools.GlobalClasses;
+
+namespace VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData
+{
+    /// <summary>
+    /// Represents a container entry. Marks properties relevant for XML export using serialization.
+    /// </summary>
+    public class ContainerEntry : NotifyBase
+    {
+        [XmlAttribute("feeGuid")]
+        public string FeeGuid { get; set; } = string.Empty;
+        [XmlAttribute("interfaceGuid")]
+        public string InterfaceGuid { get; set; } = string.Empty;
+        [XmlAttribute("interfaceName")]
+        public string InterfaceName { get; set; } = string.Empty;
+        [DefaultValue(""), XmlAttribute("feeType")] public string FeeType { get; set; } = string.Empty;
+        private string _id = string.Empty;
+        private string _address = string.Empty;
+        private string _dataType = string.Empty;
+        private string _note = string.Empty;
+        private string _signalId = string.Empty;
+        private string _assignmentWarning = string.Empty;
+        private string _requirementsLocation = string.Empty;
+        [XmlIgnore]
+        [DisplayName("Req-XML-Fundstelle")]
+        [ReadOnly(true)]
+        public string RequirementsLocation
+        {
+            get => _requirementsLocation;
+            set => SetPropertyChange(ref _requirementsLocation, value ?? string.Empty);
+        }
+
+        /// <summary>
+        /// Stable identity of this signal inside a VIBN Tools workspace.
+        /// It survives edits, undo/redo, save/load and reimports, but is not
+        /// written to the production container XML.
+        /// </summary>
+        [XmlIgnore]
+        [DisplayName("Signal-ID")]
+        [ReadOnly(true)]
+        public string SignalId
+        {
+            get => _signalId;
+            set
+            {
+                value ??= string.Empty;
+                if (string.Equals(_signalId, value, StringComparison.Ordinal))
+                    return;
+
+                _signalId = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public string EnsureSignalId()
+        {
+            if (string.IsNullOrWhiteSpace(SignalId))
+                SignalId = $"SIG-{Guid.NewGuid():N}";
+
+            return SignalId;
+        }
+
+        /// <summary>
+        /// Gets or sets the ID. Serializes to an element.
+        /// </summary>
+        [XmlElement("ID")]
+        public string ID
+        {
+            get => _id;
+            set => SetWorkspaceValue(ref _id, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the address. Serializes to an element.
+        /// </summary>
+        [XmlElement("Address")]
+        public string Address
+        {
+            get => _address;
+            set
+            {
+                SetWorkspaceValue(ref _address, value);
+                RefreshAssignmentWarning();
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the data type. Serializes to an element.
+        /// </summary>
+        [XmlElement("DataType")]
+        public string DataType
+        {
+            get => _dataType;
+            set => SetWorkspaceValue(ref _dataType, value);
+        }
+
+        /// <summary>
+        /// Gets or sets the signal. Serializes to an element.
+        /// </summary
+        private string _signal = string.Empty;
+
+        [XmlElement("Signal")]
+        public string Signal
+        {
+            get => _signal;
+            set
+            {
+                value ??= string.Empty;
+                if (string.Equals(_signal, value, StringComparison.Ordinal))
+                    return;
+
+                var previousValue = _signal;
+                WorkspaceValueChanging?.Invoke(
+                    this,
+                    new WorkspaceValueChangingEventArgs(
+                        nameof(Signal),
+                        previousValue,
+                        value));
+                IsChangeAcknowledged = false;
+                _signal = value;
+                OnPropertyChanged();
+
+                if (!string.IsNullOrWhiteSpace(previousValue) &&
+                    string.IsNullOrWhiteSpace(value))
+                {
+                    SignalCleared?.Invoke(
+                        this,
+                        new SignalClearedEventArgs(previousValue));
+                }
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the slot. Serializes to an element.
+        /// </summary
+        private string _slot = string.Empty;
+
+        [XmlElement("Slot")]
+        public string Slot
+        {
+            get => _slot;
+            set
+            {
+                value ??= string.Empty;
+                if (string.Equals(_slot, value, StringComparison.Ordinal))
+                    return;
+
+                WorkspaceValueChanging?.Invoke(
+                    this,
+                    new WorkspaceValueChangingEventArgs(
+                        nameof(Slot),
+                        _slot,
+                        value));
+                IsChangeAcknowledged = false;
+                _slot = value;
+                OnPropertyChanged();
+                RefreshAssignmentWarning();
+
+                // Tell ContainerData that slot has been changed
+                SlotChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+
+
+        /// <summary>
+        /// Gets or sets the note. Serializes to an element.
+        /// </summary
+        [XmlElement("Note")]
+        public string Note
+        {
+            get => _note;
+            set => SetWorkspaceValue(ref _note, value);
+        }
+
+        private ContainerEntryReviewState _reviewState;
+        private string _reviewMessage = string.Empty;
+        private bool _isManuallyEdited;
+        private string _validationError = string.Empty;
+        private bool _isChangeAcknowledged;
+
+        [XmlIgnore]
+        public bool IsChangeAcknowledged
+        {
+            get => _isChangeAcknowledged;
+            set
+            {
+                if (SetPropertyChange(ref _isChangeAcknowledged, value))
+                    OnPropertyChanged(nameof(HasUnconfirmedChange));
+            }
+        }
+
+        [XmlIgnore]
+        public bool HasUnconfirmedChange => !IsChangeAcknowledged &&
+            ReviewState is not ContainerEntryReviewState.None and not ContainerEntryReviewState.Preserved;
+
+        /// <summary>
+        /// Runtime-only provenance used by the safe reimport workflow.
+        /// It is intentionally excluded from the production container XML.
+        /// </summary>
+        [XmlIgnore]
+        public ContainerEntryReviewState ReviewState
+        {
+            get => _reviewState;
+            set
+            {
+                if (SetPropertyChange(ref _reviewState, value))
+                {
+                    IsChangeAcknowledged = false;
+                    OnPropertyChanged(nameof(ReviewStateText));
+                    OnPropertyChanged(nameof(HasUnconfirmedChange));
+                }
+            }
+        }
+
+        [XmlIgnore]
+        [DisplayName("Reimport-Änderung")]
+        [ReadOnly(true)]
+        public string ReviewMessage
+        {
+            get => _reviewMessage;
+            set => SetPropertyChange(ref _reviewMessage, value);
+        }
+
+        [XmlIgnore]
+        public bool IsManuallyEdited
+        {
+            get => _isManuallyEdited;
+            set => SetPropertyChange(ref _isManuallyEdited, value);
+        }
+
+        /// <summary>Runtime-only validation detail used to mark this row in the editor.</summary>
+        [XmlIgnore]
+        public string ValidationError
+        {
+            get => _validationError;
+            set
+            {
+                if (SetPropertyChange(ref _validationError, value ?? string.Empty))
+                    OnPropertyChanged(nameof(HasValidationError));
+            }
+        }
+
+        [XmlIgnore]
+        public bool HasValidationError => !string.IsNullOrWhiteSpace(ValidationError);
+
+        /// <summary>
+        /// Non-blocking plausibility warning for an output address assigned to a PLC input slot.
+        /// </summary>
+        [XmlIgnore]
+        public string AssignmentWarning
+        {
+            get => _assignmentWarning;
+            private set
+            {
+                if (SetPropertyChange(ref _assignmentWarning, value ?? string.Empty))
+                    OnPropertyChanged(nameof(HasAssignmentWarning));
+            }
+        }
+
+        [XmlIgnore]
+        public bool HasAssignmentWarning => !string.IsNullOrWhiteSpace(AssignmentWarning);
+
+        [XmlIgnore]
+        public string ReviewStateText => ReviewState switch
+        {
+            ContainerEntryReviewState.ManuallyEdited => "Manuell geändert",
+            ContainerEntryReviewState.Preserved => "Übernommen",
+            ContainerEntryReviewState.NewlyRecognized => "Neu erkannt",
+            ContainerEntryReviewState.NewFromSource => "Neu",
+            ContainerEntryReviewState.SourceChanged => "Geändert",
+            ContainerEntryReviewState.NeedsReview => "Prüfen",
+            _ => string.Empty
+        };
+
+
+        /// <summary>
+        /// Creates a clone of the current container entry.
+        /// </summary>
+        /// <returns>A new <see cref="ContainerEntry"/> instance with the same property values.</returns>
+        public ContainerEntry Clone()
+        {
+            // A fresh copy has no observers. Copy the stored state directly
+            // instead of emitting edit notifications and recalculating warnings
+            // for every signal in a complete undo/reimport snapshot.
+            return new ContainerEntry
+            {
+                _signalId = EnsureSignalId(), FeeGuid = FeeGuid, InterfaceGuid = InterfaceGuid, InterfaceName = InterfaceName, FeeType = FeeType,
+                _id = _id, _address = _address, _dataType = _dataType,
+                _signal = _signal, _slot = _slot, _note = _note,
+                _reviewState = _reviewState, _reviewMessage = _reviewMessage,
+                _isManuallyEdited = _isManuallyEdited, _isChangeAcknowledged = _isChangeAcknowledged,
+                _validationError = _validationError, _assignmentWarning = _assignmentWarning, _requirementsLocation = _requirementsLocation
+            };
+        }
+
+        private void RefreshAssignmentWarning()
+        {
+            var normalizedAddress = (Address ?? string.Empty).TrimStart().TrimStart('%');
+            var isOutputAddress = normalizedAddress.StartsWith("A", StringComparison.OrdinalIgnoreCase) ||
+                                  normalizedAddress.StartsWith("Q", StringComparison.OrdinalIgnoreCase);
+            var isInputSlot = (Slot ?? string.Empty).StartsWith("PLC_IN", StringComparison.OrdinalIgnoreCase);
+
+            AssignmentWarning = isOutputAddress && isInputSlot
+                ? $"Ausgangsadresse „{Address}“ ist einem Eingangsslot „{Slot}“ zugeordnet. " +
+                  "Bitte die Zuordnung fachlich prüfen."
+                : string.Empty;
+        }
+
+        /// <summary>
+        /// Determines whether the container entry is empty.
+        /// </summary>
+        /// <returns><c>true</c> if all string properties are empty; otherwise, <c>false</c>.</returns
+        public bool IsEmpty()
+        {
+            return string.IsNullOrEmpty(ID) &&
+                   string.IsNullOrEmpty(Address) &&
+                   string.IsNullOrEmpty(DataType) &&
+                   string.IsNullOrEmpty(Signal) &&
+                   string.IsNullOrEmpty(Slot) &&
+                   string.IsNullOrEmpty(Note);
+        }
+
+
+
+        public event EventHandler? SlotChanged;
+        public event EventHandler<SignalClearedEventArgs>? SignalCleared;
+        public event EventHandler<WorkspaceValueChangingEventArgs>? WorkspaceValueChanging;
+
+        private void SetWorkspaceValue(
+            ref string field,
+            string? value,
+            [System.Runtime.CompilerServices.CallerMemberName] string propertyName = "")
+        {
+            value ??= string.Empty;
+            if (string.Equals(field, value, StringComparison.Ordinal))
+                return;
+
+            WorkspaceValueChanging?.Invoke(
+                this,
+                new WorkspaceValueChangingEventArgs(propertyName, field, value));
+            IsChangeAcknowledged = false;
+            field = value;
+            OnPropertyChanged(propertyName);
+        }
+    }
+
+    public sealed class SignalClearedEventArgs : EventArgs
+    {
+        public SignalClearedEventArgs(string previousSignal)
+        {
+            PreviousSignal = previousSignal;
+        }
+
+        public string PreviousSignal { get; }
+    }
+
+    public sealed class WorkspaceValueChangingEventArgs : EventArgs
+    {
+        public WorkspaceValueChangingEventArgs(
+            string propertyName,
+            object? previousValue,
+            object? newValue)
+        {
+            PropertyName = propertyName;
+            PreviousValue = previousValue;
+            NewValue = newValue;
+        }
+
+        public string PropertyName { get; }
+        public object? PreviousValue { get; }
+        public object? NewValue { get; }
+    }
+}

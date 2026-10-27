@@ -1,0 +1,190 @@
+using System.Xml.Linq;
+using System.Diagnostics;
+using VIBN_Tools.GlobalClasses;
+using VIBN_Tools.GlobalClasses.FeeObjects;
+using static VIBN_Tools.GlobalClasses.Interfaces;
+using VIBN_Tools.ContainerToFee;
+
+namespace VIBN_Tools.ContainerToFeeVisual;
+
+internal sealed record VisualFeeDiscoveryResult(
+    IReadOnlyList<VisualFeeObject> Objects,
+    IReadOnlyDictionary<string, FeeAbstractObject> RuntimeObjects,
+    IReadOnlyList<VisualFeeContainerObject> ContainerObjects,
+    IReadOnlyDictionary<Guid, string> TopLevelBasicFrames,
+    IReadOnlyList<FeeAbstractObject> SceneObjects);
+
+/// <summary>Reads selectable FEE objects and keeps SDK instances out of the view model.</summary>
+internal sealed class FeeSimObjectDiscovery(IVisualPlanLogger logger)
+{
+    public async Task<VisualFeeDiscoveryResult> DiscoverAsync(CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var stopwatch = Stopwatch.StartNew();
+        // Container2FEE needs names, types, parents, definitions and slots, but
+        // no ModelValidation issues, interfaces or simulation live values.
+        // Reading this lean snapshot avoids a large amount of unrelated work.
+        var allObjects = (await Services.FeeObjects
+                .ReadFeeSceneObjectsForDiscoveryAsync(cancellationToken))
+            .Where(item => !FeeSceneObjectReadPolicy.IsIgnoredObject(item))
+            .ToArray();
+        cancellationToken.ThrowIfCancellationRequested();
+        await FeeLogicSlotSnapshot.PopulateAsync(allObjects, cancellationToken);
+        var runtimeObjects = allObjects
+            .Where(item => item is IAssignableSimObject or FeeLogic)
+            .ToArray();
+
+        var uniqueRuntimeObjects = runtimeObjects
+            .Where(item => !string.IsNullOrWhiteSpace(item.GuidString))
+            .GroupBy(item => item.GuidString, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ThenBy(item => item.FeeType, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        // FeeObjectService already populated the slot assignments from its XML
+        // snapshot, so a second project-wide XML read is unnecessary.
+
+        var byId = new Dictionary<string, FeeAbstractObject>(StringComparer.Ordinal);
+        var objects = new List<VisualFeeObject>(uniqueRuntimeObjects.Length);
+        var duplicateIdentities = uniqueRuntimeObjects
+            .GroupBy(CreateIdentity, StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Count() > 1)
+            .Select(group => group.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var parentScopes = uniqueRuntimeObjects.ToDictionary(item => item.Guid, ResolveParentScope);
+        var namesInDifferentParents = uniqueRuntimeObjects.GroupBy(item => item.Name?.Trim() ?? "", StringComparer.OrdinalIgnoreCase)
+            .Where(group => group.Select(item => parentScopes[item.Guid].Name).Distinct(StringComparer.OrdinalIgnoreCase).Skip(1).Any())
+            .Select(group => group.Key).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var runtimeObject in uniqueRuntimeObjects)
+        {
+            var id = CreateFeeObjectId(runtimeObject.GuidString);
+            var parent = parentScopes[runtimeObject.Guid];
+            var root = ResolveRoot(runtimeObject);
+            byId[id] = runtimeObject;
+            objects.Add(new VisualFeeObject(
+                id,
+                runtimeObject.GuidString,
+                runtimeObject.Name ?? string.Empty,
+                runtimeObject.GetType().FullName ?? runtimeObject.GetType().Name,
+                runtimeObject.FeeType ?? string.Empty,
+                GetAssignableTypeNames(runtimeObject.GetType()),
+                parent.Guid,
+                parent.Name,
+                duplicateIdentities.Contains(CreateIdentity(runtimeObject)),
+                parent.AssembliesParentName,
+                namesInDifferentParents.Contains(runtimeObject.Name?.Trim() ?? ""), root.GuidString, root.Name));
+        }
+
+        var helpers = allObjects.Where(item => item is FeeSimpleNot or FeeSimpleMove or FeeSimpleAnd or FeeSimpleOr).ToArray();
+        var helperTags = await Fee2ContainerService.ReadObjectTagsAsync(
+            helpers.Select(item => item.GuidString), cancellationToken);
+        var containerObjects = allObjects.OfType<FeeLogic>()
+            .Select(item => new VisualFeeContainerObject(
+                item.Guid.ToString("D"),
+                item.Name ?? string.Empty,
+                VisualFeeContainerObjectKind.Logic,
+                item.LogicDefinitionName ?? string.Empty))
+            .Concat(allObjects.OfType<FeeCabinetElement>().Select(item => new VisualFeeContainerObject(
+                item.Guid.ToString("D"),
+                item.Name ?? string.Empty,
+                VisualFeeContainerObjectKind.CabinetElement,
+                item.ElementType ?? string.Empty, ParentGuidString: item.Parent?.GuidString ?? "", ParentName: item.Parent?.Name ?? "")))
+            .Concat(allObjects.OfType<FeeCabinet>().Select(item => new VisualFeeContainerObject(
+                item.Guid.ToString("D"),
+                item.Name ?? string.Empty,
+                VisualFeeContainerObjectKind.Cabinet,
+                string.Empty, ParentGuidString: item.Parent?.GuidString ?? "", ParentName: item.Parent?.Name ?? "")))
+            .Concat(helpers.Select(item => new VisualFeeContainerObject(
+                item.GuidString,
+                item.Name ?? string.Empty,
+                VisualFeeContainerObjectKind.TechnicalHelper,
+                item.FeeType,
+                ContainerObjectProvenance.Read(helperTags.GetValueOrDefault(item.Guid), item.Marks).ContainerId)))
+            .ToArray();
+
+        var topLevelBasicFrames = allObjects.OfType<FeeBasicFrame>()
+            .Where(Fee2ContainerService.IsTopLevelInSnapshot)
+            .GroupBy(frame => frame.Guid)
+            .ToDictionary(group => group.Key, group => group.First().Name ?? string.Empty);
+
+        logger.Information(
+            $"{objects.Count} verfügbare FEE-SimObjects/Logiken, {containerObjects.Length} vorhandene Logik-/Cabinet-Objekte " +
+            $"und {topLevelBasicFrames.Count} Root(s) in {stopwatch.Elapsed.TotalSeconds:F1} s gelesen (schlanker Snapshot).");
+        return new VisualFeeDiscoveryResult(objects, byId, containerObjects, topLevelBasicFrames, allObjects);
+    }
+
+    internal static string CreateFeeObjectId(string guidString) =>
+        $"fee:{guidString.Trim().ToLowerInvariant()}";
+
+    internal static (string GuidString, string Name) ResolveRoot(FeeAbstractObject item)
+    {
+        var visited = new HashSet<Guid>();
+        FeeBasicFrame? root = null;
+        for (var current = item; current is not null && visited.Add(current.Guid); current = current.Parent)
+            if (current is FeeBasicFrame frame) root = frame;
+        return root is null ? (Guid.Empty.ToString("D"), "Projektobjekte ohne BasicFrame")
+            : (root.GuidString, root.Name ?? string.Empty);
+    }
+
+    internal static Dictionary<string, Guid> ParseSlotAssignments(XElement xml)
+    {
+        var slots = xml.Element("Slots") ?? xml.Element("IOSlots") ??
+                    xml.Descendants("Slots").FirstOrDefault() ??
+                    xml.Descendants("IOSlots").FirstOrDefault();
+        if (slots is null)
+            return new Dictionary<string, Guid>(StringComparer.OrdinalIgnoreCase);
+        return slots.Descendants("Assignment")
+            .Select(item => new
+            {
+                Name = item.Element("SlotName")?.Value?.Trim() ?? string.Empty,
+                Guid = Guid.TryParse(item.Element("AssignedGuid")?.Value, out var guid) ? guid : Guid.Empty,
+            })
+            .Where(item => item.Name.Length > 0 && item.Guid != Guid.Empty)
+            .GroupBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().Guid, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static IReadOnlyCollection<string> GetAssignableTypeNames(Type runtimeType)
+    {
+        var names = new HashSet<string>(StringComparer.Ordinal);
+        for (Type? type = runtimeType; type is not null; type = type.BaseType)
+        {
+            names.Add(type.Name);
+            if (type.FullName is not null)
+                names.Add(type.FullName);
+        }
+        foreach (var interfaceType in runtimeType.GetInterfaces())
+        {
+            names.Add(interfaceType.Name);
+            if (interfaceType.FullName is not null)
+                names.Add(interfaceType.FullName);
+        }
+        return names;
+    }
+
+    internal static (string Guid, string Name, string AssembliesParentName) ResolveParentScope(FeeAbstractObject item)
+    {
+        var visited = new HashSet<FeeAbstractObject>();
+        var ancestors = new List<FeeAbstractObject>();
+        for (var current = item.Parent; current is not null && visited.Add(current); current = current.Parent)
+            ancestors.Add(current);
+        var assembliesIndex = ancestors.FindIndex(parent => parent is FeeBasicFrame &&
+            string.Equals(parent.Name?.Trim(), "Assemblies", StringComparison.OrdinalIgnoreCase));
+        if (assembliesIndex >= 0)
+        {
+            // Closest frame below Assemblies on this object's ancestry path.
+            var logicalParent = ancestors.Take(assembliesIndex).OfType<FeeBasicFrame>().LastOrDefault()
+                ?? ancestors[assembliesIndex];
+            return (logicalParent.GuidString, logicalParent.Name ?? "", ancestors[assembliesIndex].Parent?.Name ?? "<oberster Knoten>");
+        }
+        var top = ancestors.LastOrDefault() ?? item;
+        return (top.GuidString, top.Name ?? "", "");
+    }
+
+    private static string CreateIdentity(FeeAbstractObject item) => string.Join(
+        "\u001f",
+        item is FeeLogic ? "LogicObject" : "SimObject",
+        item.Name?.Trim() ?? string.Empty,
+        ResolveParentScope(item).Name.Trim());
+
+}

@@ -1,0 +1,3373 @@
+﻿using Microsoft.Win32;
+using System.Collections;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Security.Cryptography;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Data;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+using System.Xml.Linq;
+using VIBN_Tools.ContainerGeneration.BusinessLogic;
+using VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData;
+using VIBN_Tools.ContainerGeneration.BusinessLogic.RequirementsXml;
+using VIBN_Tools.ContainerGeneration.BusinessLogic.ZuLiData;
+using VIBN_Tools.ContainerGeneration.BusinessLogic.ZuLiData.Interfaces;
+using VIBN_Tools.ContainerGeneration.Models;
+using VIBN_Tools.ContainerGeneration.Utils;
+using VIBN_Tools.GlobalClasses;
+using VIBN_Tools.ContainerGeneration.AI;
+using VIBN_Tools.Core.Diagnostics;
+
+namespace VIBN_Tools.Application.VM
+{
+    /// <summary>
+    /// Coordinates the container-generation workspace: input files, settings,
+    /// generation, validation, review, undo/redo and export. The domain rules
+    /// remain in <c>ContainerGeneration/BusinessLogic</c>.
+    /// </summary>
+    public partial class ContainerGenerationPageVM : MvvmBase
+    {
+        private System.Xml.XmlElement? _feeInventory;
+
+
+
+        //===========================================================================================================================
+        // B I N D I N G S   -   B U T T O N S   /   C O M M A N D S
+        //===========================================================================================================================
+
+        public ICommand OpenInterfaceFile => GuardedAsyncCommand(Open_InterfaceFile);
+        public ICommand OpenRequirementsXml => GuardedAsyncCommand(Open_RequirementsXml);
+
+        public ICommand LoadSettings => GuardedAsyncCommand(Load_Settings);
+        public ICommand SaveSettings => GuardedCommand(Save_Settings);
+
+        public ICommand GenerateContainers => GuardedAsyncCommand(Generate_Containers);
+        public ICommand ValidateWorkspace => GuardedCommand(Validate_Workspace);
+        public ICommand ExportContainers => GuardedCommand(Export_Containers);
+        public ICommand CompareContainerFiles => GuardedCommand(Compare_ContainerFiles);
+        public ICommand LoadContainerFile => GuardedCommand(Load_ContainerFile);
+
+        public ICommand LoadData => GuardedCommand(Load_Data);
+
+        public ICommand SaveData => GuardedCommand(Save_Data);
+
+
+
+
+        public ICommand DeleteItem => GuardedCommand(Delete_Item);
+        public ICommand UndoLastAction => GuardedCommand(Undo_LastAction);
+        public ICommand RedoLastAction => GuardedCommand(Redo_LastAction);
+        public ICommand ClearActivityLog => GuardedCommand(Clear_ActivityLog);
+        public ICommand ApplyReimportSelection => GuardedCommand(Apply_ReimportSelection);
+        public ICommand CancelReimportSelection => GuardedCommand(Cancel_ReimportSelection);
+        public ICommand SelectAllReimportChanges => GuardedCommand(
+            () => SetAllReimportChanges(true));
+        public ICommand SelectNoReimportChanges => GuardedCommand(
+            () => SetAllReimportChanges(false));
+        public ICommand ToggleGroupingHelp => GuardedCommand(() =>
+            IsGroupingHelpVisible = !IsGroupingHelpVisible);
+        public ICommand UseAddressGroupingExample => GuardedCommand(ApplyAddressGroupingExample);
+        public ICommand UseIdGroupingExample => GuardedCommand(ApplyIdGroupingExample);
+        public ICommand HideReimportComparison => GuardedCommand(() =>
+            IsReimportComparisonVisible = false);
+        public ICommand ShowReimportComparison => GuardedCommand(() =>
+            IsReimportComparisonVisible = true);
+        public ICommand AcceptReimportChange => GuardedCommand(parameter =>
+            SetReimportChangeDecision(parameter, true));
+        public ICommand RejectReimportChange => GuardedCommand(parameter =>
+            SetReimportChangeDecision(parameter, false));
+        public ICommand OpenAutoSaveFolder => GuardedCommand(OpenAutoSaveDirectory);
+        public ICommand OpenGroupingPresetFolder => GuardedCommand(OpenGroupingPresetDirectory);
+        public ICommand ReloadGroupingPresets => GuardedCommand(() => ReloadGroupingPresetFiles(true));
+
+
+
+        /// <summary>
+        /// Validate if a container generation is possible. Causes the corresponding button to be enabled or not.
+        /// </summary>
+        public bool CanGenerate => Zuli.Items.Count > 0 && RequirementsFile.IsInitialized && !WasGenerated;
+
+        public string GenerateUnavailableReason => CanGenerate
+            ? "Erzeugt Container aus den geladenen Eingangsdaten."
+            : Zuli.Items.Count == 0
+                ? "Zuerst eine Interface-/ZuLi-Datei mit erkannten Signalen laden."
+                : !RequirementsFile.IsInitialized
+                    ? "Zuerst eine gültige Requirements-XML laden."
+                    : "Die Container wurden bereits erzeugt; Eingangsdaten ändern oder neu laden, bevor erneut generiert wird.";
+
+
+        private bool _wasgenerated;
+        public bool WasGenerated
+        {
+            get { return _wasgenerated; }
+            set
+            {
+                _wasgenerated = value;
+                OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
+            }
+        }
+
+
+
+        private bool _isBusyGenerateContainers;
+        public bool IsBusyGenerateContainers
+        {
+            get { return _isBusyGenerateContainers; }
+            set { _isBusyGenerateContainers = value; OnPropertyChanged(); }
+        }
+
+
+        /// <summary>
+        /// Validate if a loading data is possible. Causes the corresponding button to be enabled or not.
+        /// </summary>
+        public bool CanLoadData => RequirementsFile.IsInitialized;
+
+        public string LoadDataUnavailableReason => CanLoadData
+            ? "Lädt einen mit 'Arbeitsstand speichern' erzeugten VIBN-Bearbeitungsstand."
+            : "Zuerst die zum Bearbeitungsstand gehörende Requirements-XML laden.";
+
+        public bool CanCompareContainerFile => RequirementsFile.IsInitialized && HasWorkspaceData;
+
+        public string CompareContainerFileUnavailableReason => CanCompareContainerFile
+            ? "Vergleicht den sichtbaren aktiven Arbeitsstand mit einem ausgewählten ContainerFile."
+            : !RequirementsFile.IsInitialized
+                ? "Zuerst die zugehörige Requirements-XML laden."
+                : "Zuerst ein ContainerFile laden oder Container generieren.";
+
+
+
+
+        public ICommand ContainerDataGridPreviewKeyDown => GuardedCommand(ContainerGrid_OnPreviewKeyDown);
+        public ICommand ContainerDataGridDragOver => GuardedCommand(ContainerGrid_OnDragOver);
+        public ICommand DataGridDrop => GuardedCommand(Datagrid_OnDrop);
+        public ICommand DataGridMouseMove => GuardedCommand(Datagrid_OnMouseMove);
+
+
+
+
+        //===========================================================================================================================
+        // B I N D I N G S   -   D A T A G R I D   E N T R I E S
+        //===========================================================================================================================
+
+        /// <summary>
+        /// Gets or sets the filtered entries list displayed on the filtered entries grid. Notifies the UI on change.
+        /// </summary
+        private ObservableCollection<ContainerEntry> _filteredEntries = [];
+        public ObservableCollection<ContainerEntry> FilteredEntries
+        {
+            get => _filteredEntries;
+            set
+            {
+                _filteredEntries.CollectionChanged -= UpdateUICount;
+                _filteredEntries = value;
+                _filteredEntries.CollectionChanged += UpdateUICount;
+                OnPropertyChanged(nameof(FilteredEntries));
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the currently selected element from the unassigned entries grid. Notifies the UI on change.
+        /// </summary
+        private ContainerEntry? _selectedFilteredEntry;
+        public ContainerEntry? SelectedFilteredEntry
+        {
+            get => _selectedFilteredEntry;
+            set
+            {
+                _selectedFilteredEntry = value;
+                OnPropertyChanged(nameof(SelectedFilteredEntry));
+                UpdateGroupingPreview();
+            }
+        }
+
+
+
+        /// <summary>
+        /// Gets or sets the unassigned entries list displayed on the unassigned entries grid. Notifies the UI on change.
+        /// </summary
+        private ObservableCollection<ContainerEntry> _unassignedEntries = [];
+        public ObservableCollection<ContainerEntry> UnassignedEntries
+        {
+            get => _unassignedEntries;
+            set
+            {
+                _unassignedEntries.CollectionChanged -= UpdateUICount;
+                _unassignedEntries = value;
+                _unassignedEntries.CollectionChanged += UpdateUICount;
+                OnPropertyChanged(nameof(UnassignedEntries));
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the currently selected element from the unassigned entries grid. Notifies the UI on change.
+        /// </summary
+        private ContainerEntry? _selectedUnassignedEntry;
+        public ContainerEntry? SelectedUnassignedEntry
+        {
+            get => _selectedUnassignedEntry;
+            set
+            {
+                _selectedUnassignedEntry = value;
+                OnPropertyChanged(nameof(SelectedUnassignedEntry));
+                UpdateGroupingPreview();
+            }
+        }
+
+
+
+        /// <summary>
+        /// Gets or sets the container list displayed on the container grid. Notifies the UI on change.
+        /// </summary
+        private ObservableCollection<ContainerData> _containerList = [];
+        public ObservableCollection<ContainerData> ContainerList
+        {
+            get => _containerList;
+            set
+            {
+                foreach (var container in _containerList) UnsubscribeContainer(container);
+                _containerList.CollectionChanged -= ContainerList_CollectionChanged;
+                _containerList = value;
+                _containerList.CollectionChanged += ContainerList_CollectionChanged;
+                foreach (var container in _containerList) SubscribeContainer(container);
+                OnPropertyChanged(nameof(ContainerList));
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the currently selected element from the container grid. Notifies the UI on change.
+        /// </summary
+        private List<ContainerData> _selectedContainers = [];
+        public List<ContainerData> SelectedContainers
+        {
+            get => _selectedContainers;
+            set
+            {
+                _selectedContainers = value;
+                OnPropertyChanged(nameof(SelectedContainers));
+                UpdateGroupingPreview();
+            }
+        }
+
+
+        public ICommand SelectionChangedExecuted => GuardedCommand(SelectionChanged_Executed);
+
+
+
+
+
+
+
+        //===========================================================================================================================
+        // B I N D I N G S   -   F I L T E R   T E X T
+        //===========================================================================================================================
+
+
+        /// <summary>
+        /// Gets or sets the search text for container grid. Notifies the UI on change.
+        /// </summary
+        private string _searchTextContainer = string.Empty;
+        public string SearchTextContainer
+        {
+            get => _searchTextContainer;
+            set
+            {
+                _searchTextContainer = value;
+                OnPropertyChanged();
+
+                // Start Debounce
+                _debounceTimerContainerData.Stop();
+                _debounceTimerContainerData.Start();
+
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the search text for unassigned entries grid. Notifies the UI on change.
+        /// </summary
+        private string _searchTextUnassignedEntries = string.Empty;
+        public string SearchTextUnassignedEntries
+        {
+            get => _searchTextUnassignedEntries;
+            set
+            {
+                _searchTextUnassignedEntries = value;
+                OnPropertyChanged();
+
+                // Start Debounce
+                _debounceTimerUnassignedData.Stop();
+                _debounceTimerUnassignedData.Start();
+
+            }
+        }
+
+        /// <summary>
+        /// Gets or sets the search text for filtered entries grid. Notifies the UI on change.
+        /// </summary
+        private string _searchTextFilteredEntries = string.Empty;
+        public string SearchTextFilteredEntries
+        {
+            get => _searchTextFilteredEntries;
+            set
+            {
+                _searchTextFilteredEntries = value;
+                OnPropertyChanged();
+
+                // Start Debounce
+                _debounceTimerFilteredData.Stop();
+                _debounceTimerFilteredData.Start();
+
+            }
+        }
+
+
+
+        //===========================================================================================================================
+        // P R O P E R T I E S   O F   V I E W - M O D E L
+        //===========================================================================================================================
+
+        private ContainerGenerationSettings _settings = new();
+        public ContainerGenerationSettings Settings
+        {
+            get { return _settings; }
+            set
+            {
+                if (ReferenceEquals(_settings, value))
+                    return;
+
+                _settings.PropertyChanged -= Settings_PropertyChanged;
+                _settings = value;
+                _settings.PropertyChanged += Settings_PropertyChanged;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(GroupingRuleSummary));
+                UpdateGroupingPreview();
+                ConfigureAutoSaveTimer();
+            }
+        }
+
+
+        private static readonly NLog.Logger Logger = NLog.LogManager.GetCurrentClassLogger();
+
+
+
+        // DispatcherTimer for filtering SimObjects with Debounce
+        // ActionLogger writes each completed workspace action as one JSONL batch.
+        // Speicherort: {ExeOrdner}\vibn_ai_data\actions\YYYYMMDD.jsonl
+        // Die Logs werden beim naechsten Training/Check automatisch eingelesen.
+        private readonly ActionLogger _actionLogger = new ActionLogger();
+        private GenerationWorkspaceSnapshot? _pendingReimportSnapshot;
+        private readonly Dictionary<ContainerEntry, EventHandler> _slotChangedHandlers = new();
+        private readonly Dictionary<ContainerEntry, EventHandler<SignalClearedEventArgs>>
+            _signalClearedHandlers = new();
+        private readonly Dictionary<ContainerEntry, EventHandler<WorkspaceValueChangingEventArgs>>
+            _entryChangingHandlers = new();
+        private readonly Dictionary<ContainerData, EventHandler<WorkspaceValueChangingEventArgs>>
+            _containerChangingHandlers = new();
+        private readonly Dictionary<ContainerData, PropertyChangedEventHandler>
+            _containerPropertyChangedHandlers = new();
+        private readonly Dictionary<ContainerData, System.Collections.Specialized.NotifyCollectionChangedEventHandler>
+            _containerEntryCollectionHandlers = new();
+        private readonly Dictionary<ContainerEntry, string> _lastKnownSlot = new();
+        private readonly List<WorkspaceUndoState> _undoHistory = [];
+        private readonly List<WorkspaceUndoState> _redoHistory = [];
+        private const int MaximumUndoActions = 20;
+        private const int MaximumActivityLogEntries = 250;
+        private bool _suppressUndoCapture;
+        private bool _isRestoringWorkspace;
+
+        private List<ContainerData>? _pendingGeneratedContainers;
+        private List<ContainerEntry>? _pendingGeneratedUnassigned;
+        private List<ContainerEntry>? _pendingGeneratedFiltered;
+        private ReimportSummary? _pendingReimportSummary;
+        private bool _pendingComparisonIsContainerFile;
+
+        public VIBN_Tools.Core.Collections.RangeObservableCollection<ReimportDifference> PendingReimportChanges { get; } = [];
+        public ICollectionView PendingReimportChangesView { get; }
+        public ObservableCollection<string> ReimportCriteria { get; } = ["Alle"];
+        public ObservableCollection<WorkspaceActivityLogEntry> ActivityLog { get; } = [];
+
+        private string _selectedReimportCriterion = "Alle";
+        public string SelectedReimportCriterion
+        {
+            get => _selectedReimportCriterion;
+            set
+            {
+                var normalized = string.IsNullOrWhiteSpace(value) ? "Alle" : value;
+                if (string.Equals(_selectedReimportCriterion, normalized, StringComparison.Ordinal))
+                    return;
+                _selectedReimportCriterion = normalized;
+                OnPropertyChanged();
+                PendingReimportChangesView.Refresh();
+            }
+        }
+
+        private string _reimportSearchText = string.Empty;
+        public string ReimportSearchText
+        {
+            get => _reimportSearchText;
+            set
+            {
+                if (string.Equals(_reimportSearchText, value, StringComparison.Ordinal))
+                    return;
+                _reimportSearchText = value ?? string.Empty;
+                OnPropertyChanged();
+                PendingReimportChangesView.Refresh();
+            }
+        }
+
+        public bool HasPendingReimportChanges => PendingReimportChanges.Count > 0;
+        private bool _isReimportComparisonVisible = true;
+        public bool IsReimportComparisonVisible
+        {
+            get => _isReimportComparisonVisible;
+            set
+            {
+                if (_isReimportComparisonVisible == value)
+                    return;
+                _isReimportComparisonVisible = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ShowPendingReimportPanel));
+                OnPropertyChanged(nameof(ShowCollapsedReimportSummary));
+            }
+        }
+        public bool ShowPendingReimportPanel => HasPendingReimportChanges && IsReimportComparisonVisible;
+        public bool ShowCollapsedReimportSummary => HasPendingReimportChanges && !IsReimportComparisonVisible;
+        public bool CanUndo => _undoHistory.Count > 0;
+        public bool CanRedo => _redoHistory.Count > 0;
+        public string UndoDescription =>
+            CanUndo
+                ? $"Rückgängig: {_undoHistory[^1].Description}"
+                : "Keine Änderung zum Rückgängigmachen";
+        public string RedoDescription =>
+            CanRedo
+                ? $"Wiederholen: {_redoHistory[^1].Description}"
+                : "Keine Änderung zum Wiederholen";
+        public bool HasActivityLog => ActivityLog.Count > 0;
+
+        private bool _isGroupingHelpVisible;
+        public bool IsGroupingHelpVisible
+        {
+            get => _isGroupingHelpVisible;
+            set
+            {
+                if (_isGroupingHelpVisible == value)
+                    return;
+                _isGroupingHelpVisible = value;
+                OnPropertyChanged();
+            }
+        }
+
+        private ContainerGroupingPreview? _groupingPreview;
+        public string GroupingRuleSummary => BuildGroupingRuleSummary();
+        public string GroupingPreviewSignal => _groupingPreview?.Signal ?? "Kein Signal ausgewählt";
+        public string GroupingPreviewCriteria => _groupingPreview?.Criteria ??
+            "Ein Signal in Nicht zugeordnet, Gefiltert oder einen Container auswählen.";
+        public string GroupingPreviewKey => _groupingPreview?.GroupKey ?? "–";
+        public string GroupingPreviewContainerName => _groupingPreview?.ContainerName ?? "–";
+        public string GroupingPreviewError => _groupingPreview?.Error ?? string.Empty;
+        public bool HasGroupingPreviewError => _groupingPreview?.HasError == true;
+
+        private string _lastGenerationSettingsSummary = "Noch keine Generierung mit den aktuellen Einstellungen ausgeführt.";
+        public string LastGenerationSettingsSummary
+        {
+            get => _lastGenerationSettingsSummary;
+            private set
+            {
+                _lastGenerationSettingsSummary = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public ObservableCollection<ContainerGroupingExample> GroupingExamples { get; } =
+        [
+            new(
+                "Anlagen-ID (universell)",
+                "Gruppiert u. a. =080DT_004, =080RFS001, =050ABS001, =010VRE007 und =010HTM002 nach den ersten neun Zeichen hinter '='.",
+                @"=([A-Z0-9a-z_]{9})",
+                string.Empty,
+                true,
+                false,
+                true,
+                false),
+            new(
+                "Adressbereich I/Q 27xx",
+                "Gruppiert alle vierstelligen Byteadressen nach den ersten beiden Ziffern: I2700.0 bis Q2799.7 ergeben den Schlüssel 27.",
+                string.Empty,
+                @"^[%]?[IEAQM](\d{2})\d{2}\.",
+                false,
+                false,
+                false,
+                true),
+            new(
+                "Adressgruppe je 10 Bytes",
+                "Gruppiert I2700/Q2700 über 270, I2720/Q2720 über 272 sowie I3401/Q3400 über 340.",
+                string.Empty,
+                @"^[%]?[IEAQM](\d{3})\d\.",
+                false,
+                false,
+                false,
+                true),
+            new(
+                "RFS / ABS nach ID",
+                "Gruppiert RFS- und ABS-Signale über =080RFS001 bzw. =050ABS001; unterschiedliche laufende Nummern bleiben getrennt.",
+                @"=([0-9]{3}(?:RFS|ABS)[0-9]{3})",
+                string.Empty,
+                false,
+                false,
+                true,
+                false),
+            new(
+                "VRE / HTM nach ID",
+                "Gruppiert Ein- und Ausgänge über =010VRE007 bzw. =010HTM002 – unabhängig vom nachfolgenden Gerätekennzeichen.",
+                @"=([0-9]{3}(?:VRE|HTM)[0-9]{3})",
+                string.Empty,
+                false,
+                false,
+                true,
+                false),
+            new(
+                "Component kürzen (Substitution)",
+                "Gruppiert nach Component. Aus z. B. 'Station_010_Zylinder' wird durch die Klammergruppe 'Station_010'.",
+                string.Empty,
+                string.Empty,
+                true,
+                false,
+                false,
+                false,
+                @"^(Station_\d+).*$",
+                ContainerGenerationSettings.ComponentOption),
+            new(
+                "ID als Containername",
+                "Gruppiert anhand der Anlagen-ID und verwendet zusätzlich den erfassten ID-Teil als sichtbaren Containernamen.",
+                @"=([A-Z0-9a-z_]{9})",
+                string.Empty,
+                false,
+                false,
+                true,
+                false,
+                @"=([A-Z0-9a-z_]{9}).*$",
+                ContainerGenerationSettings.IdOption),
+        ];
+
+        public string GroupingPresetDirectory { get; } = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "GROB",
+            "VIBN_Tools",
+            "ContainerGeneration",
+            "GroupingPresets");
+
+        private ContainerGroupingExample? _selectedGroupingExample;
+        public ContainerGroupingExample? SelectedGroupingExample
+        {
+            get => _selectedGroupingExample;
+            set
+            {
+                if (ReferenceEquals(_selectedGroupingExample, value))
+                    return;
+                _selectedGroupingExample = value;
+                OnPropertyChanged();
+                if (value is not null)
+                    ApplyGroupingExample(value);
+            }
+        }
+
+        public string ClearActivityLogUnavailableReason => HasActivityLog
+            ? "Löscht die sichtbare Sitzungshistorie; das strukturierte Lernprotokoll bleibt erhalten."
+            : "In dieser Sitzung sind noch keine protokollierten Aktionen vorhanden.";
+        public string ActivityLogHeader =>
+            $"Aktivitätsprotokoll ({ActivityLog.Count})";
+        public string PendingReimportSelectionSummary =>
+            PendingReimportChanges.Count == 0
+                ? string.Empty
+                : $"{PendingReimportChanges.Count} Unterschiede erkannt: " +
+                  $"{PendingReimportChanges.Count(change => change.IsAccepted)} werden übernommen, " +
+                  $"{PendingReimportChanges.Count(change => !change.IsAccepted)} werden nicht übernommen.";
+
+        private string _reimportNotice = string.Empty;
+        public string ReimportNotice
+        {
+            get => _reimportNotice;
+            private set
+            {
+                if (string.Equals(_reimportNotice, value, StringComparison.Ordinal))
+                    return;
+
+                _reimportNotice = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasReimportNotice));
+                OnPropertyChanged(nameof(ShowReimportNotice));
+            }
+        }
+
+        public bool HasReimportNotice => !string.IsNullOrWhiteSpace(ReimportNotice);
+        public bool ShowReimportNotice =>
+            HasReimportNotice && !HasPendingReimportChanges;
+
+        public ObservableCollection<WorkspaceReviewFilterOption> ReviewFilterOptions { get; } =
+        [
+            new(WorkspaceReviewFilter.All, "Alle"),
+            new(WorkspaceReviewFilter.NeedsReview, "Prüfen"),
+            new(WorkspaceReviewFilter.Changed, "Geändert / neu"),
+            new(WorkspaceReviewFilter.ManuallyEdited, "Manuell bearbeitet"),
+            new(WorkspaceReviewFilter.Unchecked, "Nicht abgehakt"),
+            new(WorkspaceReviewFilter.Invalid, "Ungültig")
+        ];
+
+        private WorkspaceReviewFilterOption? _selectedReviewFilter;
+        public WorkspaceReviewFilterOption? SelectedReviewFilter
+        {
+            get => _selectedReviewFilter;
+            set
+            {
+                if (ReferenceEquals(_selectedReviewFilter, value))
+                    return;
+
+                _selectedReviewFilter = value;
+                OnPropertyChanged();
+                ExecuteGuarded("Containerfilter", FilterContainerGrid);
+            }
+        }
+
+        private readonly DispatcherTimer _debounceTimerContainerData;
+        private readonly DispatcherTimer _debounceTimerUnassignedData;
+        private readonly DispatcherTimer _debounceTimerFilteredData;
+        private readonly DispatcherTimer _autoSaveTimer = new();
+        private string _workspaceDataPath = string.Empty;
+        private bool _isAutoSaveRunning;
+
+        public string WorkspaceDataPath
+        {
+            get => _workspaceDataPath;
+            private set
+            {
+                _workspaceDataPath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(AutoSaveStatus));
+                OnPropertyChanged(nameof(IsAutoSavePending));
+                OnPropertyChanged(nameof(AutoSaveAreaBorderBrush));
+                OnPropertyChanged(nameof(AutoSaveAreaBorderThickness));
+            }
+        }
+
+        public string AutoSaveStatus => !Settings.AutoSaveEnabled
+            ? "AutoSave ist deaktiviert."
+            : string.IsNullOrWhiteSpace(WorkspaceDataPath)
+                ? $"AutoSave alle {Settings.AutoSaveIntervalMinutes} Min. – zuerst Save Data oder Load Data ausführen."
+                : $"AutoSave alle {Settings.AutoSaveIntervalMinutes} Min.: {Path.GetFileName(WorkspaceDataPath)}";
+        public bool IsAutoSavePending => Settings.AutoSaveEnabled && string.IsNullOrWhiteSpace(WorkspaceDataPath);
+        public string AutoSaveAreaBorderBrush => IsAutoSavePending ? "#FFC62828" : "#FFB8C7D1";
+        public Thickness AutoSaveAreaBorderThickness => IsAutoSavePending ? new Thickness(2) : new Thickness(1);
+
+
+
+
+
+        /// <summary>
+        /// Gets the count of the currently assigned signals
+        /// </summary>
+        public int AssignedSignals
+        {
+            get
+            {
+                return ContainerList.SelectMany(x => x.DataList).Count();
+            }
+        }
+
+        /// <summary>
+        /// Gets the percent of signals assigned
+        /// </summary>
+        public double PercentComplete
+        {
+            get
+            {
+                int Signals = AssignedSignals;
+
+                int Total = Signals + UnassignedEntries.Count;
+                if (Total > 0)
+                {
+                    return 1.0 * Signals / Total;
+                }
+                else
+                {
+                    return 0;
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Gets or sets the status text message. Notifies the UI on change.
+        /// </summary
+        private string _statusText = string.Empty;
+        public string StatusText
+        {
+            get => _statusText;
+            set
+            {
+                _statusText = value;
+                OnPropertyChanged(nameof(StatusText));
+            }
+        }
+
+
+
+        /// <summary>
+        /// Collection of component types. Contains all types which were found after reading a AutoCreateFile.
+        /// </summary>
+        private ObservableCollection<string> _componentTypes = [];
+        public ObservableCollection<string> ComponentTypes
+        {
+            get => _componentTypes;
+            set
+            {
+                _componentTypes = value;
+                OnPropertyChanged();
+            }
+        }
+
+
+        /// <summary>
+        /// List of container entries read from the ZuLi.
+        /// </summary>
+        public IZuLiData<ContainerEntry> Zuli { get; private set; }
+
+        /// <summary>
+        /// Instance of a AutoCreate XML.
+        /// </summary>
+        private IRequirementsXml _requirementsFile = new RequirementsXml();
+        public IRequirementsXml RequirementsFile
+        {
+            get => _requirementsFile;
+            private set
+            {
+                _requirementsFile = value ?? throw new ArgumentNullException(nameof(value));
+                OnPropertyChanged(nameof(CanLoadData));
+                OnPropertyChanged(nameof(LoadDataUnavailableReason));
+                OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
+                OnPropertyChanged(nameof(CanCompareContainerFile));
+                OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
+            }
+        }
+
+        /// <summary>
+        /// Module to generate container data.
+        /// </summary>
+        public ContainerGenerator ContainerGenerator { get; private set; }
+
+
+
+
+
+
+
+
+
+        //===========================================================================================================================
+        // C O N S T R U C T O R
+        //===========================================================================================================================
+
+        /// <summary>
+        /// Initializes a new instance of the <see cref="ContainerGenerationPageVM"/> class.
+        /// This constructor sets up the default settings and initializes various components.
+        /// </summary>
+        public ContainerGenerationPageVM()
+        {
+            Settings = new ContainerGenerationSettings();
+
+            FilteredEntries = new ObservableCollection<ContainerEntry>();
+            UnassignedEntries = new ObservableCollection<ContainerEntry>();
+            ContainerList = new ObservableCollection<ContainerData>();
+            PendingReimportChangesView = CollectionViewSource.GetDefaultView(PendingReimportChanges);
+            PendingReimportChangesView.Filter = FilterReimportDifference;
+            PendingReimportChanges.CollectionChanged += (_, _) => RefreshReimportCriteria();
+
+            SelectedContainers = new List<ContainerData>();
+
+            ComponentTypes = new ObservableCollection<string>();
+
+
+            // Configure and initialise Debounce-Timer
+            _debounceTimerContainerData = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _debounceTimerContainerData.Tick += (sender, eventArgs) =>
+            {
+                _debounceTimerContainerData.Stop();
+                ExecuteGuarded("Containerfilter", FilterContainerGrid);
+            };
+
+            _debounceTimerUnassignedData = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _debounceTimerUnassignedData.Tick += (sender, eventArgs) =>
+            {
+                _debounceTimerUnassignedData.Stop();
+                ExecuteGuarded("Signalfilter", FilterUnassignedEntriesGrid);
+            };
+
+            _debounceTimerFilteredData = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(300) };
+            _debounceTimerFilteredData.Tick += (sender, eventArgs) =>
+            {
+                _debounceTimerFilteredData.Stop();
+                ExecuteGuarded("Filterliste", FilterFilteredEntriesGrid);
+            };
+
+            _autoSaveTimer.Tick += AutoSaveTimer_Tick;
+            ConfigureAutoSaveTimer();
+
+            SelectedReviewFilter = ReviewFilterOptions[0];
+
+
+            StatusText = string.Empty;
+
+            Zuli = new ZuLiDefault();
+
+            RequirementsFile = RequirementsProvider.RequirementsFile is { IsInitialized: true } sharedRequirements
+                ? sharedRequirements : new RequirementsXml();
+            RequirementsProvider.RequirementsFile = this.RequirementsFile;
+
+
+            ContainerGenerator = new ContainerGenerator();
+
+            LoadDefaultSettings();
+            if (RequirementsFile.IsInitialized)
+            {
+                Settings.PathRequirementsXml = RequirementsProvider.SourcePath;
+                RebuildComponentTypeChoices(ContainerList);
+            }
+            ReloadGroupingPresetFiles(false);
+
+            AddActivity(
+                "System",
+                "Container-Generator geöffnet",
+                "Neue Bearbeitungssitzung gestartet.");
+
+
+        }
+
+
+
+
+
+        //===========================================================================================================================
+        // M E T H O D S   ( B U T T O N S )
+        //===========================================================================================================================
+
+        /// <summary>
+        /// Opens and processes an ZuLi Excel file.
+        /// This method opens a file dialog to select an a ZuLi Excel file, reads the file asynchronously and
+        /// updates the status text based on the result.
+        /// </summary>
+        private async Task Open_InterfaceFile(object parameter)
+        {
+            string excelFilter = "Excel Files (*.xls;*.xlsx;*.xlsm)|*.xls;*.xlsx;*.xlsm";
+            string filePath = SystemDialog.OpenSelectFileDialog(excelFilter);
+            if (string.IsNullOrEmpty(filePath))
+                return;
+
+            var importMode = AskForImportMode("ZuLi");
+            if (importMode == ImportMode.Cancel)
+                return;
+
+            var importedZuli = new ZuLiDefault();
+            var result = await importedZuli.ReadFromFileAsync(filePath);
+            if (!result.IsSuccess)
+            {
+                StatusText = result.ErrorMessage;
+                return;
+            }
+
+            Zuli = importedZuli;
+            EnsureSignalIds(Zuli.Items);
+            Settings.PathZuli = filePath;
+            CommitSuccessfulImport(importMode, "ZuLi");
+            OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
+        }
+
+        private async Task Open_RequirementsXml(object parameter)
+        {
+            string xmlFilter = "XML File (*.xml)|*.xml";
+            string filePath = SystemDialog.OpenSelectFileDialog(xmlFilter);
+            if (string.IsNullOrEmpty(filePath))
+                return;
+
+            var importMode = AskForImportMode("Requirements-XML");
+            if (importMode == ImportMode.Cancel)
+                return;
+
+            var importedRequirements = new RequirementsXml();
+            var result = await importedRequirements.ReadFromFileAsync(filePath);
+            if (result.IsSuccess)
+            {
+                RequirementsFile = importedRequirements;
+                RequirementsProvider.RequirementsFile = RequirementsFile;
+                RequirementsProvider.SourcePath = filePath;
+                Settings.PathRequirementsXml = filePath;
+                RebuildComponentTypeChoices(ContainerList);
+
+                CommitSuccessfulImport(importMode, "Requirements-XML");
+                if (HasWorkspaceData)
+                    ApplyRequirementsCompatibilityStatus("Requirements-XML geladen");
+            }
+            else
+            {
+                StatusText = result.ErrorMessage;
+                return;
+            }
+
+            OnPropertyChanged(nameof(CanGenerate));
+            OnPropertyChanged(nameof(GenerateUnavailableReason));
+        }
+
+
+        /// <summary>
+        /// Loads a saved UI settings XML and initializes the corresponding data immediately.
+        /// </summary>
+        private async Task Load_Settings(object parameter)
+        {
+            string xmlFilter = "XML File (*.xml)|*.xml";
+            string filePath = SystemDialog.OpenSelectFileDialog(xmlFilter);
+            if (string.IsNullOrEmpty(filePath))
+                return;
+
+            var importMode = AskForImportMode("Projekt-Einstellungen");
+            if (importMode == ImportMode.Cancel)
+                return;
+
+            var resultSettings = XmlHandler.Read(filePath);
+            if (!resultSettings.IsSuccess)
+            {
+                StatusText = resultSettings.ErrorMessage;
+                return;
+            }
+
+            var previousSettings = Settings.GetSettings();
+            if (!Settings.SetSettings(resultSettings.Value))
+            {
+                StatusText = "Die Projekteinstellungen konnten nicht übernommen werden.";
+                return;
+            }
+
+            var inputsCommitted = false;
+            try
+            {
+                var importedZuli = new ZuLiDefault();
+                var importedRequirements = new RequirementsXml();
+
+                var resultZuli = await importedZuli.ReadFromFileAsync(Settings.PathZuli);
+                if (!resultZuli.IsSuccess)
+                {
+                    StatusText = resultZuli.ErrorMessage;
+                    return;
+                }
+
+                var resultRequirements = await importedRequirements.ReadFromFileAsync(Settings.PathRequirementsXml);
+                if (!resultRequirements.IsSuccess)
+                {
+                    StatusText = resultRequirements.ErrorMessage;
+                    return;
+                }
+
+                inputsCommitted = true;
+                Zuli = importedZuli;
+                EnsureSignalIds(Zuli.Items);
+                RequirementsFile = importedRequirements;
+                RequirementsProvider.RequirementsFile = RequirementsFile;
+
+                RequirementsProvider.SourcePath = Settings.PathRequirementsXml;
+
+                RebuildComponentTypeChoices(ContainerList);
+
+                CommitSuccessfulImport(importMode, "Projekt-Einstellungen");
+                OnPropertyChanged(nameof(CanGenerate));
+                OnPropertyChanged(nameof(GenerateUnavailableReason));
+            }
+            finally
+            {
+                if (!inputsCommitted) Settings.SetSettings(previousSettings);
+            }
+        }
+
+
+        /// <summary>
+        /// Exports all UI settings required for a container generation to a XML file.
+        /// </summary>
+        private void Save_Settings(object parameter)
+        {
+            string xmlFilter = "XML File (*.xml)|*.xml";
+            string fileName = $"{Path.GetFileNameWithoutExtension(Settings.PathZuli)}.xml";
+            string filePath = SystemDialog.OpenSaveFileDialog(xmlFilter, fileName, "Settings");
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                var result = XmlHandler.Write(Settings.GetSettings(), filePath);
+                if (!result.IsSuccess)
+                {
+                    StatusText = result.ErrorMessage;
+                }
+                else
+                {
+                    AddActivity(
+                        "Datei",
+                        "Generator-Einstellungen gespeichert",
+                        filePath);
+                }
+            }
+        }
+
+
+
+
+
+        /// <summary>
+        /// Generates container data based on grouping and substitution rules.
+        /// This method clears existing data, generates grouping and substitution rules, and uses these rules to generate container data asynchronously.
+        /// It then validates the generated containers and updates the unassigned entries.
+        /// </summary>
+        private async Task Generate_Containers(object parameter)
+        {
+            IsBusyGenerateContainers = true;
+            LastGenerationSettingsSummary = "Generiert mit: " + BuildGroupingRuleSummary() +
+                $" Namensquelle: {Settings.SelectedOption}; Substitution: " +
+                (string.IsNullOrWhiteSpace(Settings.RegexSubstitution) ? "keine" : $"'{Settings.RegexSubstitution}'") + ".";
+            AddActivity(
+                "Generierung",
+                "Grouping-Einstellungen verwendet",
+                LastGenerationSettingsSummary);
+            using var measurement = PerformanceMeasurementService.Instance.Start(
+                "ContainerGeneration",
+                "Container generieren und Reimport abgleichen");
+            try
+            {
+                var resultGrouping = Settings.GenerateGroupingRules();
+                var resultSubstitution = Settings.GenerateSubstitutionRule();
+
+                if (resultGrouping.IsSuccess)
+                {
+                    if (resultSubstitution.IsSuccess)
+                    {
+                        var generationResult = await ContainerGenerator.GenerateAsync(
+                            new ContainerGenerationRequest(
+                                Zuli.Items,
+                                RequirementsFile.Document,
+                                resultGrouping.Value,
+                                resultSubstitution.Value,
+                                ContainerGenerator.IgnoreCase,
+                                ContainerGenerator.UseFilterList));
+
+                        var generatedContainers = ContainerData.FromList(
+                            generationResult.Containers.ToList());
+                        var generatedUnassigned = generationResult.UnassignedSignals.ToList();
+                        var generatedFiltered = generationResult.FilteredSignals.ToList();
+                        EnsureSignalIds(
+                            generatedContainers.SelectMany(container => container.DataList)
+                                .Concat(generatedUnassigned)
+                                .Concat(generatedFiltered));
+
+                        foreach (var container in generatedContainers)
+                            ConfigureContainer(container);
+
+                        string completionStatus;
+
+                        if (_pendingReimportSnapshot is not null)
+                        {
+                            var summary = GenerationWorkspaceReconciler.Reconcile(
+                                _pendingReimportSnapshot,
+                                generatedContainers,
+                                generatedUnassigned,
+                                generatedFiltered,
+                                RequirementsFile);
+
+                            foreach (var container in generatedContainers)
+                                ConfigureContainer(container);
+
+                            if (summary.Differences.Count > 0)
+                            {
+                                _pendingGeneratedContainers = generatedContainers;
+                                _pendingGeneratedUnassigned = generatedUnassigned;
+                                _pendingGeneratedFiltered = generatedFiltered;
+                                _pendingReimportSummary = summary;
+
+                                ReplacePendingReimportChanges(summary.Differences);
+
+                                OnPropertyChanged(nameof(HasPendingReimportChanges));
+                                IsReimportComparisonVisible = true;
+                                OnPropertyChanged(nameof(ShowPendingReimportPanel));
+                                OnPropertyChanged(nameof(ShowCollapsedReimportSummary));
+                                OnPropertyChanged(nameof(ShowReimportNotice));
+                                OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+                                ReimportNotice =
+                                    $"Reimport-Vorschau erzeugt: {summary.Differences.Count} Unterschiede. " +
+                                    "Der sichtbare Arbeitsstand wurde noch nicht verändert.";
+                                AddActivity(
+                                    "Reimport",
+                                    "Vergleich erzeugt",
+                                    $"{summary.Differences.Count} Unterschiede erkannt; " +
+                                    $"{summary.PreservedAssignments} unveränderte Zuordnungen erkannt. " +
+                                    "Noch keine Änderung am Arbeitsstand.");
+                                StatusText =
+                                    $"{summary.Differences.Count} Änderungen wurden erkannt. " +
+                                    "Bitte jede Änderung prüfen und anschließend „Auswahl anwenden“ wählen. " +
+                                    "Der bisherige Arbeitsstand bleibt bis dahin unverändert.";
+                                WasGenerated = false;
+                                return;
+                            }
+
+                            completionStatus = summary.ToStatusText();
+                            ReimportNotice =
+                                "Reimport geprüft: Es wurden keine einzeln zu entscheidenden fachlichen Unterschiede erkannt.";
+                            AddActivity(
+                                "Reimport",
+                                "Ohne Unterschiede übernommen",
+                                summary.ToStatusText());
+                        }
+                        else
+                        {
+                            ReimportNotice = string.Empty;
+                            completionStatus =
+                                $"Generierung abgeschlossen: {generationResult.Statistics.GeneratedContainers} Container, " +
+                                $"{generationResult.Statistics.MatchedSignals} zugeordnet, " +
+                                $"{generationResult.Statistics.UnassignedSignals} nicht zugeordnet.";
+                        }
+
+                        // Generation and reconciliation operate on local collections.
+                        // Only a completely successful result replaces the visible work.
+                        ReplaceWorkspace(
+                            generatedContainers,
+                            generatedUnassigned,
+                            generatedFiltered);
+                        ReattachAllSlotChangedHandlers();
+                        _pendingReimportSnapshot = null;
+                        var validation = CreateValidationSummary();
+                        StatusText = validation.UnknownSlots > 0
+                            ? completionStatus + " ACHTUNG: " + validation.UnknownSlots +
+                              " Slot-Zuordnung(en) existieren in der geladenen Requirements-XML nicht. " +
+                              "Die betroffenen Zeilen sind markiert und müssen vor einer regulären Weiterverwendung angepasst werden."
+                            : completionStatus;
+                        WasGenerated = true;
+                        AddActivity(
+                            "Generierung",
+                            "Arbeitsstand erzeugt",
+                            StatusText);
+
+                    }
+                    else
+                    {
+                        StatusText = resultSubstitution.ErrorMessage;
+                        WasGenerated = false;
+                    }
+                }
+                else
+                {
+                    StatusText = resultGrouping.ErrorMessage;
+                    WasGenerated = false;
+                }
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                measurement.MarkFailed();
+                Logger.Error(ex, "Regex timeout during container generation.");
+                StatusText =
+                    "Die Generierung wurde abgebrochen, weil ein regulärer Ausdruck zu lange benötigt. " +
+                    "Bitte Regex vereinfachen oder genauer eingrenzen. Der bisherige Arbeitsstand blieb erhalten.";
+                WasGenerated = false;
+            }
+            catch (Exception ex) when (ContainerGenerationExceptionPolicy.IsRecoverable(ex))
+            {
+                measurement.MarkFailed();
+                Logger.Error(ex, "Container generation failed.");
+                StatusText =
+                    $"Die Generierung konnte nicht abgeschlossen werden: {ex.Message}. " +
+                    "Bitte den Arbeitsstand und das Protokoll prüfen.";
+                WasGenerated = false;
+            }
+            finally
+            {
+                IsBusyGenerateContainers = false;
+            }
+        }
+
+
+        /// <summary>
+        /// Exports the container data to an XML file.
+        /// This method opens a save file dialog, converts the container list to a list of component containers,
+        /// adds unassigned entries, and writes the data to an XML file.
+        /// </summary>
+        private void Export_Containers(object parameter)
+        {
+            var summary = CreateValidationSummary();
+            StatusText = summary.ToStatusText();
+            var blockingWarning = summary.HasBlockingIssues
+                ? Environment.NewLine + Environment.NewLine +
+                  "ACHTUNG: Das ContainerFile ist technisch ungültig und darf regulär NICHT weiterverwendet werden. " +
+                  "Mit „Ja“ bestätigen Sie ausdrücklich einen Diagnoseexport. Der Export wird sichtbar mit einem " +
+                  "zusätzlichen Container „Fehler“ gekennzeichnet."
+                : string.Empty;
+            var confirmation = summary.HasWarnings ? MessageBox.Show(
+                summary.ToDisplayText() +
+                Environment.NewLine +
+                Environment.NewLine +
+                (summary.HasBlockingIssues
+                    ? "Ungültigen Diagnoseexport wirklich erzwingen?"
+                    : summary.HasWarnings
+                    ? "Es bestehen Prüfhinweise. Soll trotzdem exportiert werden?"
+                    : "Die Prüfung war ohne Hinweis. Soll jetzt exportiert werden?") +
+                blockingWarning,
+                "Prüfzusammenfassung vor Export",
+                MessageBoxButton.YesNo,
+                summary.HasWarnings ? MessageBoxImage.Error : MessageBoxImage.Information,
+                summary.HasWarnings ? MessageBoxResult.No : MessageBoxResult.Yes) : MessageBoxResult.Yes;
+
+            if (confirmation != MessageBoxResult.Yes)
+            {
+                AddActivity(
+                    "Prüfung",
+                    "Export nach Prüfung abgebrochen",
+                    summary.ToStatusText());
+                if (summary.HasWarnings)
+                {
+                    SelectedReviewFilter = ReviewFilterOptions.First(
+                        option => option.Value == WorkspaceReviewFilter.NeedsReview);
+                }
+                return;
+            }
+
+            string xmlFilter = "XML File (*.xml)|*.xml";
+            string fileName = $"{Path.GetFileNameWithoutExtension(Settings.PathZuli)}.xml";
+            string filePath = SystemDialog.OpenSaveFileDialog(xmlFilter, fileName, "Container");
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                List<ComponentContainer> exportContainerList = ContainerData.ToComponentContainerList(ContainerList);
+                // The schema requires at least one entry per DataList. Do not
+                // append an empty unknown container to otherwise valid files.
+                if (UnassignedEntries.Count > 0)
+                {
+                    exportContainerList.Add(new ComponentContainer
+                    {
+                        Component = "unknown",
+                        Type = "unknown",
+                        DataList = UnassignedEntries
+                    });
+                }
+                if (summary.HasBlockingIssues)
+                    exportContainerList.Add(WorkspaceValidationOverrideMarker.Create(summary));
+
+                Result<string> result = XmlHandler.WriteContainerXml(exportContainerList, filePath, Path.GetFileName(Settings.PathRequirementsXml), Path.GetFileName(Settings.PathZuli), _feeInventory);
+                if (!result.IsSuccess)
+                {
+                    StatusText = result.ErrorMessage;
+                }
+                else
+                {
+                    AddActivity(
+                        "Export",
+                        "Container-XML exportiert",
+                        $"{filePath} | {ContainerList.Count} Container, " +
+                        $"{AssignedSignals} zugeordnete und {UnassignedEntries.Count} nicht zugeordnete Signale.");
+                    StatusText =
+                        summary.HasBlockingIssues
+                            ? $"UNGÜLTIGER Diagnoseexport abgeschlossen und mit Container „Fehler“ markiert. {summary.ToStatusText()}"
+                            : $"Export abgeschlossen. {summary.ToStatusText()}";
+                }
+            }
+        }
+
+        private void Compare_ContainerFiles(object parameter)
+        {
+            if (!CanCompareContainerFile)
+            {
+                StatusText = CompareContainerFileUnavailableReason;
+                return;
+            }
+
+            var filter = "Container XML (*.xml)|*.xml";
+            var candidateDialog = new OpenFileDialog
+            {
+                Title = "ContainerFile zum Vergleich mit dem aktiven Arbeitsstand auswählen",
+                Filter = filter,
+                RestoreDirectory = true
+            };
+            if (candidateDialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var candidate = ContainerFileWorkspaceReader.Read(candidateDialog.FileName);
+                PrepareContainerFileComparison(candidateDialog.FileName, candidate);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+            {
+                Logger.Error(ex, "ContainerFile comparison failed.");
+                StatusText = $"ContainerFile-Vergleich fehlgeschlagen: {ex.Message}";
+            }
+        }
+
+        private void Load_ContainerFile(object parameter)
+        {
+            if (!RequirementsFile.IsInitialized)
+            {
+                StatusText = "Vor dem Laden eines ContainerFiles muss die zugehörige Requirements-XML geladen sein.";
+                return;
+            }
+
+            var dialog = new OpenFileDialog
+            {
+                Title = "Bestehendes ContainerFile als aktiven Arbeitsstand laden",
+                Filter = "Container XML (*.xml)|*.xml",
+                Multiselect = false,
+                RestoreDirectory = true
+            };
+            if (dialog.ShowDialog() != true)
+                return;
+
+            try
+            {
+                var loaded = ContainerFileWorkspaceReader.Read(dialog.FileName);
+                if (HasWorkspaceData)
+                {
+                    var choice = MessageBox.Show(
+                        "Es ist bereits ein aktiver Arbeitsstand vorhanden.\n\n" +
+                        "Ja: Aktiven Stand vollständig durch das ContainerFile ersetzen.\n" +
+                        "Nein: Änderungen zuerst vergleichen und einzeln auswählen.\n" +
+                        "Abbrechen: Nichts verändern.",
+                        "ContainerFile laden",
+                        MessageBoxButton.YesNoCancel,
+                        MessageBoxImage.Warning,
+                        MessageBoxResult.No);
+                    if (choice == MessageBoxResult.Cancel)
+                    {
+                        StatusText = "ContainerFile wurde nicht geladen; der Arbeitsstand blieb unverändert.";
+                        return;
+                    }
+                    if (choice == MessageBoxResult.No)
+                    {
+                        PrepareContainerFileComparison(dialog.FileName, loaded);
+                        return;
+                    }
+                }
+                var containers = loaded.Containers.ToList();
+                var unassigned = loaded.UnassignedSignals.ToList();
+                foreach (var container in containers)
+                    ConfigureContainer(container);
+
+                if (HasWorkspaceData)
+                    CaptureUndo("ContainerFile als Arbeitsstand laden");
+                _pendingReimportSnapshot = null;
+                ClearPendingReimportResult();
+                _feeInventory = loaded.FeeInventory;
+                ReplaceWorkspace(containers, unassigned, []);
+                ReattachAllSlotChangedHandlers();
+                WorkspaceDataPath = string.Empty;
+                ConfigureAutoSaveTimer();
+                WasGenerated = true;
+                ReimportNotice = $"{Path.GetFileName(dialog.FileName)} wurde als aktiver Arbeitsstand geladen.";
+                AddActivity(
+                    "ContainerFile",
+                    "Als Arbeitsstand geladen",
+                    $"{dialog.FileName} | {ContainerList.Count} Container, {AssignedSignals} zugeordnet, " +
+                    $"{UnassignedEntries.Count} nicht zugeordnet.");
+                StatusText =
+                    $"ContainerFile geladen: {ContainerList.Count} Container, {AssignedSignals} zugeordnete " +
+                    $"und {UnassignedEntries.Count} nicht zugeordnete Signale. Der nächste Vergleich verwendet diesen aktiven Stand.";
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException or System.Xml.XmlException)
+            {
+                Logger.Error(ex, "ContainerFile load failed.");
+                StatusText = $"ContainerFile konnte nicht geladen werden: {ex.Message}";
+            }
+        }
+
+        private void Validate_Workspace(object parameter)
+        {
+            var summary = CreateValidationSummary();
+            StatusText = summary.ToStatusText();
+            AddActivity(
+                "Prüfung",
+                "Prüfzusammenfassung erstellt",
+                summary.ToStatusText());
+            MessageBox.Show(
+                summary.ToDisplayText(),
+                "Prüfzusammenfassung",
+                MessageBoxButton.OK,
+                summary.HasWarnings ? MessageBoxImage.Warning : MessageBoxImage.Information);
+        }
+
+        private WorkspaceValidationSummary CreateValidationSummary()
+        {
+            return WorkspaceValidationAnalyzer.Analyze(
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries,
+                RequirementsFile);
+        }
+
+        private void ApplyRequirementsCompatibilityStatus(string context)
+        {
+            var summary = CreateValidationSummary();
+            if (summary.UnknownSlots == 0)
+                return;
+            StatusText = $"{context}: {summary.UnknownSlots} Slot-Zuordnung(en) passen nicht zur geladenen " +
+                         "Requirements-XML. Die Requirements-Datei und der aktuelle Arbeitsstand gehören " +
+                         "möglicherweise nicht zur gleichen Konfiguration. Betroffene Zuordnungen vor Export anpassen.";
+            AddActivity("Validierung", "Requirements-Kompatibilität", StatusText);
+        }
+
+
+        private void Save_Data(object parameter)
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "VIBN-Arbeitsstand (*.vibn-workspace.xml)|*.vibn-workspace.xml|XML (*.xml)|*.xml",
+                Title = "VIBN-Bearbeitungsstand speichern",
+                FileName = "Arbeitsstand.vibn-workspace.xml",
+                InitialDirectory = GetAutoSaveDirectory()
+            };
+
+            if (saveFileDialog.ShowDialog() == true)
+            {
+                string[] FoundFiles = saveFileDialog.FileNames;
+                if (FoundFiles.Length == 1)
+                {
+                    try
+                    {
+                        AddActivity(
+                            "Datei",
+                            "Arbeitsstand gespeichert",
+                            FoundFiles[0]);
+                        SaveWorkspaceData(FoundFiles[0]);
+                        WorkspaceDataPath = FoundFiles[0];
+                        ConfigureAutoSaveTimer();
+                        StatusText = $"Arbeitsstand gespeichert: {FoundFiles[0]}";
+                    }
+                    catch (Exception ex) when (ContainerGenerationExceptionPolicy.IsRecoverable(ex))
+                    {
+                        Logger.Error(ex, "Could not save workspace to {FilePath}.", FoundFiles[0]);
+                        StatusText = "Der Arbeitsstand konnte nicht gespeichert werden. Details stehen im Protokoll.";
+                    }
+                }
+            }
+
+        }
+
+        private void Load_Data(object parameter)
+        {
+            if (!CanLoadData)
+            {
+                StatusText = "Vor Load Data muss eine gültige Requirements-XML geladen werden.";
+                return;
+            }
+
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "VIBN-Arbeitsstand (*.vibn-workspace.xml;*.xml)|*.vibn-workspace.xml;*.xml",
+                Multiselect = false,
+                Title = "Mit VIBN Tools gespeicherten Bearbeitungsstand laden"
+            };
+
+            if (openFileDialog.ShowDialog() == true)
+            {
+                //Get the path of specified file
+                string[] FoundFiles = openFileDialog.FileNames;
+                if (FoundFiles.Length == 1)
+                {
+                    try
+                    {
+                        SavedData loadedData = SavedData.DeserializeProject(FoundFiles[0]);
+                        foreach (var container in loadedData.ContainerList)
+                            ConfigureContainer(container);
+
+                        // Replace the visible workspace only after the complete file
+                        // has been read and validated. A broken file therefore cannot
+                        // destroy the current work.
+                        if (HasWorkspaceData)
+                            CaptureUndo("Gespeicherten Arbeitsstand laden");
+                        _feeInventory = loadedData.FeeInventory;
+                        ReplaceWorkspace(
+                            loadedData.ContainerList,
+                            loadedData.UnassignedEntries,
+                            loadedData.FilteredEntries);
+
+                        _pendingReimportSnapshot = null;
+                        ClearPendingReimportResult();
+                        ReattachAllSlotChangedHandlers();
+                        ActivityLog.Clear();
+                        foreach (var logEntry in loadedData.ActivityLog
+                                     .OrderByDescending(entry => entry.Timestamp)
+                                     .Take(MaximumActivityLogEntries))
+                        {
+                            ActivityLog.Add(logEntry);
+                        }
+                        NotifyActivityLogChanged();
+                        AddActivity(
+                            "Datei",
+                            "Arbeitsstand geladen",
+                            FoundFiles[0]);
+                        WorkspaceDataPath = FoundFiles[0];
+                        ConfigureAutoSaveTimer();
+                        WasGenerated = true;
+                        StatusText = "Gespeicherter Arbeitsstand wurde geladen.";
+                    }
+                    catch (Exception ex) when (ContainerGenerationExceptionPolicy.IsRecoverable(ex))
+                    {
+                        Logger.Error(ex, "Could not load workspace from {FilePath}.", FoundFiles[0]);
+                        MessageBox.Show(
+                            "Die Datei konnte nicht gelesen werden. Der aktuelle Arbeitsstand wurde nicht verändert.",
+                            "Arbeitsstand laden",
+                            MessageBoxButton.OK,
+                            MessageBoxImage.Error);
+                    }
+                }
+            }
+
+
+
+        }
+
+        private SavedData CreateWorkspaceData(string filePath)
+        {
+            var snapshot = WorkspaceUndoState.Capture(
+                "Arbeitsstand speichern",
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries, _feeInventory);
+            var savedData = new SavedData
+            {
+                ContainerList = snapshot.Containers.ToList(),
+                FeeInventory = snapshot.FeeInventory,
+                FilteredEntries = snapshot.Filtered.ToList(),
+                UnassignedEntries = snapshot.Unassigned.ToList(),
+                ActivityLog = ActivityLog.Select(entry => new WorkspaceActivityLogEntry
+                {
+                    Timestamp = entry.Timestamp,
+                    Category = entry.Category,
+                    Action = entry.Action,
+                    Details = entry.Details
+                }).ToList(),
+                FilePath = filePath,
+            };
+            savedData.CaptureEntryStates();
+            return savedData;
+        }
+
+        private void SaveWorkspaceData(string filePath)
+        {
+            var savedData = CreateWorkspaceData(filePath);
+            savedData.SetSettings();
+        }
+
+        private void Settings_PropertyChanged(object? sender, PropertyChangedEventArgs eventArgs)
+        {
+            UpdateGroupingPreview();
+            OnPropertyChanged(nameof(GroupingRuleSummary));
+            if (eventArgs.PropertyName is nameof(ContainerGenerationSettings.RegexAddress) or
+                nameof(ContainerGenerationSettings.RegexId) or
+                nameof(ContainerGenerationSettings.RegexSubstitution) or
+                nameof(ContainerGenerationSettings.GroupByComponent) or
+                nameof(ContainerGenerationSettings.GroupByType) or
+                nameof(ContainerGenerationSettings.GroupById) or
+                nameof(ContainerGenerationSettings.GroupByAddress) or
+                nameof(ContainerGenerationSettings.SelectedOption))
+            {
+                if (WasGenerated)
+                {
+                    WasGenerated = false;
+                    StatusText = "Grouping wurde geändert. Die Container können mit den neuen Einstellungen erneut generiert werden.";
+                }
+            }
+            if (eventArgs.PropertyName is not nameof(ContainerGenerationSettings.AutoSaveEnabled) and
+                not nameof(ContainerGenerationSettings.AutoSaveIntervalMinutes))
+            {
+                return;
+            }
+
+            ConfigureAutoSaveTimer();
+            OnPropertyChanged(nameof(AutoSaveStatus));
+            OnPropertyChanged(nameof(IsAutoSavePending));
+            OnPropertyChanged(nameof(AutoSaveAreaBorderBrush));
+            OnPropertyChanged(nameof(AutoSaveAreaBorderThickness));
+        }
+
+        private string GetAutoSaveDirectory()
+        {
+            var configuredDirectory = string.IsNullOrWhiteSpace(WorkspaceDataPath)
+                ? null
+                : Path.GetDirectoryName(WorkspaceDataPath);
+            return configuredDirectory ?? Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "GROB",
+                "VIBN_Tools",
+                "ContainerGeneration",
+                "Workspaces");
+        }
+
+        private void OpenAutoSaveDirectory(object? parameter)
+        {
+            try
+            {
+                var directory = GetAutoSaveDirectory();
+                Directory.CreateDirectory(directory);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = directory,
+                    UseShellExecute = true,
+                });
+                StatusText = $"Arbeitsstand-Ordner geöffnet: {directory}";
+            }
+            catch (Exception exception) when (ContainerGenerationExceptionPolicy.IsRecoverable(exception))
+            {
+                Logger.Error(exception, "Could not open the workspace autosave directory.");
+                StatusText = "Der Arbeitsstand-Ordner konnte nicht geöffnet werden. Details stehen im Protokoll.";
+            }
+        }
+
+        private void PrepareContainerFileComparison(
+            string filePath,
+            ContainerFileWorkspace candidate)
+        {
+            var candidateContainers = candidate.Containers.ToList();
+            var candidateUnassigned = candidate.UnassignedSignals.ToList();
+            var candidateFiltered = new List<ContainerEntry>();
+            var snapshot = GenerationWorkspaceReconciler.Capture(
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries);
+            var summary = GenerationWorkspaceReconciler.Reconcile(
+                snapshot,
+                candidateContainers,
+                candidateUnassigned,
+                candidateFiltered,
+                RequirementsFile);
+
+            ClearPendingReimportResult();
+            _pendingGeneratedContainers = candidateContainers;
+            _pendingGeneratedUnassigned = candidateUnassigned;
+            _pendingGeneratedFiltered = candidateFiltered;
+            _pendingReimportSummary = summary;
+            _pendingComparisonIsContainerFile = true;
+            ReplacePendingReimportChanges(summary.Differences);
+
+            OnPropertyChanged(nameof(HasPendingReimportChanges));
+            IsReimportComparisonVisible = true;
+            OnPropertyChanged(nameof(ShowPendingReimportPanel));
+            OnPropertyChanged(nameof(ShowCollapsedReimportSummary));
+            OnPropertyChanged(nameof(ShowReimportNotice));
+            OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+            ReimportNotice =
+                $"ContainerFile-Vergleich: aktiver Arbeitsstand → " +
+                $"{Path.GetFileName(filePath)}; {summary.Differences.Count} Unterschiede erkannt.";
+            StatusText = summary.Differences.Count == 0
+                ? "Aktiver Stand und ContainerFile sind semantisch gleich."
+                : "ContainerFile-Vorschau erstellt. Kriterium und Suche können die Anzeige eingrenzen; jede Änderung bleibt einzeln entscheidbar.";
+            AddActivity("Container-Vergleich", "A/B-Vorschau erstellt", ReimportNotice);
+        }
+
+        private bool FilterReimportDifference(object item)
+        {
+            if (item is not ReimportDifference difference)
+                return false;
+            if (!string.Equals(SelectedReimportCriterion, "Alle", StringComparison.Ordinal) &&
+                !string.Equals(difference.Category, SelectedReimportCriterion, StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            var query = ReimportSearchText.Trim();
+            if (query.Length == 0)
+                return true;
+            return new[]
+            {
+                difference.Category,
+                difference.Signal,
+                difference.PreviousValue,
+                difference.DetectedValue,
+                difference.ExactDifference,
+                difference.DecisionEffect,
+            }.Any(value => value.Contains(query, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private void RefreshReimportCriteria()
+        {
+            var categories = PendingReimportChanges
+                .Select(change => change.Category)
+                .Where(category => !string.IsNullOrWhiteSpace(category))
+                .Distinct(StringComparer.Ordinal)
+                .OrderBy(category => category, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+            ReimportCriteria.Clear();
+            ReimportCriteria.Add("Alle");
+            foreach (var category in categories)
+                ReimportCriteria.Add(category);
+            if (!ReimportCriteria.Contains(SelectedReimportCriterion))
+            {
+                _selectedReimportCriterion = "Alle";
+                OnPropertyChanged(nameof(SelectedReimportCriterion));
+            }
+            PendingReimportChangesView.Refresh();
+        }
+
+        private void ConfigureAutoSaveTimer()
+        {
+            _autoSaveTimer.Stop();
+            _autoSaveTimer.Interval = TimeSpan.FromMinutes(
+                Math.Clamp(Settings.AutoSaveIntervalMinutes, 1, 1440));
+            if (Settings.AutoSaveEnabled && !string.IsNullOrWhiteSpace(WorkspaceDataPath))
+                _autoSaveTimer.Start();
+            OnPropertyChanged(nameof(AutoSaveStatus));
+        }
+
+        private async void AutoSaveTimer_Tick(object? sender, EventArgs eventArgs)
+        {
+            if (_isAutoSaveRunning || _isWorkspaceOperationBusy ||
+                !Settings.AutoSaveEnabled ||
+                string.IsNullOrWhiteSpace(WorkspaceDataPath))
+            {
+                return;
+            }
+
+            _isAutoSaveRunning = true;
+            try
+            {
+                var targetPath = WorkspaceDataPath;
+                var savedData = CreateWorkspaceData(targetPath);
+                await Task.Run(savedData.SetSettings);
+                AddActivity(
+                    "AutoSave",
+                    "Arbeitsstand automatisch gespeichert",
+                    targetPath);
+                StatusText = $"AutoSave abgeschlossen: {Path.GetFileName(targetPath)}";
+            }
+            catch (Exception ex) when (ContainerGenerationExceptionPolicy.IsRecoverable(ex))
+            {
+                Logger.Error(ex, "AutoSave failed for {FilePath}.", WorkspaceDataPath);
+                StatusText = "AutoSave fehlgeschlagen. Details stehen im Protokoll.";
+            }
+            finally
+            {
+                _isAutoSaveRunning = false;
+            }
+        }
+
+        private void Apply_ReimportSelection(object parameter)
+        {
+            if (_pendingReimportSummary is null ||
+                _pendingGeneratedContainers is null ||
+                _pendingGeneratedUnassigned is null ||
+                _pendingGeneratedFiltered is null)
+            {
+                return;
+            }
+
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
+            var decisions = PendingReimportChanges.ToList();
+            var accepted = PendingReimportChanges.Count(change => change.IsAccepted);
+            var rejected = PendingReimportChanges.Count - accepted;
+            var newSignals = decisions.Count(
+                change => change.Kind == ReimportChangeKind.NewFromSource);
+            var changedSignals = decisions.Count(
+                change => change.Kind == ReimportChangeKind.SourceChanged);
+
+            if (!RunWorkspaceAction($"{comparisonLabel}-Auswahl anwenden", () =>
+            {
+                GenerationWorkspaceReconciler.ApplyDecisions(_pendingReimportSummary,
+                    _pendingGeneratedContainers, _pendingGeneratedUnassigned, _pendingGeneratedFiltered);
+                foreach (var container in _pendingGeneratedContainers) ConfigureContainer(container);
+                ReplaceWorkspace(_pendingGeneratedContainers, _pendingGeneratedUnassigned, _pendingGeneratedFiltered);
+                ReattachAllSlotChangedHandlers();
+            }))
+            {
+                ClearPendingReimportResult();
+                WasGenerated = false;
+                return;
+            }
+
+            _pendingReimportSnapshot = null;
+            ClearPendingReimportResult();
+            WasGenerated = true;
+            RefreshAllWorkspaceFilters();
+            foreach (var decision in decisions)
+            {
+                AddActivity(
+                    comparisonLabel,
+                    decision.IsAccepted
+                        ? $"{decision.Category} übernommen"
+                        : $"{decision.Category}: bisherigen Stand beibehalten",
+                    $"Signal {decision.Signal} – {decision.ExactDifference}. " +
+                    $"Auswirkung: {decision.DecisionEffect}.");
+            }
+            AddActivity(
+                comparisonLabel,
+                "Auswahl angewendet",
+                $"{accepted} Änderungen übernommen; {rejected} Änderungen nicht übernommen. " +
+                $"{ContainerList.Count} Container und {AssignedSignals} zugeordnete Signale im resultierenden Arbeitsstand.");
+
+            ReimportNotice =
+                $"Arbeitsstand wurde am {DateTime.Now:dd.MM.yyyy HH:mm} durch {comparisonLabel} geändert: " +
+                $"{newSignals} neue und {changedSignals} in der Quelle geänderte Signale erkannt; " +
+                $"{accepted} Änderungen übernommen, {rejected} Änderungen nicht übernommen.";
+            StatusText =
+                $"{comparisonLabel} übernommen: {newSignals} neue, {changedSignals} geänderte Signale; " +
+                $"{accepted} Änderungen angenommen, " +
+                $"{rejected} Änderungen verworfen beziehungsweise bisheriger Stand beibehalten.";
+        }
+
+        private void Cancel_ReimportSelection(object parameter)
+        {
+            var differenceCount = PendingReimportChanges.Count;
+            var comparisonLabel = _pendingComparisonIsContainerFile ? "ContainerFile-Vergleich" : "Reimport";
+            ClearPendingReimportResult();
+            WasGenerated = HasWorkspaceData;
+            ReimportNotice =
+                $"{comparisonLabel}-Vorschau mit {differenceCount} Unterschieden wurde verworfen; " +
+                "der Arbeitsstand wurde nicht verändert.";
+            AddActivity(
+                comparisonLabel,
+                "Vorschau verworfen",
+                $"{differenceCount} erkannte Unterschiede; keine Änderung am Arbeitsstand.");
+            StatusText =
+                "Die Reimport-Vorschau wurde verworfen. Der bisherige Arbeitsstand blieb unverändert.";
+        }
+
+        private void SetAllReimportChanges(bool isAccepted)
+        {
+            foreach (var change in PendingReimportChanges)
+                change.IsAccepted = isAccepted;
+
+            AddActivity(
+                "Reimport",
+                isAccepted ? "Alle Änderungen ausgewählt" : "Alle Änderungen abgewählt",
+                $"{PendingReimportChanges.Count} Vergleichszeilen aktualisiert.");
+        }
+
+        private void SetReimportChangeDecision(object? parameter, bool isAccepted)
+        {
+            if (parameter is not ReimportDifference difference)
+                return;
+            difference.IsAccepted = isAccepted;
+            AddActivity(
+                "Reimport",
+                isAccepted ? "Einzelne Änderung vorgemerkt" : "Einzelne Änderung abgelehnt",
+                $"{difference.Signal}: {difference.ExactDifference}. Die übrigen Vergleichszeilen bleiben erhalten.");
+            StatusText = isAccepted
+                ? "Die Änderung wurde zur Übernahme vorgemerkt. Erst 'Auswahl anwenden' verändert den Arbeitsstand."
+                : "Die Änderung wurde abgewählt. Die übrige Vergleichsliste bleibt unverändert.";
+        }
+
+        private void ApplyGroupingExample(ContainerGroupingExample example)
+        {
+            Settings.RegexId = example.RegexId;
+            Settings.RegexAddress = example.RegexAddress;
+            Settings.RegexSubstitution = example.RegexSubstitution;
+            Settings.GroupByComponent = example.GroupByComponent;
+            Settings.GroupByType = example.GroupByType;
+            Settings.GroupById = example.GroupById;
+            Settings.GroupByAddress = example.GroupByAddress;
+            Settings.SelectedOption = example.SelectedOption;
+            StatusText = $"Grouping-Beispiel '{example.Name}' übernommen: {example.Description}";
+            AddActivity("Grouping", "Beispiel übernommen", $"{example.Name}: {example.Description}");
+        }
+
+        private void OpenGroupingPresetDirectory(object? parameter)
+        {
+            try
+            {
+                Directory.CreateDirectory(GroupingPresetDirectory);
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = GroupingPresetDirectory,
+                    UseShellExecute = true,
+                });
+                StatusText = $"Grouping-Vorlagenordner geöffnet: {GroupingPresetDirectory}";
+            }
+            catch (Exception exception) when (ContainerGenerationExceptionPolicy.IsRecoverable(exception))
+            {
+                Logger.Error(exception, "Could not open grouping preset directory {Directory}.", GroupingPresetDirectory);
+                StatusText = "Der Grouping-Vorlagenordner konnte nicht geöffnet werden. Details stehen im Protokoll.";
+            }
+        }
+
+        private void ReloadGroupingPresetFiles(bool showStatus)
+        {
+            foreach (var preset in GroupingExamples.Where(item => item.IsUserPreset).ToArray())
+                GroupingExamples.Remove(preset);
+
+            if (!Directory.Exists(GroupingPresetDirectory))
+            {
+                if (showStatus)
+                    StatusText = $"Noch keine eigenen Grouping-Vorlagen vorhanden. XML-Dateien hier ablegen: {GroupingPresetDirectory}";
+                return;
+            }
+
+            var loaded = 0;
+            var ignored = 0;
+            try
+            {
+                foreach (var path in Directory.EnumerateFiles(GroupingPresetDirectory, "*.xml")
+                             .OrderBy(Path.GetFileName, StringComparer.OrdinalIgnoreCase))
+                {
+                    var documentResult = XmlHandler.Read(path);
+                    var preset = documentResult.IsSuccess
+                        ? TryCreateGroupingPreset(path, documentResult.Value)
+                        : null;
+                    if (preset is null)
+                    {
+                        ignored++;
+                        continue;
+                    }
+
+                    GroupingExamples.Add(preset);
+                    loaded++;
+                }
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+            {
+                Logger.Error(exception, "Could not read grouping presets from {Directory}.", GroupingPresetDirectory);
+                if (showStatus)
+                    StatusText = "Die eigenen Grouping-Vorlagen konnten nicht vollständig gelesen werden. Details stehen im Protokoll.";
+                return;
+            }
+
+            if (showStatus)
+            {
+                StatusText = $"{loaded} eigene Grouping-Vorlage(n) geladen" +
+                             (ignored == 0 ? "." : $"; {ignored} ungültige XML-Datei(en) ignoriert.");
+            }
+        }
+
+        public static ContainerGroupingExample? TryCreateGroupingPreset(string path, XDocument document)
+        {
+            var root = document.Root;
+            if (root is null || !string.Equals(root.Name.LocalName, "CAASettings", StringComparison.Ordinal))
+                return null;
+
+            static bool ReadBoolean(XElement parent, string name) =>
+                bool.TryParse(parent.Element(name)?.Value, out var value) && value;
+
+            var name = root.Element("PresetName")?.Value?.Trim();
+            if (string.IsNullOrWhiteSpace(name))
+                name = Path.GetFileNameWithoutExtension(path);
+            var selectedOption = root.Element("SelectedOption")?.Value?.Trim();
+            if (selectedOption is not ContainerGenerationSettings.ComponentOption and
+                not ContainerGenerationSettings.IdOption)
+            {
+                selectedOption = ContainerGenerationSettings.ComponentOption;
+            }
+
+            return new ContainerGroupingExample(
+                name,
+                $"Eigene Vorlage aus {Path.GetFileName(path)}",
+                root.Element("RegexId")?.Value ?? string.Empty,
+                root.Element("RegexAddress")?.Value ?? string.Empty,
+                ReadBoolean(root, "GroupByComponent"),
+                ReadBoolean(root, "GroupByType"),
+                ReadBoolean(root, "GroupById"),
+                ReadBoolean(root, "GroupByAddress"),
+                root.Element("RegexSubstitution")?.Value ?? string.Empty,
+                selectedOption,
+                Path.GetFullPath(path));
+        }
+
+        private void ClearPendingReimportResult()
+        {
+            foreach (var difference in PendingReimportChanges)
+                difference.PropertyChanged -= PendingReimportChange_PropertyChanged;
+
+            _pendingGeneratedContainers = null;
+            _pendingGeneratedUnassigned = null;
+            _pendingGeneratedFiltered = null;
+            _pendingReimportSummary = null;
+            _pendingComparisonIsContainerFile = false;
+            PendingReimportChanges.Clear();
+            OnPropertyChanged(nameof(HasPendingReimportChanges));
+            OnPropertyChanged(nameof(ShowPendingReimportPanel));
+            OnPropertyChanged(nameof(ShowCollapsedReimportSummary));
+            OnPropertyChanged(nameof(ShowReimportNotice));
+            OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+        }
+
+        private void PendingReimportChange_PropertyChanged(
+            object? sender,
+            PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName is nameof(ReimportDifference.IsAccepted) or
+                nameof(ReimportDifference.DecisionEffect))
+            {
+                OnPropertyChanged(nameof(PendingReimportSelectionSummary));
+            }
+        }
+
+        private void Undo_LastAction(object parameter) => RestoreHistory(_undoHistory, _redoHistory, "Rückgängig");
+        private void Redo_LastAction(object parameter) => RestoreHistory(_redoHistory, _undoHistory, "Wiederholen");
+
+        private void RestoreHistory(List<WorkspaceUndoState> from, List<WorkspaceUndoState> to, string action)
+        {
+            if (from.Count == 0) return;
+            var state = from[^1];
+            var current = WorkspaceUndoState.Capture(state.Description, ContainerList, UnassignedEntries, FilteredEntries, _feeInventory);
+            _isRestoringWorkspace = _suppressUndoCapture = _isWorkspaceBatch = true;
+            try
+            {
+                RestoreWorkspaceState(state);
+                foreach (var container in ContainerList) ConfigureContainer(container);
+                from.RemoveAt(from.Count - 1);
+                to.Add(current);
+                TrimHistory(to);
+            }
+            catch (Exception exception) when (ContainerGenerationExceptionPolicy.IsRecoverable(exception))
+            {
+                RestoreWorkspaceState(current);
+                ReportOperationFailure(action, exception);
+                return;
+            }
+            finally
+            {
+                _isRestoringWorkspace = _suppressUndoCapture = _isWorkspaceBatch = false;
+                UpdateUICount(null, new System.Collections.Specialized.NotifyCollectionChangedEventArgs(
+                    System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
+                NotifyUndoStateChanged();
+            }
+            WasGenerated = HasWorkspaceData;
+            AddActivity(action, state.Description, "Arbeitsstand wiederhergestellt.");
+            StatusText = $"{action} ausgeführt: {state.Description}.";
+        }
+
+        private void CaptureUndo(string description)
+        {
+            if (_suppressUndoCapture || _isRestoringWorkspace)
+                return;
+
+            _undoHistory.Add(
+                WorkspaceUndoState.Capture(
+                    description,
+                    ContainerList,
+                    UnassignedEntries,
+                    FilteredEntries, _feeInventory));
+
+            TrimHistory(_undoHistory);
+            _redoHistory.Clear();
+
+            NotifyUndoStateChanged();
+        }
+
+        private bool RunWorkspaceAction(string description, Action action, string? details = null)
+        {
+            using var measurement = PerformanceMeasurementService.Instance.Start("ContainerGeneration", description);
+            var checkpoint = WorkspaceUndoState.Capture(description, ContainerList, UnassignedEntries, FilteredEntries, _feeInventory);
+            using var actionLog = _actionLogger.BeginBatch();
+            var previousSuppression = _suppressUndoCapture;
+            _suppressUndoCapture = true;
+            _isWorkspaceBatch = true;
+            try
+            {
+                using (new ContainerUpdateBatch(ContainerList)) action();
+                RefreshAllWorkspaceFilters();
+                _undoHistory.Add(checkpoint);
+                TrimHistory(_undoHistory);
+                _redoHistory.Clear();
+                actionLog.Complete();
+            }
+            catch (Exception exception) when (ContainerGenerationExceptionPolicy.IsRecoverable(exception))
+            {
+                measurement.MarkFailed();
+                RestoreWorkspaceState(checkpoint);
+                ReportOperationFailure(description, exception);
+                return false;
+            }
+            finally
+            {
+                _isWorkspaceBatch = false;
+                _suppressUndoCapture = previousSuppression;
+                UpdateUICount(null, new System.Collections.Specialized.NotifyCollectionChangedEventArgs(
+                    System.Collections.Specialized.NotifyCollectionChangedAction.Reset));
+                NotifyUndoStateChanged();
+            }
+            AddActivity("Bearbeitung", description, details ?? "Arbeitsaktion abgeschlossen.");
+            return true;
+        }
+
+        private void RestoreWorkspaceState(WorkspaceUndoState state)
+        {
+            _feeInventory = state.FeeInventory;
+            ReplaceWorkspace(state.Containers, state.Unassigned, state.Filtered);
+            ReattachAllSlotChangedHandlers();
+            RefreshAllWorkspaceFilters();
+        }
+
+        private void NotifyUndoStateChanged()
+        {
+            OnPropertyChanged(nameof(CanUndo));
+            OnPropertyChanged(nameof(UndoDescription));
+            OnPropertyChanged(nameof(CanRedo));
+            OnPropertyChanged(nameof(RedoDescription));
+        }
+
+        private static void TrimHistory(List<WorkspaceUndoState> history)
+        {
+            if (history.Count > MaximumUndoActions)
+                history.RemoveAt(0);
+        }
+
+        private void AddActivity(string category, string action, string details)
+        {
+            ActivityLog.Insert(
+                0,
+                new WorkspaceActivityLogEntry
+                {
+                    Timestamp = DateTime.Now,
+                    Category = category,
+                    Action = action,
+                    Details = details
+                });
+
+            while (ActivityLog.Count > MaximumActivityLogEntries)
+                ActivityLog.RemoveAt(ActivityLog.Count - 1);
+
+            NotifyActivityLogChanged();
+        }
+
+        private void Clear_ActivityLog(object parameter)
+        {
+            ActivityLog.Clear();
+            NotifyActivityLogChanged();
+            StatusText = "Aktivitätsprotokoll wurde geleert.";
+        }
+
+        private void NotifyActivityLogChanged()
+        {
+            OnPropertyChanged(nameof(HasActivityLog));
+            OnPropertyChanged(nameof(ClearActivityLogUnavailableReason));
+            OnPropertyChanged(nameof(ActivityLogHeader));
+        }
+
+
+
+
+
+
+        //===========================================================================================================================
+        // M E T H O D S   ( H E L P E R S )
+        //===========================================================================================================================
+
+        private enum ImportMode
+        {
+            NewProject,
+            Reimport,
+            Cancel
+        }
+
+        private bool HasWorkspaceData =>
+            ContainerList.Count > 0 ||
+            UnassignedEntries.Count > 0 ||
+            FilteredEntries.Count > 0;
+
+        private ImportMode AskForImportMode(string sourceName)
+        {
+            if (!HasWorkspaceData && _pendingReimportSnapshot is null)
+                return ImportMode.NewProject;
+
+            var result = MessageBox.Show(
+                $"{sourceName} einlesen:\n\n" +
+                "Ja = bestehende Arbeit erneut prüfen. Die neue Datei wird eingelesen, " +
+                "manuelle beziehungsweise bestehende Zuordnungen werden beim nächsten Generieren abgeglichen und gekennzeichnet.\n\n" +
+                "Nein = neues Projekt. Die bisherigen Arbeitsergebnisse werden nach erfolgreichem Einlesen verworfen.\n\n" +
+                "Abbrechen = nichts ändern.",
+                "Importart auswählen",
+                MessageBoxButton.YesNoCancel,
+                MessageBoxImage.Question);
+
+            return result switch
+            {
+                MessageBoxResult.Yes => ImportMode.Reimport,
+                MessageBoxResult.No => ImportMode.NewProject,
+                _ => ImportMode.Cancel
+            };
+        }
+
+        private void CommitSuccessfulImport(ImportMode importMode, string sourceName)
+        {
+            _redoHistory.Clear();
+            NotifyUndoStateChanged();
+
+            if (importMode == ImportMode.Reimport)
+            {
+                ClearPendingReimportResult();
+                _pendingReimportSnapshot ??= GenerationWorkspaceReconciler.Capture(
+                    ContainerList,
+                    UnassignedEntries,
+                    FilteredEntries);
+
+                ReimportNotice =
+                    $"{sourceName} wurde als Reimport eingelesen. Erst die nächste Generierung erzeugt den Vergleich.";
+                AddActivity(
+                    "Import",
+                    $"{sourceName} als Reimport eingelesen",
+                    "Bestehender Arbeitsstand wurde als Vergleichsbasis gesichert.");
+                StatusText =
+                    $"{sourceName} wurde neu eingelesen. Beim nächsten Generieren werden " +
+                    "bestehende Zuordnungen abgeglichen und Änderungen gekennzeichnet.";
+            }
+            else
+            {
+                _pendingReimportSnapshot = null;
+                ClearPendingReimportResult();
+                ClearData();
+                _undoHistory.Clear();
+                _redoHistory.Clear();
+                NotifyUndoStateChanged();
+                ReimportNotice = string.Empty;
+                AddActivity(
+                    "Import",
+                    $"{sourceName} als neues Projekt eingelesen",
+                    "Vorheriger Container-Arbeitsstand wurde geleert.");
+                StatusText = $"{sourceName} wurde als neues Projekt eingelesen.";
+            }
+
+            WasGenerated = false;
+        }
+
+        private void RebuildComponentTypeChoices(IEnumerable<ContainerData> containers)
+        {
+            var types = RequirementsFile.IsInitialized ? RequirementsFile.GetComponentTypes() : Enumerable.Empty<string>();
+            ComponentTypes = new ObservableCollection<string>(types.Concat(containers.Select(item => item.Type))
+                .Where(type => !string.IsNullOrWhiteSpace(type)).Distinct(StringComparer.OrdinalIgnoreCase).OrderBy(type => type));
+        }
+
+        private void ReplaceWorkspace(
+            IEnumerable<ContainerData> containers,
+            IEnumerable<ContainerEntry> unassigned,
+            IEnumerable<ContainerEntry> filtered)
+        {
+            var newContainers = containers.ToArray();
+            var newUnassigned = unassigned.ToArray();
+            var newFiltered = filtered.ToArray();
+            var oldContainers = ContainerList.ToArray();
+            var oldUnassigned = UnassignedEntries.ToArray();
+            var oldFiltered = FilteredEntries.ToArray();
+            try { ApplyRows(newContainers, newUnassigned, newFiltered); }
+            catch (Exception exception) when (ContainerGenerationExceptionPolicy.IsRecoverable(exception))
+            {
+                try { ApplyRows(oldContainers, oldUnassigned, oldFiltered); }
+                catch (Exception restoreError) when (ContainerGenerationExceptionPolicy.IsRecoverable(restoreError))
+                { throw new AggregateException("Arbeitsstand konnte nicht vollständig wiederhergestellt werden.", exception, restoreError); }
+                throw;
+            }
+
+            void ApplyRows(ContainerData[] containerRows, ContainerEntry[] unassignedRows, ContainerEntry[] filteredRows)
+            {
+                RebuildComponentTypeChoices(containerRows);
+                ClearData();
+
+                foreach (var container in containerRows)
+                {
+                    EnsureSignalIds(container.DataList);
+                    ContainerList.Add(container);
+                }
+
+                foreach (var entry in unassignedRows)
+                {
+                    entry.EnsureSignalId();
+                    UnassignedEntries.Add(entry);
+                }
+
+                foreach (var entry in filteredRows)
+                {
+                    entry.EnsureSignalId();
+                    FilteredEntries.Add(entry);
+                }
+
+                OnPropertyChanged(nameof(CanCompareContainerFile));
+                OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
+            }
+        }
+
+        private static void EnsureSignalIds(IEnumerable<ContainerEntry> entries)
+        {
+            foreach (var entry in entries)
+                entry.EnsureSignalId();
+        }
+
+        private void ConfigureContainer(ContainerData container)
+        {
+            container.Slots.Clear();
+            foreach (var slot in RequirementsFile.GetSlotNames(container.Type))
+                container.Slots.Add(slot);
+
+            container.MinSignals = RequirementsFile.GetMinSignals(container.Type);
+            container.MaxSignals = RequirementsFile.GetMaxSignals(container.Type);
+            container.Validate();
+            container.RefreshReimportStatus();
+        }
+
+        /// <summary>
+        /// Clears the grid data for container as well as unassigned entries.
+        /// </summary>
+        private void ClearData()
+        {
+            foreach (var handler in _slotChangedHandlers)
+                handler.Key.SlotChanged -= handler.Value;
+            foreach (var handler in _signalClearedHandlers)
+                handler.Key.SignalCleared -= handler.Value;
+            foreach (var handler in _entryChangingHandlers)
+                handler.Key.WorkspaceValueChanging -= handler.Value;
+            foreach (var handler in _containerChangingHandlers)
+                handler.Key.WorkspaceValueChanging -= handler.Value;
+            foreach (var handler in _containerPropertyChangedHandlers)
+                handler.Key.PropertyChanged -= handler.Value;
+            foreach (var handler in _containerEntryCollectionHandlers)
+            {
+                handler.Key.DataList.CollectionChanged -= handler.Value;
+                handler.Key.DataList.CollectionChanged -= UpdateUICount;
+            }
+
+            _slotChangedHandlers.Clear();
+            _signalClearedHandlers.Clear();
+            _entryChangingHandlers.Clear();
+            _containerChangingHandlers.Clear();
+            _containerPropertyChangedHandlers.Clear();
+            _containerEntryCollectionHandlers.Clear();
+            _lastKnownSlot.Clear();
+            ContainerList.Clear();
+            UnassignedEntries.Clear();
+            FilteredEntries.Clear();
+            OnPropertyChanged(nameof(CanCompareContainerFile));
+            OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
+        }
+
+
+        /// <summary>
+        /// Set default settings to initialize the view at startup.
+        /// </summary>
+        private void LoadDefaultSettings()
+        {
+            StatusText = "Ready to start...";
+            //Settings.PathZuli = "Path to ZuLi file (.xlsx)";
+            //Settings.PathRequirementsXml = "Path to AutoCreate file (.xml)";
+
+            Settings.GroupByComponent = true;
+            Settings.GroupByType = false;
+            Settings.GroupById = false;
+            Settings.GroupByAddress = false;
+
+            Settings.SelectedOption = ContainerGeneration.Models.ContainerGenerationSettings.ComponentOption;
+        }
+
+
+
+        /// <summary>
+        /// Deletes the specified container entry and adds it to the unassigned entries.
+        /// This method finds the container that contains the entry, removes the entry from the container,
+        /// and adds it to the unassigned entries list.
+        /// </summary>
+        /// <param name="item">The container entry to delete.</param>
+        private void Delete_Item(object parameter)
+        {
+            if (parameter is ContainerEntry item)
+            {
+                var sourceContainer = ContainerList.FirstOrDefault(
+                    container => container.DataList.Contains(item));
+                if (sourceContainer is null)
+                {
+                    Logger.Warn("Could not remove entry {EntryId}: no source container found.", item.ID);
+                    return;
+                }
+
+                RunWorkspaceAction(
+                    "Signal aus Container entfernen",
+                    () =>
+                    {
+                        var result = GenerationWorkspaceEditor.MoveToUnassigned(
+                            item,
+                            item.Signal,
+                            ContainerList,
+                            UnassignedEntries,
+                            FilteredEntries);
+                        MarkAsManual(item, "Manuell aus dem Container entfernt.");
+                        if (result.RemovedDuplicateOccurrences > 0)
+                        {
+                            Logger.Warn(
+                                "Removed {DuplicateCount} duplicate workspace occurrences for entry {EntryId}.",
+                                result.RemovedDuplicateOccurrences,
+                                item.ID);
+                        }
+                    },
+                    $"Signal „{item.Signal}“ aus Container „{sourceContainer.Component}“");
+            }
+        }
+
+
+
+        /// <summary>
+        /// Filters the unassigned entries grid based on the search text.
+        /// </summary>
+        /// <remarks>
+        /// This method filters the <see cref="ContainerList"/> collection based on the <see cref="SearchTextContainer"/>.
+        /// If the search text is empty or less than 2 characters, the filter is cleared. Otherwise, a short delay is introduced
+        /// to keep the input responsive before starting the search.
+        /// The filter checks for matches in various properties of the <see cref="ContainerData"/>.
+        /// </remarks>
+        private void FilterContainerGrid()
+        {
+            var view = CollectionViewSource.GetDefaultView(ContainerList);
+            var search = SearchTextContainer?.Trim() ?? string.Empty;
+            var reviewFilter = SelectedReviewFilter?.Value ?? WorkspaceReviewFilter.All;
+            ApplyWorkspaceFilter(
+                view,
+                string.IsNullOrEmpty(search) && reviewFilter == WorkspaceReviewFilter.All
+                    ? null
+                    : item =>
+                        item is ContainerData container &&
+                        (string.IsNullOrEmpty(search) ||
+                         ContainerWorkspaceSearch.Matches(container, search)) &&
+                        MatchesReviewFilter(container, reviewFilter),
+                "Container");
+        }
+
+
+        /// <summary>
+        /// Filters the unassigned entries grid based on the search text.
+        /// </summary>
+        /// <remarks>
+        /// This method filters the <see cref="UnassignedEntries"/> collection based on the <see cref="SearchTextUnassignedEntries"/>.
+        /// If the search text is empty or less than 2 characters, the filter is cleared. Otherwise, a short delay is introduced
+        /// to keep the input responsive before starting the search.
+        /// The filter checks for matches in various properties of the <see cref="ContainerEntry"/>.
+        /// </remarks>
+        private void FilterUnassignedEntriesGrid()
+        {
+            var viewUnassigned = CollectionViewSource.GetDefaultView(UnassignedEntries);
+            var search = SearchTextUnassignedEntries?.Trim() ?? string.Empty;
+            ApplyWorkspaceFilter(
+                viewUnassigned,
+                string.IsNullOrEmpty(search)
+                    ? null
+                    : item =>
+                        item is ContainerEntry entry &&
+                        ContainerWorkspaceSearch.Matches(entry, search),
+                "nicht zugeordnete Signale");
+
+        }
+
+        /// <summary>
+        /// Filters the filtered entries grid based on the search text.
+        /// </summary>
+        /// <remarks>
+        /// This method filters the <see cref="FilteredEntries"/> collection based on the <see cref="SearchTextFilteredEntries"/>.
+        /// If the search text is empty or less than 2 characters, the filter is cleared. Otherwise, a short delay is introduced
+        /// to keep the input responsive before starting the search.
+        /// The filter checks for matches in various properties of the <see cref="ContainerEntry"/>.
+        /// </remarks>
+        private void FilterFilteredEntriesGrid()
+        {
+            var viewFiltered = CollectionViewSource.GetDefaultView(FilteredEntries);
+            var search = SearchTextFilteredEntries?.Trim() ?? string.Empty;
+            ApplyWorkspaceFilter(
+                viewFiltered,
+                string.IsNullOrEmpty(search)
+                    ? null
+                    : item =>
+                        item is ContainerEntry entry &&
+                        ContainerWorkspaceSearch.Matches(entry, search),
+                "gefilterte Signale");
+        }
+
+        private void RefreshAllWorkspaceFilters()
+        {
+            if (_debounceTimerContainerData is null)
+                return;
+
+            FilterContainerGrid();
+            FilterUnassignedEntriesGrid();
+            FilterFilteredEntriesGrid();
+        }
+
+        private static bool MatchesReviewFilter(
+            ContainerData container,
+            WorkspaceReviewFilter filter) =>
+            filter switch
+            {
+                WorkspaceReviewFilter.NeedsReview => container.RequiresReview,
+                WorkspaceReviewFilter.Changed => container.HasDetectedChanges,
+                WorkspaceReviewFilter.ManuallyEdited =>
+                    container.DataList.Any(entry => entry.IsManuallyEdited),
+                WorkspaceReviewFilter.Unchecked =>
+                    !container.ManuallyChecked &&
+                    (!container.IsValid || container.HasDetectedChanges),
+                WorkspaceReviewFilter.Invalid => !container.IsValid,
+                _ => true
+            };
+
+        private void ApplyWorkspaceFilter(
+            ICollectionView view,
+            Predicate<object>? filter,
+            string area)
+        {
+            try
+            {
+                if (view is IEditableCollectionView editableView)
+                {
+                    if (editableView.IsEditingItem)
+                        editableView.CommitEdit();
+                    if (editableView.IsAddingNew)
+                        editableView.CommitNew();
+                }
+
+                // CollectionChanged already updates an unfiltered view. Reassigning
+                // a null filter forces a Reset and rebuilds every realized row after
+                // a drop, even though only the source and target changed.
+                if (filter is null && view.Filter is null)
+                    return;
+
+                using (view.DeferRefresh())
+                    view.Filter = filter;
+            }
+            catch (InvalidOperationException ex)
+            {
+                Logger.Warn(ex, "Could not refresh {FilterArea} filter.", area);
+                StatusText =
+                    $"Der Filter für {area} konnte während einer laufenden Bearbeitung nicht aktualisiert werden. " +
+                    "Bitte Eingabe abschließen und erneut versuchen.";
+            }
+        }
+
+
+
+        /// <summary>
+        /// Finds the first ancestor of the specified type in the visual tree.
+        /// </summary>
+        /// <typeparam name="T">The type of the ancestor to find. Must be a subclass of DependencyObject.</typeparam>
+        /// <param name="current">The starting point in the visual tree to begin the search.</param>
+        /// <returns>
+        /// The first ancestor of type <typeparamref name="T"/> found in the visual tree, or <c>null</c> if no ancestor of the specified type is found.
+        /// </returns>
+        /// <remarks>
+        /// This method traverses up the visual tree starting from the given <paramref name="current"/> object.
+        /// It checks each parent object to see if it matches the specified type <typeparamref name="T"/>.
+        /// If a match is found, the ancestor is returned; otherwise, the search continues up the tree.
+        /// </remarks>
+        private static T? FindAncestor<T>(DependencyObject current) where T : DependencyObject
+        {
+            while (current != null)
+            {
+                if (current is T type)
+                {
+                    return type;
+                }
+                current = GetUiParent(current);
+            }
+            return null;
+        }
+
+
+        /// <summary>
+        /// Event handler for the log received event. Updates the status text if a log event was received.
+        /// </summary>
+        /// <param name="sender">Sender of the event.</param>
+        /// <param name="message">Log message.</param>
+        private void CustomTarget_LogReceived(object? sender, string message)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher?.HasShutdownStarted == true || dispatcher?.HasShutdownFinished == true) return;
+            if (dispatcher is null || dispatcher.CheckAccess()) StatusText = message;
+            else dispatcher.BeginInvoke(new Action(() => StatusText = message));
+        }
+
+
+        //===========================================================================================================================
+        // E V E N T S
+        //===========================================================================================================================
+
+        private void UpdateUICount(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (_isWorkspaceBatch) return;
+            OnPropertyChanged(nameof(HasUnconfirmedChanges));
+            OnPropertyChanged(nameof(AssignedSignals));
+            OnPropertyChanged(nameof(PercentComplete));
+            OnPropertyChanged(nameof(CanCompareContainerFile));
+            OnPropertyChanged(nameof(CompareContainerFileUnavailableReason));
+        }
+
+
+        /// <summary>
+        /// Handles the preview key down event to add data to unassigned entries when the delete key is pressed.
+        /// This method checks if the delete key is pressed and if the selected container is in the container list,
+        /// then adds the data list of the selected container to the unassigned entries.
+        /// </summary>
+        /// <param name="e">The <see cref="KeyEventArgs"/> instance containing the event data.</param>
+        public void ContainerGrid_OnPreviewKeyDown(object parameter)
+        {
+            if (parameter is not KeyEventArgs e || e.Handled ||
+                IsEditingText(e.OriginalSource as DependencyObject) || IsEditingText(Keyboard.FocusedElement as DependencyObject))
+                return;
+
+            if (e.Key == Key.Delete)
+            {
+                var containersToClear = SelectedContainers
+                    .Where(container => container is not null && ContainerList.Contains(container))
+                    .ToList();
+                if (containersToClear.Count == 0)
+                    return;
+
+                var signalCount = containersToClear.Sum(container => container.DataList.Count);
+                RunWorkspaceAction(
+                    "Ausgewählte Container leeren",
+                    () =>
+                    {
+                        var entries = containersToClear.SelectMany(container => container.DataList).Distinct().ToArray();
+                        GenerationWorkspaceEditor.MoveToUnassignedBatch(entries, ContainerList, UnassignedEntries, FilteredEntries);
+                        foreach (var item in entries) MarkAsManual(item, "Manuell aus dem Container entfernt.");
+                    },
+                    $"{containersToClear.Count} Container mit {signalCount} Signalen");
+
+                e.Handled = true;
+            }
+        }
+
+        private void SelectionChanged_Executed(object parameter)
+        {
+            var selected = new List<ContainerData>();
+            if (parameter is IList ConvertedList)
+            {
+                foreach (var SelectedData in ConvertedList)
+                {
+                    if (SelectedData is ContainerData ConvertedData)
+                    {
+                        selected.Add(ConvertedData);
+                    }
+                }
+            }
+            SelectedContainers = selected;
+        }
+
+
+        /// <summary>
+        /// Handles the type selection change event. After assigning a new type its corresponding slot data will be updated.
+        /// </summary>
+        /// <param name="e">The <see cref="SelectionChangedEventArgs"/> instance containing the event data.</param>
+        public void OnTypeSelectionChanged(SelectionChangedEventArgs e)
+        {
+            if (e != null && e.AddedItems.Count > 0)
+            {
+                if (e.Source is ComboBox { DataContext: ContainerData data })
+                {
+                    using var updates = data.DeferUpdates();
+                    data.Slots.Clear();
+
+                    foreach (var slot in RequirementsFile.GetSlotNames(data.Type))
+                        data.Slots.Add(slot);
+
+                    data.MinSignals = RequirementsFile.GetMinSignals(data.Type);
+                    data.MaxSignals = RequirementsFile.GetMaxSignals(data.Type);
+                    foreach (var entry in data.DataList)
+                        MarkAsManual(entry, "Containertyp wurde manuell geändert.");
+                    data.Validate();
+                }
+            }
+        }
+
+
+        /// <summary>
+        /// Event that will be fired once loading the view is completed.
+        /// </summary>
+        /// <param name="view">The main view.</param>
+        public void OnViewLoaded()
+        {
+            var config = NLog.LogManager.Configuration;
+            if (config == null)
+            {
+                Logger.Error("NLog configuration not loaded");
+                return;
+            }
+
+            var customTarget = config.FindTargetByName<CustomLoggerTarget>("CustomLog");
+            if (customTarget == null)
+            {
+                Logger.Error("CustomLog target not found in NLog configuration.");
+                return;
+            }
+
+            customTarget.LogReceived -= CustomTarget_LogReceived;
+            customTarget.LogReceived += CustomTarget_LogReceived;
+            ConfigureAutoSaveTimer();
+        }
+
+
+
+        /// <summary>
+        /// Handles the mouse move event to initiate a drag-and-drop operation.
+        /// </summary>
+        /// <param name="e">The <see cref="MouseEventArgs"/> instance containing the event data.</param>
+        /// <remarks>
+        /// This method checks if the left mouse button is pressed and if the source of the event is a <see cref="DataGrid"/>.
+        /// If so, it attempts to find the <see cref="DataGridRow"/> that is the ancestor of the original source of the event.
+        /// If a valid <see cref="DataGridRow"/> is found, it retrieves the corresponding data item and checks if it matches the
+        /// <see cref="SelectedUnassignedEntry"/>. If all conditions are met, it initiates a drag-and-drop operation with the data item.
+        /// </remarks>
+        private void Datagrid_OnMouseMove(object parameter)
+        {
+            if (parameter is not MouseEventArgs e)
+                return;
+
+            if (e.LeftButton != MouseButtonState.Pressed || e.OriginalSource is not DependencyObject source)
+                return;
+
+            var dataGrid = FindAncestor<DataGrid>(source);
+            if (dataGrid is null || !ReferenceEquals(dataGrid, _dragGrid) || _dragItem is null) return;
+            var position = e.GetPosition(dataGrid);
+            if (Math.Abs(position.X - _dragStart.X) < SystemParameters.MinimumHorizontalDragDistance &&
+                Math.Abs(position.Y - _dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
+            var capturedItem = _dragItem;
+            _dragItem = null; // one drag for this mouse-down, including nested drop dispatch
+
+            // Inside a container only the dedicated Signal-ID list is a drag source.
+            var signalIdList = FindAncestor<ListBox>(source);
+            if (signalIdList?.Tag as string == "SignalIdDragSource" &&
+                capturedItem is ContainerEntry selectedEntry)
+            {
+                var dataObject = new DataObject(selectedEntry);
+                dataObject.SetData(typeof(ContainerEntry[]), new[] { selectedEntry });
+                dataObject.SetData("DragSource", dataGrid);
+                DragDrop.DoDragDrop(dataGrid, dataObject, DragDropEffects.Move);
+                return;
+            }
+
+            if (capturedItem is ContainerEntry entry)
+            {
+                if (!dataGrid.SelectedItems.Contains(entry))
+                    return;
+
+                var selectedEntries = dataGrid.SelectedItems.OfType<ContainerEntry>().ToArray();
+                if (!selectedEntries.Contains(entry))
+                    selectedEntries = [entry];
+
+                var dataObject = new DataObject(entry);
+                dataObject.SetData(typeof(ContainerEntry[]), selectedEntries);
+                dataObject.SetData("DragSource", dataGrid);
+                DragDrop.DoDragDrop(dataGrid, dataObject, DragDropEffects.Move);
+                return;
+            }
+
+            if (capturedItem is not ContainerData container ||
+                FindAncestor<TextBox>(source) is not null ||
+                FindAncestor<ComboBox>(source) is not null ||
+                FindAncestor<Button>(source) is not null)
+            {
+                return;
+            }
+
+            var selectedContainers = dataGrid.SelectedItems.OfType<ContainerData>().ToArray();
+            if (!selectedContainers.Contains(container))
+                selectedContainers = [container];
+
+            var containerPayload = new DataObject(container);
+            containerPayload.SetData(typeof(ContainerData[]), selectedContainers);
+            containerPayload.SetData("DragSource", dataGrid);
+            DragDrop.DoDragDrop(dataGrid, containerPayload, DragDropEffects.Move);
+        }
+
+        private static T? FindDataContext<T>(DependencyObject source) where T : class
+        {
+            for (var current = source; current is not null; current = GetUiParent(current))
+            {
+                if (current is FrameworkElement { DataContext: T value })
+                    return value;
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Handles the drag-over event during a drag-and-drop operation.
+        /// </summary>
+        /// <param name="e">The DragEventArgs containing the event data.</param>
+        /// <remarks>
+        /// This method sets the effect of the drag-and-drop operation to indicate a move action
+        /// and marks the event as handled to prevent further processing.
+        /// </remarks>
+        private void ContainerGrid_OnDragOver(object parameter)
+        {
+            if (parameter is DragEventArgs e)
+            {
+                e.Effects = DragDropEffects.Move;
+                e.Handled = true;
+            }
+        }
+
+        /// <summary>
+        /// Handles the drop event for a drag-and-drop operation involving a DataGrid.
+        /// </summary>
+        /// <param name="e">The DragEventArgs containing the event data.</param>
+        private void Datagrid_OnDrop(object parameter)
+        {
+            if (parameter is not DragEventArgs e)
+                return;
+            if (e.OriginalSource is not DependencyObject source)
+                return;
+            var DropDataGrid = FindAncestor<DataGrid>(source);
+            if (DropDataGrid is null)
+                return;
+            if (e.Data.GetData("DragSource") is not DataGrid)
+                return;
+
+            using var viewport = VIBN_Tools.Application.Behaviors.DataGridViewportPreservation.Capture(DropDataGrid);
+
+            var targetRow = FindAncestor<DataGridRow>(source);
+            if (e.Data.GetData(typeof(ContainerData[])) is ContainerData[] draggedContainers)
+            {
+                if (targetRow?.Item is not ContainerData targetContainer)
+                    return;
+
+                var sources = draggedContainers
+                    .Where(container => !ReferenceEquals(container, targetContainer))
+                    .Distinct()
+                    .ToArray();
+                if (sources.Length == 0)
+                    return;
+
+                RunWorkspaceAction(
+                    sources.Length == 1 ? "Container zusammenlegen" : "Container zusammenlegen",
+                    () => MergeContainers(sources, targetContainer),
+                    $"{sources.Length} Container → „{targetContainer.Component}“");
+                e.Handled = true;
+                return;
+            }
+
+            var dataItems = e.Data.GetData(typeof(ContainerEntry[])) is ContainerEntry[] selectedItems
+                ? selectedItems.Distinct().ToArray()
+                : e.Data.GetData(typeof(ContainerEntry)) is ContainerEntry singleItem
+                    ? [singleItem]
+                    : Array.Empty<ContainerEntry>();
+            if (dataItems.Length == 0)
+                return;
+
+            // Get the target row
+            if (DropDataGrid.ItemsSource == FilteredEntries)
+            {
+                RunWorkspaceAction(
+                    "Signal als gefiltert einordnen",
+                    () =>
+                    {
+                        GenerationWorkspaceEditor.MoveToFilteredBatch(dataItems, ContainerList, UnassignedEntries, FilteredEntries);
+                        foreach (var data in dataItems)
+                        {
+                            MarkAsManual(data, "Manuell als gefiltert eingeordnet.");
+                        }
+                    },
+                    DescribeDraggedSignals(dataItems));
+            }
+            else if (DropDataGrid.ItemsSource == UnassignedEntries)
+            {
+                RunWorkspaceAction(
+                    "Signal als nicht zugeordnet einordnen",
+                    () =>
+                    {
+                        GenerationWorkspaceEditor.MoveToUnassignedBatch(dataItems, ContainerList, UnassignedEntries, FilteredEntries);
+                        foreach (var data in dataItems)
+                        {
+                            MarkAsManual(data, "Manuell als nicht zugeordnet eingeordnet.");
+                        }
+                    },
+                    DescribeDraggedSignals(dataItems));
+            }
+            else
+            {
+                var targetDescription = targetRow?.Item is ContainerData target
+                    ? $"Container „{target.Component}“ ({target.Type})"
+                    : "neuer Container";
+                RunWorkspaceAction(
+                    dataItems.Length == 1 ? "Signal einem Container zuordnen" : "Signale einem Container zuordnen",
+                    () => MoveDataBatch(targetRow, dataItems),
+                    $"{DescribeDraggedSignals(dataItems)} → {targetDescription}");
+            }
+
+            e.Handled = true;
+        }
+
+        private void MergeContainers(IReadOnlyCollection<ContainerData> sources, ContainerData target)
+        {
+            var movedEntries = sources.SelectMany(source => source.DataList).Distinct().ToArray();
+            foreach (var source in sources)
+            foreach (var entry in source.DataList)
+                _actionLogger.LogRemoved(source.Component, source.Type, entry, GetActionLogSourceKey());
+
+            GenerationWorkspaceEditor.MergeContainers(
+                sources,
+                target,
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries);
+
+            foreach (var entry in movedEntries)
+            {
+                AttachSlotChangedHandler(target, entry);
+                MarkAsManual(entry, "Durch Zusammenlegen in einen anderen Container verschoben.");
+                _actionLogger.LogAdded(
+                    target.Component,
+                    target.Type,
+                    entry,
+                    entry.Slot,
+                    null,
+                    null,
+                    GetActionLogSourceKey());
+            }
+
+            target.ManuallyChecked = false;
+            StatusText = $"{sources.Count} Container wurden mit „{target.Component}“ zusammengelegt; " +
+                         $"{movedEntries.Length} Signal(e) wurden verschoben.";
+        }
+
+        private static string DescribeDraggedSignals(IReadOnlyCollection<ContainerEntry> entries) =>
+            entries.Count == 1
+                ? $"Signal „{entries.First().Signal}“"
+                : $"{entries.Count} ausgewählte Signale";
+
+        private void MoveDataBatch(DataGridRow? targetRow, IReadOnlyList<ContainerEntry> entries)
+        {
+            if (targetRow is not null && targetRow.Item is not ContainerData && targetRow.Item != CollectionView.NewItemPlaceholder)
+                return;
+            var target = targetRow?.Item as ContainerData ?? new ContainerData
+            {
+                Id = $"manual-{Guid.NewGuid():N}", Component = CreateContainerName(entries.First())
+            };
+            var selected = entries.ToHashSet();
+            var owners = new Dictionary<ContainerEntry, ContainerData>();
+            foreach (var container in ContainerList)
+            foreach (var entry in container.DataList)
+                if (selected.Contains(entry)) owners.TryAdd(entry, container);
+            var moving = entries.Where(entry => !owners.TryGetValue(entry, out var owner) || !ReferenceEquals(owner, target)).ToArray();
+            if (moving.Length == 0) return;
+            using var targetUpdates = target.DeferUpdates();
+            var sourceKey = GetActionLogSourceKey();
+            foreach (var entry in moving)
+                if (owners.TryGetValue(entry, out var owner)) _actionLogger.LogRemoved(owner.Component, owner.Type, entry, sourceKey);
+            GenerationWorkspaceEditor.MoveToContainerBatch(moving, target, ContainerList, UnassignedEntries, FilteredEntries);
+            foreach (var entry in moving)
+            {
+                MarkAsManual(entry, "Manuell einem Container zugeordnet.");
+                _actionLogger.LogAdded(target.Component, target.Type, entry, entry.Slot, null, null, sourceKey);
+            }
+            target.ManuallyChecked = false;
+        }
+
+        private static string CreateContainerName(ContainerEntry entry)
+        {
+            var source = !string.IsNullOrWhiteSpace(entry.Signal)
+                ? entry.Signal
+                : !string.IsNullOrWhiteSpace(entry.ID)
+                    ? entry.ID
+                    : !string.IsNullOrWhiteSpace(entry.Address)
+                        ? entry.Address
+                        : entry.EnsureSignalId();
+            var normalized = Regex.Replace(source.Trim(), @"\s+", " ");
+            normalized = Regex.Replace(normalized, @"[^\p{L}\p{N} ._-]", " ");
+            normalized = Regex.Replace(normalized, @"\s+", " ").Trim(' ', '_');
+            return string.IsNullOrWhiteSpace(normalized) ? "Manueller Container" : normalized;
+        }
+
+        private void ContainerList_CollectionChanged(
+            object? sender,
+            System.Collections.Specialized.NotifyCollectionChangedEventArgs e)
+        {
+            if (e.OldItems is not null)
+            {
+                foreach (ContainerData container in e.OldItems)
+                    UnsubscribeContainer(container);
+            }
+
+            if (e.NewItems is not null)
+            {
+                foreach (ContainerData container in e.NewItems)
+                    SubscribeContainer(container);
+            }
+
+            UpdateUICount(sender, e);
+        }
+
+        private void SubscribeContainer(ContainerData container)
+        {
+            container.DataList.CollectionChanged -= UpdateUICount;
+            container.DataList.CollectionChanged += UpdateUICount;
+            if (!_containerChangingHandlers.ContainsKey(container))
+            {
+                EventHandler<WorkspaceValueChangingEventArgs> changingHandler =
+                    (sender, args) => OnWorkspaceValueChanging(sender, args);
+                _containerChangingHandlers[container] = changingHandler;
+                container.WorkspaceValueChanging += changingHandler;
+            }
+
+            if (!_containerPropertyChangedHandlers.ContainsKey(container))
+            {
+                PropertyChangedEventHandler propertyHandler = (_, args) =>
+                {
+                    if (!_isWorkspaceBatch && args.PropertyName == nameof(ContainerData.HasDetectedChanges))
+                        OnPropertyChanged(nameof(HasUnconfirmedChanges));
+                    if (args.PropertyName is nameof(ContainerData.RequiresReview) or
+                        nameof(ContainerData.HasDetectedChanges) or
+                        nameof(ContainerData.IsValid) or
+                        nameof(ContainerData.ManuallyChecked))
+                    {
+                        if (!_suppressUndoCapture &&
+                            SelectedReviewFilter?.Value != WorkspaceReviewFilter.All)
+                        {
+                            // A container can emit several dependent review
+                            // notifications for one edit. Debouncing collapses
+                            // them into one container-view refresh.
+                            _debounceTimerContainerData.Stop();
+                            _debounceTimerContainerData.Start();
+                        }
+                    }
+                };
+                _containerPropertyChangedHandlers[container] = propertyHandler;
+                container.PropertyChanged += propertyHandler;
+            }
+
+            if (!_containerEntryCollectionHandlers.ContainsKey(container))
+            {
+                System.Collections.Specialized.NotifyCollectionChangedEventHandler collectionHandler =
+                    (_, args) =>
+                    {
+                        if (args.NewItems is not null)
+                        {
+                            foreach (ContainerEntry entry in args.NewItems)
+                                AttachSlotChangedHandler(container, entry);
+                        }
+                    };
+                _containerEntryCollectionHandlers[container] = collectionHandler;
+                container.DataList.CollectionChanged += collectionHandler;
+            }
+
+            foreach (var entry in container.DataList)
+                AttachSlotChangedHandler(container, entry);
+        }
+
+        private void UnsubscribeContainer(ContainerData container)
+        {
+            container.DataList.CollectionChanged -= UpdateUICount;
+            if (_containerChangingHandlers.Remove(container, out var changingHandler))
+                container.WorkspaceValueChanging -= changingHandler;
+            if (_containerPropertyChangedHandlers.Remove(container, out var propertyHandler))
+                container.PropertyChanged -= propertyHandler;
+            if (_containerEntryCollectionHandlers.Remove(container, out var collectionHandler))
+                container.DataList.CollectionChanged -= collectionHandler;
+        }
+
+        private void OnWorkspaceValueChanging(
+            object? sender,
+            WorkspaceValueChangingEventArgs args)
+        {
+            var isUserChange = !_suppressUndoCapture && !_isRestoringWorkspace;
+            var description = args.PropertyName switch
+            {
+                nameof(ContainerEntry.Signal) => "Signalname ändern",
+                nameof(ContainerEntry.Slot) => "Slot ändern",
+                nameof(ContainerEntry.ID) => "Quell-ID ändern",
+                nameof(ContainerEntry.Address) => "Signaladresse ändern",
+                nameof(ContainerEntry.DataType) => "Datentyp ändern",
+                nameof(ContainerEntry.Note) => "Notiz ändern",
+                nameof(ContainerData.Component) => "Containername ändern",
+                nameof(ContainerData.Type) => "Containertyp ändern",
+                nameof(ContainerData.ManuallyChecked) => "Prüfstatus ändern",
+                _ => "Arbeitsstand ändern"
+            };
+
+            CaptureUndo(description);
+            if (isUserChange)
+            {
+                var details =
+                    args.PropertyName == nameof(ContainerEntry.Signal) &&
+                    string.IsNullOrWhiteSpace(args.NewValue?.ToString())
+                        ? $"Die Zuordnung von Signal „{FormatActivityValue(args.PreviousValue)}“ " +
+                          "wird entfernt; der Signalname bleibt in „Nicht zugeordnet“ erhalten."
+                        : $"{args.PropertyName}: „{FormatActivityValue(args.PreviousValue)}“ → " +
+                          $"„{FormatActivityValue(args.NewValue)}“";
+                AddActivity("Direkte Änderung", description, details);
+
+                if (sender is ContainerEntry changedEntry &&
+                    args.PropertyName != nameof(ContainerEntry.Slot))
+                {
+                    var changedOwner = ContainerList.FirstOrDefault(
+                        container => container.DataList.Contains(changedEntry));
+                    _actionLogger.LogPropertyChange(
+                        changedOwner?.Component ?? string.Empty,
+                        changedOwner?.Type ?? string.Empty,
+                        changedEntry,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
+                else if (sender is ContainerData changedContainer)
+                {
+                    _actionLogger.LogContainerPropertyChange(
+                        changedContainer.Component,
+                        changedContainer.Type,
+                        args.PropertyName,
+                        args.PreviousValue,
+                        args.NewValue,
+                        GetActionLogSourceKey());
+                }
+            }
+
+            var previousSuppression = _suppressUndoCapture;
+            _suppressUndoCapture = true;
+            try
+            {
+                if (sender is ContainerEntry entry)
+                {
+                    MarkAsManual(entry, $"{description}.");
+                    var owner = ContainerList.FirstOrDefault(
+                        container => container.DataList.Contains(entry));
+                    if (owner is not null)
+                        owner.ManuallyChecked = false;
+                }
+                else if (sender is ContainerData container &&
+                         args.PropertyName != nameof(ContainerData.ManuallyChecked))
+                {
+                    using var updates = container.DeferUpdates();
+                    container.ManuallyChecked = false;
+                    foreach (var containerEntry in container.DataList)
+                        MarkAsManual(containerEntry, $"{description}.");
+                }
+            }
+            finally
+            {
+                _suppressUndoCapture = previousSuppression;
+            }
+        }
+
+        private static string FormatActivityValue(object? value)
+        {
+            var text = value?.ToString();
+            return string.IsNullOrWhiteSpace(text) ? "leer" : text.Trim();
+        }
+
+        private string GetActionLogSourceKey()
+        {
+            var identity = string.Join(
+                "\u001f",
+                Settings.PathZuli ?? string.Empty,
+                Settings.PathRequirementsXml ?? string.Empty,
+                WorkspaceDataPath ?? string.Empty);
+            return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(identity)))
+                .ToLowerInvariant();
+        }
+
+        /// <summary>
+        /// Haengt den SlotChanged-Handler an einen ContainerEntry.
+        /// Wird aufgerufen wenn ein Entry einem Container hinzugefuegt wird.
+        /// Verhindert Mehrfach-Registrierung durch Abmelden vor Anmelden.
+        /// </summary>
+        private void AttachSlotChangedHandler(ContainerData container, ContainerEntry entry)
+        {
+            if (_slotChangedHandlers.TryGetValue(entry, out var existingHandler))
+                entry.SlotChanged -= existingHandler;
+
+            _lastKnownSlot[entry] = entry.Slot;
+            EventHandler handler = (_, _) => OnEntrySlotChanged(container, entry);
+            _slotChangedHandlers[entry] = handler;
+            entry.SlotChanged += handler;
+
+            if (_signalClearedHandlers.TryGetValue(entry, out var existingSignalHandler))
+                entry.SignalCleared -= existingSignalHandler;
+
+            EventHandler<SignalClearedEventArgs> signalHandler =
+                (_, args) => OnEntrySignalCleared(container, entry, args);
+            _signalClearedHandlers[entry] = signalHandler;
+            entry.SignalCleared += signalHandler;
+
+            if (_entryChangingHandlers.TryGetValue(entry, out var existingChangingHandler))
+                entry.WorkspaceValueChanging -= existingChangingHandler;
+
+            EventHandler<WorkspaceValueChangingEventArgs> changingHandler =
+                (sender, args) => OnWorkspaceValueChanging(sender, args);
+            _entryChangingHandlers[entry] = changingHandler;
+            entry.WorkspaceValueChanging += changingHandler;
+        }
+
+        private void OnEntrySignalCleared(
+            ContainerData container,
+            ContainerEntry entry,
+            SignalClearedEventArgs args)
+        {
+            var previousSuppression = _suppressUndoCapture;
+            _suppressUndoCapture = true;
+            try
+            {
+            if (_slotChangedHandlers.TryGetValue(entry, out var slotHandler))
+            {
+                entry.SlotChanged -= slotHandler;
+                _slotChangedHandlers.Remove(entry);
+            }
+
+            if (_signalClearedHandlers.TryGetValue(entry, out var signalHandler))
+            {
+                entry.SignalCleared -= signalHandler;
+                _signalClearedHandlers.Remove(entry);
+            }
+
+            _lastKnownSlot.Remove(entry);
+
+            var result = GenerationWorkspaceEditor.MoveToUnassigned(
+                entry,
+                args.PreviousSignal,
+                ContainerList,
+                UnassignedEntries,
+                FilteredEntries);
+            MarkAsManual(
+                entry,
+                "Signalzuordnung wurde durch Leeren der Signalzelle entfernt.");
+            container.ManuallyChecked = false;
+            Logger.Info(
+                "Signal {EntryId} was moved from container {Container} to unassigned; {DuplicateCount} duplicates removed.",
+                entry.ID,
+                container.Component,
+                result.RemovedDuplicateOccurrences);
+            StatusText =
+                $"Signal „{entry.Signal}“ wurde aus dem Container entfernt und einmalig als nicht zugeordnet eingetragen.";
+            }
+            finally
+            {
+                _suppressUndoCapture = previousSuppression;
+            }
+        }
+
+        private void OnEntrySlotChanged(ContainerData container, ContainerEntry entry)
+        {
+            var previousSuppression = _suppressUndoCapture;
+            _suppressUndoCapture = true;
+            try
+            {
+            _lastKnownSlot.TryGetValue(entry, out var oldSlot);
+            _lastKnownSlot[entry] = entry.Slot;
+
+            MarkAsManual(entry, "Slot wurde manuell geändert.");
+            container.ManuallyChecked = false;
+            container.RefreshReimportStatus();
+
+            if (!string.IsNullOrEmpty(entry.Slot) && oldSlot != entry.Slot)
+            {
+                _actionLogger.LogSlotChange(
+                    containerName: container.Component,
+                    componentType: container.Type,
+                    entry: entry,
+                    oldSlot: oldSlot ?? "",
+                    mlTop1: null,
+                    mlScore: null,
+                    sourceKey: GetActionLogSourceKey());
+            }
+            }
+            finally
+            {
+                _suppressUndoCapture = previousSuppression;
+            }
+        }
+
+        private void ReattachAllSlotChangedHandlers()
+        {
+            foreach (var container in ContainerList)
+            {
+                foreach (var entry in container.DataList)
+                    AttachSlotChangedHandler(container, entry);
+            }
+        }
+
+        private static void MarkAsManual(ContainerEntry entry, string message)
+        {
+            entry.IsChangeAcknowledged = false;
+            entry.IsManuallyEdited = true;
+            entry.ReviewState = ContainerEntryReviewState.ManuallyEdited;
+            entry.ReviewMessage = message;
+        }
+
+        private void ApplyAddressGroupingExample()
+        {
+            Settings.GroupByAddress = true;
+            Settings.RegexAddress = @"^[%]?[IEAQM](\d+)\.";
+            StatusText = "Beispiel aktiv: Adressen wie %I12.3 oder A12.0 werden über die Byteadresse 12 gruppiert.";
+            UpdateGroupingPreview();
+        }
+
+        private void ApplyIdGroupingExample()
+        {
+            Settings.GroupById = true;
+            Settings.RegexId = @"^(.+?)[._-]\d+$";
+            StatusText = "Beispiel aktiv: IDs wie Motor_01 und Motor_02 werden über den Präfix Motor gruppiert.";
+            UpdateGroupingPreview();
+        }
+
+        private string BuildGroupingRuleSummary()
+        {
+            var rules = new List<string>();
+            if (Settings.GroupByComponent)
+                rules.Add("erkannter Component-/Containername muss gleich sein");
+            if (Settings.GroupByType)
+                rules.Add("Containertyp muss gleich sein");
+            if (Settings.GroupById)
+                rules.Add($"ID muss Regex '{Settings.RegexId}' treffen; verwendet werden die Klammergruppen");
+            if (Settings.GroupByAddress)
+                rules.Add($"Adresse muss Regex '{Settings.RegexAddress}' treffen; verwendet werden die Klammergruppen");
+            return rules.Count == 0
+                ? "Aktuell ist keine zusätzliche Gruppierungsregel aktiv."
+                : "Aktiv: " + string.Join("; ", rules) + ". Alle aktiven Kriterien müssen für eine gemeinsame Gruppe passen.";
+        }
+
+        private void UpdateGroupingPreview()
+        {
+            ContainerEntry? entry = SelectedUnassignedEntry ?? SelectedFilteredEntry;
+            ContainerData? owner = null;
+            if (entry is null)
+            {
+                owner = SelectedContainers.FirstOrDefault();
+                entry = owner?.DataList.FirstOrDefault();
+            }
+            else
+            {
+                owner = ContainerList.FirstOrDefault(container => container.DataList.Contains(entry));
+            }
+
+            _groupingPreview = entry is null
+                ? null
+                : Settings.CreateGroupingPreview(entry, owner?.Component, owner?.Type);
+            OnPropertyChanged(nameof(GroupingPreviewSignal));
+            OnPropertyChanged(nameof(GroupingPreviewCriteria));
+            OnPropertyChanged(nameof(GroupingPreviewKey));
+            OnPropertyChanged(nameof(GroupingPreviewContainerName));
+            OnPropertyChanged(nameof(GroupingPreviewError));
+            OnPropertyChanged(nameof(HasGroupingPreviewError));
+        }
+    }
+
+    public sealed record ContainerGroupingExample(
+        string Name,
+        string Description,
+        string RegexId,
+        string RegexAddress,
+        bool GroupByComponent,
+        bool GroupByType,
+        bool GroupById,
+        bool GroupByAddress,
+        string RegexSubstitution = "",
+        string SelectedOption = ContainerGenerationSettings.ComponentOption,
+        string? SourcePath = null)
+    {
+        public bool IsUserPreset => !string.IsNullOrWhiteSpace(SourcePath);
+
+        public string ToolTipText
+        {
+            get
+            {
+                var criteria = new List<string>();
+                if (GroupByComponent) criteria.Add("Component");
+                if (GroupByType) criteria.Add("Typ");
+                if (GroupById) criteria.Add($"ID mit /{RegexId}/");
+                if (GroupByAddress) criteria.Add($"Adresse mit /{RegexAddress}/");
+                var substitution = string.IsNullOrWhiteSpace(RegexSubstitution)
+                    ? "Der erkannte Component-/ID-Wert bleibt als Name erhalten."
+                    : $"Der Containername wird aus den Klammergruppen von /{RegexSubstitution}/ auf {SelectedOption} gebildet.";
+                return $"{Description}\nGruppenschlüssel: {string.Join(" + ", criteria.DefaultIfEmpty("keine Gruppierung"))}.\n{substitution}";
+            }
+        }
+    }
+}

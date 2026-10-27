@@ -1,0 +1,27 @@
+﻿<Application x:Class="VIBN_Tools.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:VIBN_Tools"
+             StartupUri="Application/View/MainWindow.xaml"
+             ShutdownMode="OnMainWindowClose">
+    <Application.Resources>
+        <!-- Einheitlicher Tabellenstandard: Inhalte bleiben bei kleinen Fenstern
+             horizontal erreichbar und jede Spalte kann vom Anwender angepasst werden. -->
+        <Style TargetType="{x:Type DataGrid}">
+            <Setter Property="CanUserResizeColumns" Value="True" />
+            <Setter Property="MinColumnWidth" Value="100" />
+            <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Auto" />
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto" />
+        </Style>
+        <Style TargetType="{x:Type ListBox}">
+            <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        </Style>
+        <Style TargetType="{x:Type TreeView}">
+            <Setter Property="VirtualizingPanel.ScrollUnit" Value="Pixel" />
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True" />
+        </Style>
+    </Application.Resources>
+</Application>
