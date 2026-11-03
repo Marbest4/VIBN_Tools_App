@@ -258,7 +258,8 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
                 public static class Slots
                 {
                     public const string AxisValue = "PLC_OUT_AxisValue";
-                    public const string BeltControlState = "PLC_IN_BeltControlState";
+                    public const string BeltControlOk = "PLC_IN_BeltControlOk";
+                    public const string BeltControlNok = "PLC_IN_BeltControlNok";
 
                     public const string AxisIsRotary = "PAR_AxisIsRotary";
                     public const string ChangeStep = "PAR_ChangeStep_mm";

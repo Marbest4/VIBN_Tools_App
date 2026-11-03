@@ -30,7 +30,8 @@ public static class ContainerModelValidationPreflight
         switch (container)
         {
             case GrobBeltControl_Container belt:
-                Require(Has(belt, belt.Signal_BeltControlState, nameof(belt.Signal_BeltControlState)), "BELT_STATE_MISSING",
+                Require(Has(belt, belt.Signal_BeltControlOk, nameof(belt.Signal_BeltControlOk)) &&
+                        Has(belt, belt.Signal_BeltControlNok, nameof(belt.Signal_BeltControlNok)), "BELT_STATUS_MISSING",
                     "PLC_IN_BeltControlState fehlt.", issues);
                 issues.Add(Warning(
                     "BELT_AXIS_LINK_MANUAL",

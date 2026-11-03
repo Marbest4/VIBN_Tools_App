@@ -13,7 +13,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
         {
             SlotAssignment = new Dictionary<string, PropertyInfo>()
             {
-                {"PLC_IN_BeltControlState", typeof(GrobBeltControl_Container).GetProperty("Signal_BeltControlState") },
+                {LogicsStandard.Grob_BeltControl.Slots.BeltControlOk, typeof(GrobBeltControl_Container).GetProperty("Signal_BeltControlOk") },
+                {LogicsStandard.Grob_BeltControl.Slots.BeltControlNok, typeof(GrobBeltControl_Container).GetProperty("Signal_BeltControlNok") },
             };
 
         }
@@ -21,7 +22,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
         public FeeLogic Logic_BeltControl { get; set; }
 
-        public FeeInterfaceSignal Signal_BeltControlState { get; set; }
+        public FeeInterfaceSignal Signal_BeltControlOk { get; set; }
+        public FeeInterfaceSignal Signal_BeltControlNok { get; set; }
 
         public bool Parameter_AxisIsRotary { get; set; }
         public float Parameter_ChangeStep_mm { get; set; }
@@ -56,7 +58,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             // Map signals to LogicObject if existing
             var mappings = new (FeeInterfaceSignal Signal, string SlotName)[]
             {
-                (Signal_BeltControlState, LogicsStandard.Grob_BeltControl.Slots.BeltControlState),
+               (Signal_BeltControlOk, LogicsStandard.Grob_BeltControl.Slots.BeltControlOk),
+                (Signal_BeltControlNok, LogicsStandard.Grob_BeltControl.Slots.BeltControlNok),
             };
 
             foreach (var (signal, slotname) in mappings)

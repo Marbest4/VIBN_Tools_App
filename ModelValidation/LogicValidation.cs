@@ -25,11 +25,6 @@ namespace VIBN_Tools.ModelValidation
 
     }
 
-
-
-
-
-
     public class AxisBeckhoffValidator : ILogicValidator
     {
         public async Task<IEnumerable<PlausibilityIssue>> ValidateAsync(FeeLogic logicObject)
@@ -72,20 +67,20 @@ namespace VIBN_Tools.ModelValidation
 
     public class BeltControlValidator : ILogicValidator
     {
-        public async Task<IEnumerable<PlausibilityIssue>> ValidateAsync(FeeLogic logicObject    )
+        public async Task<IEnumerable<PlausibilityIssue>> ValidateAsync(FeeLogic logicObject)
         {
             var issues = new List<PlausibilityIssue>();
-
             Guid guid;
             var plcValueConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_BeltControl.Slots.AxisValue, out guid) && guid != Guid.Empty;
-            var stateConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_BeltControl.Slots.BeltControlState, out guid) && guid != Guid.Empty;
+
+            var okConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_BeltControl.Slots.BeltControlOk, out guid) && guid != Guid.Empty;
+
+            var nokConnected = logicObject.Slots.TryGetValue(LogicsStandard.Grob_BeltControl.Slots.BeltControlNok, out guid) && guid != Guid.Empty;
 
             if (!plcValueConnected)
                 issues.Add(new PlausibilityIssue($"Slot '{LogicsStandard.Grob_BeltControl.Slots.AxisValue}' nicht verbunden", Severity.Error));
-
-            if (!stateConnected)
-                issues.Add(new PlausibilityIssue($"Slot '{LogicsStandard.Grob_BeltControl.Slots.BeltControlState}' nicht verbunden", Severity.Error));
-
+            if (!okConnected && !nokConnected)
+                issues.Add(new PlausibilityIssue($"Kein Status Slot verbunden verbunden", Severity.Error));
             return issues;
         }
     }
@@ -163,7 +158,7 @@ namespace VIBN_Tools.ModelValidation
             if (!positionsPlausible && jointConnected)
                 issues.Add(new PlausibilityIssue($"Slots '{LogicsStandard.Grob_Cylinder.Slots.HomePos}' und '{LogicsStandard.Grob_Cylinder.Slots.WorkPos}' haben gleichen Wert", Severity.Error));
 
-            if(!jointConnected)
+            if (!jointConnected)
                 issues.Add(new PlausibilityIssue($"Kein MotionJoint verknüpft", Severity.Warning));
 
             return issues;
@@ -188,7 +183,7 @@ namespace VIBN_Tools.ModelValidation
 
             if (!clampConnected && !unclampConnected)
                 issues.Add(new PlausibilityIssue($"Control Slots nicht verbunden", Severity.Error));
-            else if(!clampConnected || !unclampConnected)
+            else if (!clampConnected || !unclampConnected)
                 issues.Add(new PlausibilityIssue($"Control Slots nicht verbunden", Severity.Warning));
 
             if (!clampedConnected && !unclampedConnected)

@@ -1,0 +1,2967 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CAAMergeResult version="1.4.0.0" createdAt="2026-11-03 10:28:46" autoCreateFile="EN_AutoCreate_Master_V23.xml" zuli="PLC-Interface_Zuli_GFTX-BT4-MOD1-74000_1040.xlsx">
+  <ContainerList>
+    <Container id="">
+      <Component>Supply 1 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup1PneNOnCh1</ID>
+          <Address>E14502.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatics not switched on channel 1</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxPos1</ID>
+          <Address>E14543.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxPos2</ID>
+          <Address>E14544.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis in position 2</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis belt breakage control analog 1 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxBeltCtrlAna1NO</ID>
+          <Address>E14551.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis belt breakage control analog 1 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis belt breakage control analog 2 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxBeltCtrlAna2NO</ID>
+          <Address>E14567.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis belt breakage control analog 2 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Rest part carrier present 1</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1PartRestPalNPr1</ID>
+          <Address>E14601.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Rest part carrier present 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Rest part carrier present 2</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1PartRestPalNPr2</ID>
+          <Address>E14601.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Rest part carrier present 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>TL01 X1A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos1</ID>
+          <Address>E14602.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 STP01 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Sto1InOutPalNPr</ID>
+          <Address>E14635.0</Address>
+          <DataType>WORD</DataType>
+          <Signal>LFT01 STP01 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 STP02 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Sto2InOutPalNPr</ID>
+          <Address>E14651.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 STP02 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis rest axis locking device 1 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxRestAxLck1Pr</ID>
+          <Address>E14667.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis rest axis locking device 1 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis rest axis locking device 2 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxRestAxLck2Pr</ID>
+          <Address>E14667.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis rest axis locking device 2 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 2 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup2PneNOnCh1</ID>
+          <Address>E14702.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 2 pneumatics not switched on channel 1</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis belt breakage control analog 1 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxBeltCtrlAna1NO</ID>
+          <Address>E14751.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis belt breakage control analog 1 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis belt breakage control analog 2 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxBeltCtrlAna2NO</ID>
+          <Address>E14767.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis belt breakage control analog 2 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Rest part carrier present 1</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2PartRestPalNPr1</ID>
+          <Address>E14801.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Rest part carrier present 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Rest part carrier present 2</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2PartRestPalNPr2</ID>
+          <Address>E14801.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Rest part carrier present 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>TL03 X2A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos1</ID>
+          <Address>E14802.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 STP01 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Sto1InOutPalNPr</ID>
+          <Address>E14835.0</Address>
+          <DataType>WORD</DataType>
+          <Signal>LFT03 STP01 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 STP02 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Sto2InOutPalNPr</ID>
+          <Address>E14851.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 STP02 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis rest axis locking device 1 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxRestAxLck1Pr</ID>
+          <Address>E14867.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis rest axis locking device 1 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis rest axis locking device 2 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxRestAxLck2Pr</ID>
+          <Address>E14867.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis rest axis locking device 2 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 3 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup3PneNOnCh1</ID>
+          <Address>E14902.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 3 pneumatics not switched on channel 1</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis belt breakage control analog 1 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxBeltCtrlAna1NO</ID>
+          <Address>E14951.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis belt breakage control analog 1 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis belt breakage control analog 2 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxBeltCtrlAna2NO</ID>
+          <Address>E14967.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis belt breakage control analog 2 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Rest part carrier present 1</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3PartRestPalNPr1</ID>
+          <Address>E15001.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Rest part carrier present 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Rest part carrier present 2</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3PartRestPalNPr2</ID>
+          <Address>E15001.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Rest part carrier present 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>TL05 X3A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos1</ID>
+          <Address>E15002.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 STP01 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Sto1InOutPalNPr</ID>
+          <Address>E15035.0</Address>
+          <DataType>WORD</DataType>
+          <Signal>LFT05 STP01 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 STP02 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Sto2InOutPalNPr</ID>
+          <Address>E15051.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 STP02 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis rest axis locking device 1 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxRestAxLck1Pr</ID>
+          <Address>E15067.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis rest axis locking device 1 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis rest axis locking device 2 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxRestAxLck2Pr</ID>
+          <Address>E15067.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis rest axis locking device 2 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 4 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup4PneNOnCh1</ID>
+          <Address>E15102.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 4 pneumatics not switched on channel 1</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxPos1</ID>
+          <Address>E15143.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxPos2</ID>
+          <Address>E15144.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis in position 2</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis belt breakage control analog 1 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxBeltCtrlAna1NO</ID>
+          <Address>E15151.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis belt breakage control analog 1 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis belt breakage control analog 2 alarm</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxBeltCtrlAna2NO</ID>
+          <Address>E15167.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis belt breakage control analog 2 alarm</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Rest part carrier present 1</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4PartRestPalNPr1</ID>
+          <Address>E15201.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Rest part carrier present 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Rest part carrier present 2</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4PartRestPalNPr2</ID>
+          <Address>E15201.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Rest part carrier present 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>TL07 X4A axis</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos1</ID>
+          <Address>E15202.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 STP01 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Sto1InOutPalNPr</ID>
+          <Address>E15235.0</Address>
+          <DataType>WORD</DataType>
+          <Signal>LFT07 STP01 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 STP02 infeed/outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Sto2InOutPalNPr</ID>
+          <Address>E15251.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 STP02 infeed/outfeed no part carrier present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis rest axis locking device 1 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxRestAxLck1Pr</ID>
+          <Address>E15267.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis rest axis locking device 1 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis rest axis locking device 2 present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxRestAxLck2Pr</ID>
+          <Address>E15267.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis rest axis locking device 2 present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>24V DC INFEED MODULE 1 AFTER LINE DISCONNECTOR GROUP FAULT OK</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>i24VdcPwrSup1ALineDiscoOk</ID>
+          <Address>E4500.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>24V DC INFEED MODULE 1 AFTER LINE DISCONNECTOR GROUP FAULT OK</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis belt breakage control ok 1</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxBeltCtrlOk1</ID>
+          <Address>E5000.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis belt breakage control ok 1</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT01 Z1A axis speed ok</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxSpeedOk</ID>
+          <Address>E5000.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis speed ok</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis belt breakage control ok 1</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxBeltCtrlOk1</ID>
+          <Address>E5200.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis belt breakage control ok 1</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT03 Z2A axis speed ok</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxSpeedOk</ID>
+          <Address>E5200.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis speed ok</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis belt breakage control ok 1</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxBeltCtrlOk1</ID>
+          <Address>E5400.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis belt breakage control ok 1</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT05 Z3A axis speed ok</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxSpeedOk</ID>
+          <Address>E5400.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis speed ok</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis belt breakage control ok 1</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxBeltCtrlOk1</ID>
+          <Address>E5600.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis belt breakage control ok 1</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>LFT07 Z4A axis speed ok</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxSpeedOk</ID>
+          <Address>E5600.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis speed ok</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1PalPr</ID>
+          <Address>E6010.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_1PalPr</ID>
+          <Address>E6010.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_2PalPr</ID>
+          <Address>E6010.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2PalPr</ID>
+          <Address>E6011.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_1PalPr</ID>
+          <Address>E6011.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV01 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_2PalPr</ID>
+          <Address>E6011.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1PalPr</ID>
+          <Address>E6110.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_1PalPr</ID>
+          <Address>E6110.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_2PalPr</ID>
+          <Address>E6110.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2PalPr</ID>
+          <Address>E6111.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_1PalPr</ID>
+          <Address>E6111.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV03 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_2PalPr</ID>
+          <Address>E6111.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1PalPr</ID>
+          <Address>E6210.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_1PalPr</ID>
+          <Address>E6210.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_2PalPr</ID>
+          <Address>E6210.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2PalPr</ID>
+          <Address>E6211.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_1PalPr</ID>
+          <Address>E6211.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV05 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_2PalPr</ID>
+          <Address>E6211.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1PalPr</ID>
+          <Address>E6310.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_1PalPr</ID>
+          <Address>E6310.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_2PalPr</ID>
+          <Address>E6310.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2PalPr</ID>
+          <Address>E6311.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_1PalPr</ID>
+          <Address>E6311.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV07 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_2PalPr</ID>
+          <Address>E6311.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1PalPr</ID>
+          <Address>E6410.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_1PalPr</ID>
+          <Address>E6410.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_2PalPr</ID>
+          <Address>E6410.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2PalPr</ID>
+          <Address>E6411.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_1PalPr</ID>
+          <Address>E6411.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV09 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_2PalPr</ID>
+          <Address>E6411.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1PalPr</ID>
+          <Address>E6510.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_1PalPr</ID>
+          <Address>E6510.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_2PalPr</ID>
+          <Address>E6510.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2PalPr</ID>
+          <Address>E6511.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_1PalPr</ID>
+          <Address>E6511.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV11 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_2PalPr</ID>
+          <Address>E6511.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1PalPr</ID>
+          <Address>E6610.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_1PalPr</ID>
+          <Address>E6610.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_2PalPr</ID>
+          <Address>E6610.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2PalPr</ID>
+          <Address>E6611.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_1PalPr</ID>
+          <Address>E6611.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV13 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_2PalPr</ID>
+          <Address>E6611.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP01 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1PalPr</ID>
+          <Address>E6710.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP01.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_1PalPr</ID>
+          <Address>E6710.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP01.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_2PalPr</ID>
+          <Address>E6710.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP02 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2PalPr</ID>
+          <Address>E6711.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP02.1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_1PalPr</ID>
+          <Address>E6711.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>CNV15 STP02.2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_2PalPr</ID>
+          <Address>E6711.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>RESET 24V DC POWER SUPPLY MODULE</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>q24VdcPwrModReset</ID>
+          <Address>A4500.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>RESET 24V DC POWER SUPPLY MODULE</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 1 pneumatics channel 1</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup1PneTuOnCh1</ID>
+          <Address>A5000.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 switch on pneumatics channel 1</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 1 pneumatics channel 2</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup1PneTuOnCh2</ID>
+          <Address>A5000.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 switch on pneumatics channel 2</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 2 pneumatics channel 1</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup2PneTuOnCh1</ID>
+          <Address>A5200.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 2 switch on pneumatics channel 1</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 2 pneumatics channel 2</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup2PneTuOnCh2</ID>
+          <Address>A5200.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 2 switch on pneumatics channel 2</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 3 pneumatics channel 1</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup3PneTuOnCh1</ID>
+          <Address>A5400.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 3 switch on pneumatics channel 1</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 3 pneumatics channel 2</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup3PneTuOnCh2</ID>
+          <Address>A5400.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 3 switch on pneumatics channel 2</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 4 pneumatics channel 1</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup4PneTuOnCh1</ID>
+          <Address>A5600.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 4 switch on pneumatics channel 1</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>Supply 4 pneumatics channel 2</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qSup4PneTuOnCh2</ID>
+          <Address>A5600.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 4 switch on pneumatics channel 2</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="manual-1b4f1123d93540babd7634855b6acba8">
+      <Component>CNV01 STP01</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv1Sto1Cls</ID>
+          <Address>A6010.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01 home</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_1Opnd</ID>
+          <Address>E6010.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.1 at work</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv1Sto1Opn</ID>
+          <Address>A6010.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01 work</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_2Clsd</ID>
+          <Address>E6010.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.2 at home</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_1Clsd</ID>
+          <Address>E6010.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.1 at home</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto1_2Opnd</ID>
+          <Address>E6010.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP01.2 at work</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+    <Container id="">
+      <Component>unknown</Component>
+      <Type>unknown</Type>
+      <DataList>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup1PnePresOk</ID>
+          <Address>E14501.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatic pressure OK</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup1PneNOnCh2</ID>
+          <Address>E14502.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatics not switched on channel 2</Signal>
+          <Slot />
+          <Note>Multiple slots PLC_IN_NotSwitchedOn_Ch1 PLC_IN_NotSwitchedOn_Ch2 found for signal: Supply 1 pneumatics not switched on channel 2'</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxPos3</ID>
+          <Address>E14543.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxRestLckPinPr</ID>
+          <Address>E14543.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxRestLckPinPr</ID>
+          <Address>E14544.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 X1A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos3</ID>
+          <Address>E14602.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup2PnePresOk</ID>
+          <Address>E14701.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 2 pneumatic pressure OK</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup2PneNOnCh2</ID>
+          <Address>E14702.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 2 pneumatics not switched on channel 2</Signal>
+          <Slot />
+          <Note>Multiple slots PLC_IN_NotSwitchedOn_Ch1 PLC_IN_NotSwitchedOn_Ch2 found for signal: Supply 2 pneumatics not switched on channel 2'</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxPos3</ID>
+          <Address>E14743.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxRestLckPinPr</ID>
+          <Address>E14743.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxRestLckPinPr</ID>
+          <Address>E14744.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 X2A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos3</ID>
+          <Address>E14802.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup3PnePresOk</ID>
+          <Address>E14901.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 3 pneumatic pressure OK</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup3PneNOnCh2</ID>
+          <Address>E14902.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 3 pneumatics not switched on channel 2</Signal>
+          <Slot />
+          <Note>Multiple slots PLC_IN_NotSwitchedOn_Ch1 PLC_IN_NotSwitchedOn_Ch2 found for signal: Supply 3 pneumatics not switched on channel 2'</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxPos3</ID>
+          <Address>E14943.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxRestLckPinPr</ID>
+          <Address>E14943.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxRestLckPinPr</ID>
+          <Address>E14944.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 X3A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos3</ID>
+          <Address>E15002.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup4PnePresOk</ID>
+          <Address>E15101.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 4 pneumatic pressure OK</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iSup4PneNOnCh2</ID>
+          <Address>E15102.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 4 pneumatics not switched on channel 2</Signal>
+          <Slot />
+          <Note>Multiple slots PLC_IN_NotSwitchedOn_Ch1 PLC_IN_NotSwitchedOn_Ch2 found for signal: Supply 4 pneumatics not switched on channel 2'</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxPos3</ID>
+          <Address>E15143.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxRestLckPinPr</ID>
+          <Address>E15143.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxRestLckPinPr</ID>
+          <Address>E15144.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 X4A axis rest locating pin present</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos3</ID>
+          <Address>E15202.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis in position 3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxClpgNClpd</ID>
+          <Address>E5000.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis brake not at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1Z1aAxClpgClpd</ID>
+          <Address>E5000.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Z1A axis brake at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos2_1Ch1</ID>
+          <Address>E5100.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis at home 1 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos2_2Ch1</ID>
+          <Address>E5100.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis at home 2 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos2_1Ch2</ID>
+          <Address>E5100.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis at home 1 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv1X1aAxPos2_2Ch2</ID>
+          <Address>E5100.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL01 X1A axis at home 2 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxClpgNClpd</ID>
+          <Address>E5200.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis brake not at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxClpgClpd</ID>
+          <Address>E5200.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis brake at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos2_1Ch1</ID>
+          <Address>E5300.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis at home 1 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos2_2Ch1</ID>
+          <Address>E5300.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis at home 2 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos2_1Ch2</ID>
+          <Address>E5300.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis at home 1 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2X2aAxPos2_2Ch2</ID>
+          <Address>E5300.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL03 X2A axis at home 2 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxClpgNClpd</ID>
+          <Address>E5400.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis brake not at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxClpgClpd</ID>
+          <Address>E5400.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis brake at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos2_1Ch1</ID>
+          <Address>E5500.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis at home 1 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos2_2Ch1</ID>
+          <Address>E5500.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis at home 2 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos2_1Ch2</ID>
+          <Address>E5500.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis at home 1 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3X3aAxPos2_2Ch2</ID>
+          <Address>E5500.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL05 X3A axis at home 2 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxClpgNClpd</ID>
+          <Address>E5600.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis brake not at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4Z4aAxClpgClpd</ID>
+          <Address>E5600.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Z4A axis brake at work</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos2_1Ch1</ID>
+          <Address>E5700.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis at home 1 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos2_2Ch1</ID>
+          <Address>E5700.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis at home 2 channel 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos2_1Ch2</ID>
+          <Address>E5700.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis at home 1 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv4X4aAxPos2_2Ch2</ID>
+          <Address>E5700.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>TL07 X4A axis at home 2 channel 2</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_1Opnd</ID>
+          <Address>E6011.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_1Clsd</ID>
+          <Address>E6011.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_2Opnd</ID>
+          <Address>E6011.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv1Sto2_2Clsd</ID>
+          <Address>E6011.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_1Opnd</ID>
+          <Address>E6110.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_1Clsd</ID>
+          <Address>E6110.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_2Opnd</ID>
+          <Address>E6110.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto1_2Clsd</ID>
+          <Address>E6110.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_1Opnd</ID>
+          <Address>E6111.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_1Clsd</ID>
+          <Address>E6111.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_2Opnd</ID>
+          <Address>E6111.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv2Sto2_2Clsd</ID>
+          <Address>E6111.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_1Opnd</ID>
+          <Address>E6210.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_1Clsd</ID>
+          <Address>E6210.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_2Opnd</ID>
+          <Address>E6210.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto1_2Clsd</ID>
+          <Address>E6210.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_1Opnd</ID>
+          <Address>E6211.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_1Clsd</ID>
+          <Address>E6211.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_2Opnd</ID>
+          <Address>E6211.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv3Sto2_2Clsd</ID>
+          <Address>E6211.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_1Opnd</ID>
+          <Address>E6310.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_1Clsd</ID>
+          <Address>E6310.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_2Opnd</ID>
+          <Address>E6310.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto1_2Clsd</ID>
+          <Address>E6310.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_1Opnd</ID>
+          <Address>E6311.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_1Clsd</ID>
+          <Address>E6311.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_2Opnd</ID>
+          <Address>E6311.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iLcv4Sto2_2Clsd</ID>
+          <Address>E6311.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_1Opnd</ID>
+          <Address>E6410.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_1Clsd</ID>
+          <Address>E6410.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_2Opnd</ID>
+          <Address>E6410.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto1_2Clsd</ID>
+          <Address>E6410.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_1Opnd</ID>
+          <Address>E6411.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_1Clsd</ID>
+          <Address>E6411.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_2Opnd</ID>
+          <Address>E6411.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv1Sto2_2Clsd</ID>
+          <Address>E6411.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_1Opnd</ID>
+          <Address>E6510.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_1Clsd</ID>
+          <Address>E6510.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_2Opnd</ID>
+          <Address>E6510.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto1_2Clsd</ID>
+          <Address>E6510.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_1Opnd</ID>
+          <Address>E6511.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_1Clsd</ID>
+          <Address>E6511.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_2Opnd</ID>
+          <Address>E6511.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv2Sto2_2Clsd</ID>
+          <Address>E6511.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_1Opnd</ID>
+          <Address>E6610.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_1Clsd</ID>
+          <Address>E6610.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_2Opnd</ID>
+          <Address>E6610.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto1_2Clsd</ID>
+          <Address>E6610.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_1Opnd</ID>
+          <Address>E6611.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_1Clsd</ID>
+          <Address>E6611.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_2Opnd</ID>
+          <Address>E6611.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv3Sto2_2Clsd</ID>
+          <Address>E6611.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_1Opnd</ID>
+          <Address>E6710.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_1Clsd</ID>
+          <Address>E6710.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_2Opnd</ID>
+          <Address>E6710.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto1_2Clsd</ID>
+          <Address>E6710.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_1Opnd</ID>
+          <Address>E6711.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.1 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_1Clsd</ID>
+          <Address>E6711.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.1 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_2Opnd</ID>
+          <Address>E6711.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.2 at work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iUcv4Sto2_2Clsd</ID>
+          <Address>E6711.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02.2 at home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv1StackLight1</ID>
+          <Address>EB14503-EB14518</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 Machine status light 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>74001_LFT01_MIO02_IO-LINK_1</ID>
+          <Address>EB14535-EB14550</Address>
+          <DataType>WORD</DataType>
+          <Signal>IO-Link Hub -MIO02</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv1Sto1Rwu1</ID>
+          <Address>EB14603-EB14618</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 STP01 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv1Sto2Rwu1</ID>
+          <Address>EB14619-EB14634</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT01 STP02 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv2StackLight1</ID>
+          <Address>EB14703-EB14718</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Machine status light 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>74001_LFT03_MIO02_IO-LINK_1</ID>
+          <Address>EB14735-EB14750</Address>
+          <DataType>WORD</DataType>
+          <Signal>IO-Link Hub -MIO02</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv2Sto1Rwu1</ID>
+          <Address>EB14803-EB14818</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 STP01 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv2Sto2Rwu1</ID>
+          <Address>EB14819-EB14834</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 STP02 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv3StackLight1</ID>
+          <Address>EB14903-EB14918</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Machine status light 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>74001_LFT05_MIO02_IO-LINK_1</ID>
+          <Address>EB14935-EB14950</Address>
+          <DataType>WORD</DataType>
+          <Signal>IO-Link Hub -MIO02</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv3Sto1Rwu1</ID>
+          <Address>EB15003-EB15018</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 STP01 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv3Sto2Rwu1</ID>
+          <Address>EB15019-EB15034</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 STP02 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv4StackLight1</ID>
+          <Address>EB15103-EB15118</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 Machine status light 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>74001_LFT07_MIO02_IO-LINK_1</ID>
+          <Address>EB15135-EB15150</Address>
+          <DataType>WORD</DataType>
+          <Signal>IO-Link Hub -MIO02</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv4Sto1Rwu1</ID>
+          <Address>EB15203-EB15218</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 STP01 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>dElv4Sto2Rwu1</ID>
+          <Address>EB15219-EB15234</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT07 STP02 RFID 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv1Sto2Opn</ID>
+          <Address>A6010.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv1Sto2Cls</ID>
+          <Address>A6010.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV01 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv2Sto1Opn</ID>
+          <Address>A6110.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv2Sto1Cls</ID>
+          <Address>A6110.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv2Sto2Opn</ID>
+          <Address>A6110.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv2Sto2Cls</ID>
+          <Address>A6110.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV03 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv3Sto1Opn</ID>
+          <Address>A6210.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv3Sto1Cls</ID>
+          <Address>A6210.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv3Sto2Opn</ID>
+          <Address>A6210.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv3Sto2Cls</ID>
+          <Address>A6210.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV05 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv4Sto1Opn</ID>
+          <Address>A6310.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv4Sto1Cls</ID>
+          <Address>A6310.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv4Sto2Opn</ID>
+          <Address>A6310.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qLcv4Sto2Cls</ID>
+          <Address>A6310.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV07 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv1Sto1Opn</ID>
+          <Address>A6410.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv1Sto1Cls</ID>
+          <Address>A6410.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv1Sto2Opn</ID>
+          <Address>A6410.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv1Sto2Cls</ID>
+          <Address>A6410.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV09 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv2Sto1Opn</ID>
+          <Address>A6510.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv2Sto1Cls</ID>
+          <Address>A6510.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv2Sto2Opn</ID>
+          <Address>A6510.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv2Sto2Cls</ID>
+          <Address>A6510.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV11 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv3Sto1Opn</ID>
+          <Address>A6610.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv3Sto1Cls</ID>
+          <Address>A6610.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv3Sto2Opn</ID>
+          <Address>A6610.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv3Sto2Cls</ID>
+          <Address>A6610.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV13 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv4Sto1Opn</ID>
+          <Address>A6710.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv4Sto1Cls</ID>
+          <Address>A6710.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP01 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv4Sto2Opn</ID>
+          <Address>A6710.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02 work</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>qUcv4Sto2Cls</ID>
+          <Address>A6710.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CNV15 STP02 home</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxPos1</ID>
+          <Address>E14943.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis in position 1</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv3Z3aAxPos2</ID>
+          <Address>E14944.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT05 Z3A axis in position 2</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxPos1</ID>
+          <Address>E14743.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis in position 1</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry feeGuid="" interfaceGuid="" interfaceName="">
+          <ID>iElv2Z2aAxPos2</ID>
+          <Address>E14744.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LFT03 Z2A axis in position 2</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+      <SimObjects />
+    </Container>
+  </ContainerList>
+</CAAMergeResult>

@@ -1,0 +1,1481 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CAAMergeResult version="1.0.0.0" createdAt="2026-09-07 13:05:24" autoCreateFile="EN_AutoCreate_Master_V22.xml" zuli="PLC-Interface_Zuli_GFTX-RM1-FAS4-40000.xlsx">
+  <ContainerList>
+    <Container id="">
+      <Component>24V DC INFEED MODULE 1 AFTER LINE DISCONNECTOR GROUP FAULT OK</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>i24VdcPwrSup1ALineDiscoOk</ID>
+          <Address>E1000.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>24V DC INFEED MODULE 1 AFTER LINE DISCONNECTOR GROUP FAULT OK</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>24V DC INFEED MODULE 2 AFTER LINE DISCONNECTOR GROUP FAULT OK</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>i24VdcPwrSup2ALineDiscoOk</ID>
+          <Address>E1000.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>24V DC INFEED MODULE 2 AFTER LINE DISCONNECTOR GROUP FAULT OK</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>AIR CONDITIONER 1 GROUP FAULT OK1</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>iClUnit1Ok1</ID>
+          <Address>E1000.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>AIR CONDITIONER 1 GROUP FAULT OK1</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>SPC1 drawer 1</Component>
+      <Type>SafetyDoor</Type>
+      <DataList>
+        <Entry>
+          <ID>iSpc1Draw1Clsd</ID>
+          <Address>E1003.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 drawer 1 closed</Signal>
+          <Slot>PLC_IN_Closed_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iSpc1Draw1LckdChannel1</ID>
+          <Address>E1060.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Drawer 1 closed and locked Channel 1</Signal>
+          <Slot>PLC_IN_ClosedAndLocked_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iSpc1Draw1LckdChannel2</ID>
+          <Address>E1060.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Drawer 1 closed and locked Channel 2</Signal>
+          <Slot>PLC_IN_ClosedAndLocked_Ch2</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Transfer area 1.1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3TranArea1_1PartPr</ID>
+          <Address>E16100.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Transfer area 1.1 part present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3TranArea1_1PartNPr</ID>
+          <Address>E16101.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Transfer area 1.1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Transfer area 1.2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3TranArea1_2PartPr</ID>
+          <Address>E16100.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Transfer area 1.2 part present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3TranArea1_2PartNPr</ID>
+          <Address>E16101.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Transfer area 1.2 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Gripper 1 axle compensation locked</Component>
+      <Type>GripperVacuum</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3Grp1AxCompLckdPresOk</ID>
+          <Address>E16100.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1 axle compensation locked pressure ok</Signal>
+          <Slot>PLC_IN_Vacuum_PressureOk</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>Rest 1 axis locking device present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>iRest1AxLckPr</ID>
+          <Address>E3500.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 1 axis locking device present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iRest1AxLckNPr</ID>
+          <Address>E3501.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 1 axis locking device not present</Signal>
+          <Slot>PLC_IN_NC1</Slot>
+          <Note>Multiple slots PLC_IN_NO1 PLC_IN_NC1 PLC_IN_NC2 found for signal: Rest 1 axis locking device not present'</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto1PalPr</ID>
+          <Address>E3502.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 2 outfeed part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto2OutPalPr</ID>
+          <Address>E3502.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 outfeed part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iLcv1Sto2OutPalNPr</ID>
+          <Address>E3503.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 outfeed part carrier not present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 2 part carrier present 1</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto2PalNPr</ID>
+          <Address>E3502.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 no part carrier present 1</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Rest 2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu1PartRest2PartPrCh1</ID>
+          <Address>E3502.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Rest 2 part present channel 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu1PartRest2PartPrCh2</ID>
+          <Address>E3503.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Rest 2 part present channel 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch2</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 2 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto2PalPr</ID>
+          <Address>E3503.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 2 lifting unit 1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto2Lift_1PalPr</ID>
+          <Address>E3503.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 lifting unit 1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Rest 1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu1PartRest1PartNPr</ID>
+          <Address>E3503.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Rest 1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB1 Supply 1 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob1Sup1PnePresOk</ID>
+          <Address>E3504.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB1 Supply 1 pneumatics pressure ok</Signal>
+          <Slot>PLC_IN_PneumaticOk_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Supply 1 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2Sup1PnePresOk</ID>
+          <Address>E3504.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Supply 1 pneumatics pressure ok</Signal>
+          <Slot>PLC_IN_PneumaticOk_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Supply 1 pneumatics</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3Sup1PnePresOk</ID>
+          <Address>E3504.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Supply 1 pneumatics pressure ok</Signal>
+          <Slot>PLC_IN_PneumaticOk_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest1PartNPr</ID>
+          <Address>E3505.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Pusher 1.1</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu3Push1_1SetRetd</ID>
+          <Address>E3506.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Pusher 1.1 returned</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu3Push1_1SetAdvd</ID>
+          <Address>E3507.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Pusher 1.1 advanced</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu3Push1_1SetAdv</ID>
+          <Address>A3500.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Advance pusher 1.1</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu3Push1_1SetRet</ID>
+          <Address>A3500.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Return pusher 1.1</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Pusher 1.2</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu3Push1_2SetRetd</ID>
+          <Address>E3506.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Pusher 1.2 returned</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu3Push1_2SetAdvd</ID>
+          <Address>E3507.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Pusher 1.2 advanced</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu3Push1_2SetAdv</ID>
+          <Address>A3500.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Advance pusher 1.2</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu3Push1_2SetRet</ID>
+          <Address>A3500.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Return pusher 1.2</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU4 Rest 2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu4PartRest2PartPrCh1</ID>
+          <Address>E3506.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU4 Rest 2 part present channel 1</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu4PartRest2PartPrCh2</ID>
+          <Address>E3507.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU4 Rest 2 part present channel 2</Signal>
+          <Slot>PLC_IN_PartPresent_Ch2</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest2PartNPr</ID>
+          <Address>E3507.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 2 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Rest 1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu3PartRest1PartNPr</ID>
+          <Address>E3507.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Rest 1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU4 Rest 1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu4PartRest1PartNPr</ID>
+          <Address>E3507.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU4 Rest 1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 3 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest3PartNPr</ID>
+          <Address>E3509.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 3 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 4 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest4PartNPr</ID>
+          <Address>E3509.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 4 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 5 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest5PartNPr</ID>
+          <Address>E3509.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 5 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 6 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest6PartNPr</ID>
+          <Address>E3509.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 6 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 7 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest7PartNPr</ID>
+          <Address>E3509.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 7 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 Rest 8 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iChu2PartRest8PartNPr</ID>
+          <Address>E3509.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Rest 8 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>SPC1 Station 1 part carrier present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iSpc1St1PalPr</ID>
+          <Address>E3701.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Station 1 part carrier present</Signal>
+          <Slot>PLC_IN_PartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_1PartNPr</ID>
+          <Address>E3801.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_2PartNPr</ID>
+          <Address>E3801.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.2 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.3 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_3PartNPr</ID>
+          <Address>E3801.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.3 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.4 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_4PartNPr</ID>
+          <Address>E3801.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.4 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.5 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_5PartNPr</ID>
+          <Address>E3801.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.5 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB2 Rest 1.6 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob2PartRest1_6PartNPr</ID>
+          <Address>E3801.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB2 Rest 1.6 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Rest 1.1 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3PartRest1_1PartNPr</ID>
+          <Address>E3901.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Rest 1.1 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Rest 1.2 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3PartRest1_2PartNPr</ID>
+          <Address>E3901.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Rest 1.2 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Rest 1.3 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3PartRest1_3PartNPr</ID>
+          <Address>E3901.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Rest 1.3 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 Rest 1.4 part present</Component>
+      <Type>Sensor</Type>
+      <DataList>
+        <Entry>
+          <ID>iRob3PartRest1_4PartNPr</ID>
+          <Address>E3901.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Rest 1.4 no part present</Signal>
+          <Slot>PLC_IN_NoPartPresent_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>RESET 24V DC POWER SUPPLY MODULE</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>q24VdcPwrModReset</ID>
+          <Address>A1000.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>RESET 24V DC POWER SUPPLY MODULE</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 gripper 1.1</Component>
+      <Type>GripperBasic</Type>
+      <DataList>
+        <Entry>
+          <ID>qRob3Grp1_1Clp</ID>
+          <Address>A16000.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Clamp gripper 1.1</Signal>
+          <Slot>PLC_OUT_Clamp</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_1Reld</ID>
+          <Address>E16000.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.1 released</Signal>
+          <Slot>PLC_IN_Unclamped</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qRob3Grp1_1Rel</ID>
+          <Address>A16001.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Release gripper 1.1</Signal>
+          <Slot>PLC_OUT_Unclamp</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_1Clpd1</ID>
+          <Address>E16001.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.1 clamped with part 1</Signal>
+          <Slot>PLC_IN_ClampedWithPart</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_1Clpd0</ID>
+          <Address>E16000.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.1 clamped without part</Signal>
+          <Slot>PLC_IN_ClampedWithoutPart</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 gripper 1.2</Component>
+      <Type>GripperBasic</Type>
+      <DataList>
+        <Entry>
+          <ID>qRob3Grp1_2Clp</ID>
+          <Address>A16000.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Clamp gripper 1.2</Signal>
+          <Slot>PLC_OUT_Clamp</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_2Reld</ID>
+          <Address>E16000.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.2 released</Signal>
+          <Slot>PLC_IN_Unclamped</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qRob3Grp1_2Rel</ID>
+          <Address>A16001.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Release gripper 1.2</Signal>
+          <Slot>PLC_OUT_Unclamp</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_2Clpd1</ID>
+          <Address>E16001.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.2 clamped with part 1</Signal>
+          <Slot>PLC_IN_ClampedWithPart</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iRob3Grp1_2Clpd0</ID>
+          <Address>E16000.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Gripper 1.2 clamped without part</Signal>
+          <Slot>PLC_IN_ClampedWithoutPart</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 stop 1</Component>
+      <Type>Stop</Type>
+      <DataList>
+        <Entry>
+          <ID>qLcv1Sto1Opn</ID>
+          <Address>A2010.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Open stop 1</Signal>
+          <Slot>PLC_OUT_Open</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 stop 2</Component>
+      <Type>Stop</Type>
+      <DataList>
+        <Entry>
+          <ID>qLcv1Sto2Opn</ID>
+          <Address>A2010.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Open stop 2</Signal>
+          <Slot>PLC_OUT_Open</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 check 1 feed 1</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu2Chk1Set1Adv</ID>
+          <Address>A2110.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Advance check 1 feed 1</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu2Chk1Set1Ret</ID>
+          <Address>A2110.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Return check 1 feed 1</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 check 1 adjustment 1</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu2Chk1Adj1Adv</ID>
+          <Address>A2111.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Advance check 1 adjustment 1</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qChu2Chk1Adj1Ret</ID>
+          <Address>A2111.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Return check 1 adjustment 1</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu2Chk1Adj1Retd</ID>
+          <Address>E3504.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Check 1 adjustment 1 returned</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu2Chk1Adj1Advd</ID>
+          <Address>E3505.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Check 1 adjustment 1 advanced</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note />
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 lifting unit 1</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu2Lift1Low</ID>
+          <Address>A2111.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lower lifting unit 1</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu2Lift1Dwn</ID>
+          <Address>E3504.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lifting unit 1 lowered</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu2Lift1Up</ID>
+          <Address>E3505.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lifting unit 1 raised</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu2Lift1Lift</ID>
+          <Address>A2111.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Raise lifting unit 1</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU2 lifting unit 2</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu2Lift2Low</ID>
+          <Address>A2111.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lower lifting unit 2</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>iChu2Lift2Dwn</ID>
+          <Address>E3504.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lifting unit 2 lowered</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu2Lift2Up</ID>
+          <Address>E3505.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Lifting unit 2 raised</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu2Lift2Lift</ID>
+          <Address>A2111.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2 Raise lifting unit 2</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 gripper 1</Component>
+      <Type>GripperBasic</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu1Grp1Clp</ID>
+          <Address>A3500.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Clamp gripper 1</Signal>
+          <Slot>PLC_OUT_Clamp</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu1Grp1ClpdPresOk</ID>
+          <Address>E3500.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Gripper 1 clamped pressure ok</Signal>
+          <Slot>PLC_IN_Clamped</Slot>
+          <Note>Multiple slots PLC_IN_Clamped PLC_IN_ClampedWithPart PLC_IN_Vacuum_PressureOk found for signal: CHU1 Gripper 1 clamped pressure ok'</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu1Grp1Reld</ID>
+          <Address>E3502.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Gripper 1 released</Signal>
+          <Slot>PLC_IN_Unclamped</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iChu1Grp1HomePos</ID>
+          <Address>E3503.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Gripper 1 in home position</Signal>
+          <Slot>PLC_IN_Unclamped</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>Supply 1 pneumatic</Component>
+      <Type>PneumaticSupply</Type>
+      <DataList>
+        <Entry>
+          <ID>qSup1PneTuOnCh1</ID>
+          <Address>A3550.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 switch on pneumatics channel 1</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qSup1PneTuOnCh2</ID>
+          <Address>A3550.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 switch on pneumatics channel 2</Signal>
+          <Slot>PLC_OUT_SwitchOn_Ch2</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iSup1PnePresOk</ID>
+          <Address>E3500.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatic pressure OK</Signal>
+          <Slot>PLC_IN_PneumaticOk_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iSup1PneNOnCh2</ID>
+          <Address>E3501.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatics not switched on channel 2</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch2</Slot>
+          <Note>Multiple slots PLC_IN_NotSwitchedOn_Ch1 PLC_IN_NotSwitchedOn_Ch2 found for signal: Supply 1 pneumatics not switched on channel 2'</Note>
+        </Entry>
+        <Entry>
+          <ID>iSup1PneNOnCh1</ID>
+          <Address>E3500.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Supply 1 pneumatics not switched on channel 1</Signal>
+          <Slot>PLC_IN_NotSwitchedOn_Ch1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>Rest 1 locating pin present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>iRest1LckPinPr</ID>
+          <Address>E3500.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 1 locating pin present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iRest1LckPinNPr</ID>
+          <Address>E3501.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 1 locating pin not present</Signal>
+          <Slot>PLC_IN_NC1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>Rest 2 locating pin present</Component>
+      <Type>CabinetSwitch</Type>
+      <DataList>
+        <Entry>
+          <ID>iRest2LckPinPr</ID>
+          <Address>E3500.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 2 locating pin present</Signal>
+          <Slot>PLC_IN_NO1</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iRest2LckPinNPr</ID>
+          <Address>E3501.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Rest 2 locating pin not present</Signal>
+          <Slot>PLC_IN_NC1</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>LCV1 Stop 2 lifting unit 1</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>iLcv1Sto2Lift1_1Up</ID>
+          <Address>E3502.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 lifting unit 1 raised</Signal>
+          <Slot>PLC_IN_InWorkPos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>iLcv1Sto2Lift1_1Dwn</ID>
+          <Address>E3503.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Stop 2 lifting unit 1 lowered</Signal>
+          <Slot>PLC_IN_InHomePos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qLcv1Sto2Lift_1Low</ID>
+          <Address>A2011.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Lower stop 2 lifting unit 1</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qLcv1Sto2Lift_1Lift1</ID>
+          <Address>A2011.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Raise stop 2 lifting unit 1 pressure 1</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Drives STO enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu1DrivesStoEna</ID>
+          <Address>A1076.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Drives STO enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Drives SS1 enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu1DrivesSs1Ena</ID>
+          <Address>A1076.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Drives SS1 enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Drives SS2 enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu1DrivesSs2Ena</ID>
+          <Address>A1076.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Drives SS2 enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU1 Drives SLS enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu1DrivesSlsEna</ID>
+          <Address>A1076.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU1 Drives SLS enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Drives STO enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu3DrivesStoEna</ID>
+          <Address>A1076.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Drives STO enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Drives SS1 enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu3DrivesSs1Ena</ID>
+          <Address>A1076.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Drives SS1 enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Drives SS2 enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu3DrivesSs2Ena</ID>
+          <Address>A1076.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Drives SS2 enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>CHU3 Drives SLS enable</Component>
+      <Type>CabinetLamp</Type>
+      <DataList>
+        <Entry>
+          <ID>qChu3DrivesSlsEna</ID>
+          <Address>A1076.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU3 Drives SLS enable</Signal>
+          <Slot>PLC_OUT_ON</Slot>
+          <Note>No matching components.</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>ROB3 gripper 1 axle compensation</Component>
+      <Type>Cylinder</Type>
+      <DataList>
+        <Entry>
+          <ID>qRob3Grp1AxCompLck</ID>
+          <Address>A16000.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Lock gripper 1 axle compensation</Signal>
+          <Slot>PLC_OUT_ToWorkPos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qRob3Grp1AxCompUlck</ID>
+          <Address>A16001.6</Address>
+          <DataType>BOOL</DataType>
+          <Signal>ROB3 Unlock gripper 1 axle compensation</Signal>
+          <Slot>PLC_OUT_ToHomePos</Slot>
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+    <Container id="">
+      <Component>unknown</Component>
+      <Type>unknown</Type>
+      <DataList>
+        <Entry>
+          <ID>HVCP01_PBL01_14</ID>
+          <Address>E1000.5</Address>
+          <DataType>BOOL</DataType>
+          <Signal>HIGH VOLTAGE PANEL INTERLOCK RELEASE</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iBreakMod1TempWarn</ID>
+          <Address>E1002.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Break energy recovery unit 1 temperature warning</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iBreakMod1TempFault</ID>
+          <Address>E1002.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Break energy recovery unit 1 temperature error</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iBreakMod2TempWarn</ID>
+          <Address>E1002.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Break energy recovery unit 2 temperature warning</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iBreakMod2TempFault</ID>
+          <Address>E1002.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Break energy recovery unit 2 temperature error</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iSpc1Op1</ID>
+          <Address>E3500.7</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Operating device 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Z31PAxForceSensor1_1</ID>
+          <Address>EW1020</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 1.1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Z31PAxForceSensor1_2</ID>
+          <Address>EW1022</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 1.2</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Z31PAxForceSensor1_3</ID>
+          <Address>EW1024</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 1.3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Z31PAxForceSensor2_1</ID>
+          <Address>EW1026</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 2.1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Z31PAxForceSensor2_2</ID>
+          <Address>EW1028</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 2.2</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>MCP01_AMP06_POWER/OUTPUT_5</ID>
+          <Address>EW1030</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Z31p axis force sensor 2.3</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Measure1</ID>
+          <Address>EW1032</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Measuring instrument 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dChu3Measure2</ID>
+          <Address>EW1034</Address>
+          <DataType>WORD</DataType>
+          <Signal>CHU3 Measuring instrument 2</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qWorkLight1TuOn</ID>
+          <Address>A1000.4</Address>
+          <DataType>BOOL</DataType>
+          <Signal>Work Area Lighting 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu4Measure1RtTriX4PAx</ID>
+          <Address>A1200.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU4 MEASURING INSTRUMENT 1 REAL TIME TRIGGER X4P-AXIS</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu4Measure1RtTriC4PAx</ID>
+          <Address>A1200.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU4 MEASURING INSTRUMENT 1 REAL TIME TRIGGER C4P-AXIS</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu2_1Measure1Cl61AxInPos</ID>
+          <Address>A1264.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2.1 MEASURING INSTRUMENT 1 CL61-AXIS IN POSITION</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>qChu2_1Measure1Cl63AxInPos</ID>
+          <Address>A1264.1</Address>
+          <DataType>BOOL</DataType>
+          <Signal>CHU2.1 MEASURING INSTRUMENT 1 CL63-AXIS IN POSITION</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>iLcv1Sto2Lift_1ClpgReldPresOk</ID>
+          <Address>A2011.2</Address>
+          <DataType>BOOL</DataType>
+          <Signal>LCV1 Release stop 2 lifting unit 1 brake</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>qSpc1Op1</ID>
+          <Address>A3500.3</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Operating device 1 Output</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dStackLight1</ID>
+          <Address>AW3510</Address>
+          <DataType>WORD</DataType>
+          <Signal>Machine status light 1</Signal>
+          <Slot />
+          <Note>No matching components.</Note>
+        </Entry>
+        <Entry>
+          <ID>dLcv1Sto2Rwu1</ID>
+          <Address>AW3512</Address>
+          <DataType>WORD</DataType>
+          <Signal>LCV1 Stop 2 read/write unit 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+        <Entry>
+          <ID>LVCP01_XD09_L24.1</ID>
+          <Address>A1100.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>RESET 24V DC POWER SUPPLY MODULE</Signal>
+          <Slot />
+          <Note />
+        </Entry>
+        <Entry>
+          <ID>qSpc1Draw1lck</ID>
+          <Address>A1084.0</Address>
+          <DataType>BOOL</DataType>
+          <Signal>SPC1 Lock drawer 1</Signal>
+          <Slot />
+          <Note>Excluded</Note>
+        </Entry>
+      </DataList>
+    </Container>
+  </ContainerList>
+</CAAMergeResult>
