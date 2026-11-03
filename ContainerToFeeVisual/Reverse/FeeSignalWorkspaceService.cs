@@ -6,8 +6,6 @@ namespace VIBN_Tools.ContainerToFeeVisual;
 public sealed record FeeSignalWorkspaceSnapshot(IReadOnlyList<VisualFeeInterface> Interfaces,
     IReadOnlyList<FeeContainerLiveVariable> Variables, long ConnectionRevision);
 public sealed record FeeSignalRouteSnapshot(IReadOnlyList<FeeContainerLiveAssignment> Assignments, IReadOnlyList<string> Issues);
-public sealed record FeeSignalEndpoint(Guid Guid, string Name, string FeeType, string LogicDefinitionName = "",
-    IReadOnlyList<string>? SlotNames = null, string ParentGuid = "", string ParentName = "", string CabinetDefinition = "");
 public sealed record FeeSignalEndpointSnapshot(IReadOnlyDictionary<Guid, FeeSignalEndpoint> Objects, IReadOnlyList<string> Issues,
     IReadOnlyList<VisualFeeObjectLink>? ObjectLinks = null);
 

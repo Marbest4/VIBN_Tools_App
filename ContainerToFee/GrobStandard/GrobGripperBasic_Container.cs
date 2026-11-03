@@ -170,20 +170,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 foreach (var signal in signals)
                 {
-                    FeeSimpleMove moveBit = new FeeSimpleMove();
-                    await moveBit.CreateAsync();
-                    await moveBit.SendAndWaitAsync();
-                    await ContainerObjectProvenance.WriteNewObjectAsync(moveBit, this);
+                    var moveBit = await ContainerSignalHelperReuse.GetMoveAsync(this, Logic_Gripper, slotName, signal, targetInterface);
 
-                    await signal.CreateSignalAsync(targetInterface);
-
-                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
-                        moveBit.Guid,
-                        "Output 01",
-                        signal.Guid,
-                        $"GripperBasic {ComponentName}: MoveBit Output 01");
-
-                    // Add current assignment information
                     slotsToAssign.Add((moveBit.Guid, "Input 01"));
                 }
 
@@ -276,6 +264,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             if (Joints_Gripper.Any())
             {
                 bool isActualPosAssigned = false;
+                var feedbackSource = await ContainerSlotLinkService.ResolveMotionFeedbackSourceAsync(
+                    Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.ActualPosition, Joints_Gripper);
 
                 // Lists with slot assignments for later assignment
                 var slotsToAssignTarget = new List<(Guid, string)>() { (Logic_Gripper.Guid, LogicsStandard.Grob_GripperBasic.Slots.TargetPosition) };
@@ -288,7 +278,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     await Services.ApiInstance.Object.SetPropertyAsync(joint.Guid, nameof(JointControllerComponent.MotionSource), MotionSource.Position, "Controller");
                     await Services.ApiInstance.Object.SendAndWait(joint.Guid);
 
-                    if (!isActualPosAssigned)
+                    if (!isActualPosAssigned && joint.Guid == feedbackSource)
                     {
                         isActualPosAssigned = await ContainerSlotLinkService.AssignAndVerifyAsync(
                             Logic_Gripper.Guid,

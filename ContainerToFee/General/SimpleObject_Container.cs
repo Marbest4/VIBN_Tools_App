@@ -32,6 +32,13 @@ namespace VIBN_Tools.ContainerToFee.General
         {
             if (Signal_PlcOutSignal != null || Signal_PlcInSignal != null)
             {
+                var existing = await ContainerSignalHelperReuse.FindAsync("MoveBit",
+                    [(Signal_PlcOutSignal, "Input 01"), (Signal_PlcInSignal, "Output 01")]);
+                if (existing is { } guid)
+                {
+                    SimpleLogic_MoveBit = new FeeSimpleMove { Guid = guid, Name = ComponentName, Parent = parentObject };
+                    return;
+                }
                 SimpleLogic_MoveBit = new FeeSimpleMove { Name = ComponentName, Parent = parentObject };
                 await SimpleLogic_MoveBit.CreateAsync();
                 await SimpleLogic_MoveBit.SendAndWaitAsync();
@@ -97,6 +104,13 @@ namespace VIBN_Tools.ContainerToFee.General
         {
             if (Signal_PlcOutSignal != null || Signal_PlcInSignal != null)
             {
+                var existing = await ContainerSignalHelperReuse.FindAsync("BoolNot",
+                    [(Signal_PlcOutSignal, "Input 01"), (Signal_PlcInSignal, "Output 01")]);
+                if (existing is { } guid)
+                {
+                    SimpleLogic_BoolNot = new FeeSimpleNot { Guid = guid, Name = ComponentName, Parent = parentObject };
+                    return;
+                }
                 SimpleLogic_BoolNot = new FeeSimpleNot { Name = ComponentName, Parent = parentObject };
                 await SimpleLogic_BoolNot.CreateAsync();
                 await SimpleLogic_BoolNot.SendAndWaitAsync();

@@ -21,6 +21,7 @@ VIBN Tools ist die WPF-Desktopanwendung für Modellierung, virtuelle Inbetriebna
 - [IBN Remote](docs/IBN_REMOTE.md) – separat minimierte Ein-EXE-Ausgabe nur für Arbeitsplatzsuche und RDP.
 - [FEE2SpecialDevices](docs/FEE2SPECIALDEVICES.md) – provenance-basierter Reverse-Export künftig erzeugter Special Devices.
 - [Dependency Management](docs/DEPENDENCY_MANAGEMENT.md), [Deployment](docs/DEPLOYMENT.md) und [Diagramme](docs/ARCHITECTURE_DIAGRAMS.md).
+- [Container-Workflow-Korrekturen November 2026](docs/BUGFIX_CONTAINER_WORKFLOW_2026-11.md) – Live-Zuordnung, Hilfslogik-Wiederverwendung, XML-Beispiele, Rückexport und Setup-Prüfungen.
 - [Installation und Installer](docs/INSTALLATION_UND_INSTALLER.md) – Setup erzeugen, auf andere Rechner übertragen und SDK-/Buildfehler beheben.
 
 ## Wichtige Eigenschaften

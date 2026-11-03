@@ -106,6 +106,7 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
         FeeSignalsView = CollectionViewSource.GetDefaultView(AvailableFeeSignals);
         FeeSignalsView.Filter = FilterFeeSignal;
 
+        InitializeProtocol();
         OpenXmlCommand = new AsyncRelayCommand(OpenXmlAsync, () => !IsBusy);
         LoadPlanCommand = new AsyncRelayCommand(LoadPlanAsync, () => !IsBusy);
         SavePlanCommand = new AsyncRelayCommand(SavePlanAsync, () => HasPlan && !IsBusy);
@@ -1032,7 +1033,7 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
                 {
                     GenerationProgressText = "Generierung nicht vollständig abgeschlossen.";
                     _log.Warning(LogArea, result.Message);
-                    AddOperationDetail("Generierung unvollständig", result.Message);
+                    AddOperationDetail("Generierung unvollständig", result.Message, VisualIssueSeverity.Error);
                 }
                 SaveGenerationManifest(startedUtc, before, result.Success, result.Message,
                     result.Issues.Select(issue => $"[{issue.Code}] {issue.Message}"));
@@ -1174,7 +1175,8 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
                 }
                 else
                     _log.Warning(LogArea, result.Message);
-                AddOperationDetail(result.Success ? "SimObjects verknüpft" : "SimObject-Verknüpfung offen", result.Message);
+                AddOperationDetail(result.Success ? "SimObjects verknüpft" : "SimObject-Verknüpfung offen", result.Message,
+                    result.Success ? VisualIssueSeverity.Info : VisualIssueSeverity.Error);
                 RecordCurrentConnectionDetails();
         }, usesFeeSdk: true);
     }
@@ -1207,7 +1209,8 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
                 }
                 else
                     _log.Warning(LogArea, result.Message);
-                AddOperationDetail(result.Success ? "Signale verknüpft" : "Signal-Verknüpfung offen", result.Message);
+                AddOperationDetail(result.Success ? "Signale verknüpft" : "Signal-Verknüpfung offen", result.Message,
+                    result.Success ? VisualIssueSeverity.Info : VisualIssueSeverity.Error);
                 RecordCurrentConnectionDetails();
             }, usesFeeSdk: true);
     }
@@ -2964,6 +2967,9 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
     {
         var issueList = issues.ToArray();
         Issues.ReplaceWith(issueList);
+        foreach (var issue in issueList.Where(issue => issue.Severity is VisualIssueSeverity.Warning or VisualIssueSeverity.Error))
+            if (!OperationDetails.Any(detail => detail.Category == issue.Code && detail.Message == issue.Message))
+                AddOperationDetail(issue.Code, issue.Message, issue.Severity);
         foreach (var issue in issueList.Where(issue =>
                      issue.Message.Contains("nicht eindeutig", StringComparison.OrdinalIgnoreCase) ||
                      issue.Code.Contains("SIGNAL", StringComparison.OrdinalIgnoreCase) &&
@@ -2996,15 +3002,15 @@ public sealed partial class ContainerToFeeVisualPageVM : MvvmBase
     {
         StatusText = message;
         _log.Warning(LogArea, message);
-        AddOperationDetail("Nicht ausgeführt", message);
+        AddOperationDetail("Nicht ausgeführt", message, VisualIssueSeverity.Warning);
     }
 
-    private void AddOperationDetail(string category, string message)
+    private void AddOperationDetail(string category, string message, VisualIssueSeverity severity = VisualIssueSeverity.Info)
     {
         OperationDetails.Insert(0, new ContainerToFeeVisualOperationDetailVM(
             DateTimeOffset.Now,
             category,
-            message));
+            message, severity));
         while (OperationDetails.Count > 200)
             OperationDetails.RemoveAt(OperationDetails.Count - 1);
     }
@@ -4351,7 +4357,7 @@ public sealed record ContainerToFeeVisualEdgeVM(
 public sealed record ContainerToFeeVisualOperationDetailVM(
     DateTimeOffset Timestamp,
     string Category,
-    string Message)
+    string Message, VisualIssueSeverity Severity = VisualIssueSeverity.Info)
 {
     public string TimestampText => Timestamp.ToString("HH:mm:ss");
     public string ToolTipText => $"{Timestamp:dd.MM.yyyy HH:mm:ss} · {Category}{Environment.NewLine}{Message}";

@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\VIBN_Tools.Core\VIBN_Tools.Core.csproj" />
     <ProjectReference Include="..\SharedWpf\VIBN_Tools.SharedWpf.csproj" />
   </ItemGroup>
 

@@ -27,6 +27,11 @@ internal static class Program
 {
     private static async Task<int> Main(string[] args)
     {
+        if (args.SequenceEqual(["--visual-fixtures-only"]))
+        {
+            await VisualXmlCorpusRegressionTests.VerifyAsync();
+            return 0;
+        }
         var files = args.Length > 0
             ? args.Select(Path.GetFullPath).ToArray()
             : new[]
@@ -65,6 +70,7 @@ internal static class Program
         ValidateFeeTagPropertyContract();
         await ValidateContainerToFeeModelContractsAsync();
         await ValidateVisualMotionJointReuseAsync();
+        await VisualXmlCorpusRegressionTests.VerifyAsync();
         await ValidateVisualFeeSignalStatusAsync();
         await ValidateForcedUnknownSlotProjectionAsync();
         await ValidateSignalOnlyContainerClassificationAsync();

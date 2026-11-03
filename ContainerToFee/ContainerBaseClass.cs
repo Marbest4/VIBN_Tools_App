@@ -149,16 +149,7 @@ namespace VIBN_Tools.ContainerToFee
 
                 foreach (var signal in fanIn.Signals)
                 {
-                    var move = new FeeSimpleMove();
-                    await move.CreateAsync();
-                    await move.SendAndWaitAsync();
-                    await ContainerObjectProvenance.WriteNewObjectAsync(move, this);
-                    await signal.CreateSignalAsync(targetInterface);
-                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
-                        move.Guid,
-                        "Output 01",
-                        signal.Guid,
-                        $"{ComponentName}: MoveBit Output 01");
+                    var move = await ContainerSignalHelperReuse.GetMoveAsync(this, logic, fanIn.SlotName, signal, targetInterface);
                     slotsToAssign.Add((move.Guid, "Input 01"));
                 }
 

@@ -89,7 +89,7 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
         _log = log ?? NullApplicationLog.Instance;
         _documentsService = documentsService ?? new VIBN_Tools.Infrastructure.ViCo.FileSystemProjectDocumentsService();
 
-        RefreshCommand = GetCommandBindingAsync(RefreshFromBestAvailableSourceAsync);
+        RefreshCommand = GetCommandBindingAsync(RefreshAllDataAsync);
         ConnectRemoteCommand = GetCommandBinding(ConnectRemote);
         ConnectRemoteWithPromptCommand = GetCommandBinding(ConnectRemoteWithPrompt);
         SaveConfigurationCommand = GetCommandBindingAsync(SaveConfigurationAsync);
@@ -520,6 +520,25 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     /// Uses a configured online source first, then always reloads the resulting
     /// local cache. Without an API key this still provides a useful cache refresh.
     /// </summary>
+    private async Task RefreshAllDataAsync()
+    {
+        if (IsBusy) return;
+        _documentsCache.Clear();
+        await RefreshFromBestAvailableSourceAsync();
+        if (_disposed) return;
+        // An explicit refresh must bypass both caches, including RDP sessions.
+        _availabilityCancellation?.Cancel();
+        _availabilityCancellation?.Dispose();
+        _availabilityCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCancellation.Token);
+        IsBusy = true;
+        try
+        {
+            await RefreshAvailabilityAsync(Results.ToArray(), _availabilityCancellation.Token, forceOnline: true);
+            _nextOnlineRefreshAt = DateTimeOffset.Now.AddMinutes(OnlineRefreshIntervalMinutes);
+        }
+        finally { IsBusy = false; }
+    }
+
     private async Task RefreshFromBestAvailableSourceAsync()
     {
         if (IsBusy)
@@ -700,8 +719,12 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     private void SetDisplayedDataUpdatedAt(DateTimeOffset? updatedAt)
     {
         _displayedDataUpdatedAt = updatedAt;
+        OnPropertyChanged(nameof(DataUpdatedAtText));
         UpdateDisplayedDataAgeNotice();
     }
+
+    public string DataUpdatedAtText => _displayedDataUpdatedAt is { } value
+        ? $"Datenstand: {value.LocalDateTime:dd.MM.yyyy HH:mm:ss}" : "Datenstand: noch nicht geladen";
 
     private void UpdateDisplayedDataAgeNotice()
     {
@@ -944,7 +967,9 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
                 cancellationToken.ThrowIfCancellationRequested();
                 row.SetOnline(isOnline);
                 if (isOnline && !onlineOnly)
-                    await RefreshRemoteSessionAsync(row, sessionThrottle, cancellationToken);
+                    await RefreshRemoteSessionAsync(row, sessionThrottle, cancellationToken, forceOnline);
+                else if (!isOnline && !onlineOnly)
+                    row.SetRemoteSession(ViCoRemoteSessionInfo.NotAvailable);
                 NotifySelectedWorkstationAvailabilityChanged(row);
             }
             catch (OperationCanceledException)
@@ -975,9 +1000,9 @@ public sealed class ViCoSearchPageVM : MvvmBase, IDisposable
     private async Task RefreshRemoteSessionAsync(
         ViCoWorkstationRowVM row,
         SemaphoreSlim throttle,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, bool force = false)
     {
-        if (_remoteSessionCache.TryGetValue(row.PcName, out var cached) &&
+        if (!force && _remoteSessionCache.TryGetValue(row.PcName, out var cached) &&
             DateTimeOffset.Now - cached.CheckedAt < TimeSpan.FromMinutes(2))
         {
             row.SetRemoteSession(cached.Info);

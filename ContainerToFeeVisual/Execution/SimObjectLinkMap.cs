@@ -8,7 +8,26 @@ internal sealed record RequiredSimObjectLink(Guid ObjectGuid, string ObjectSlot,
 /// <summary>Uses the same endpoints as the forward containers, without their labels, parameter writes or object creation.</summary>
 internal static class SimObjectLinkMap
 {
-    internal static IReadOnlyList<RequiredSimObjectLink> Create(string containerType, FeeAbstractObject item, int index)
+    internal static int FeedbackIndex(string containerType, FeeAbstractObject item, int fallback,
+        string logicGuid, IReadOnlyList<VisualFeeObjectLink> links)
+    {
+        if (item is not FeeJoint) return fallback;
+        var feedbackSlot = Create(containerType, item, 0).FirstOrDefault(link => link.ObjectSlot == "OutValue")?.LogicSlot;
+        if (feedbackSlot is null) return fallback;
+        var feedback = links.Where(link =>
+            string.Equals(link.LinkedObjectGuidString, logicGuid, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(link.LinkedSlotName, feedbackSlot, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(link.SlotName, "OutValue", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(link.ObjectGuidString, logicGuid, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(link.SlotName, feedbackSlot, StringComparison.OrdinalIgnoreCase) &&
+            string.Equals(link.LinkedSlotName, "OutValue", StringComparison.OrdinalIgnoreCase)).ToArray();
+        // The existing feedback source must not depend on CAD/name ordering.
+        return feedback.Length == 0 ? fallback : feedback.Any(link =>
+            string.Equals(link.ObjectGuidString, item.GuidString, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(link.LinkedObjectGuidString, item.GuidString, StringComparison.OrdinalIgnoreCase)) ? 0 : 1;
+    }
+
+    internal static IReadOnlyList<RequiredSimObjectLink> Create(string containerType, FeeAbstractObject item, int index, int targetIndex = 0)
     {
         var slots = new List<(string ObjectSlot, string LogicSlot)>();
         if (item is FeeJoint)
@@ -33,6 +52,13 @@ internal static class SimObjectLinkMap
             slots.Add(("InVelocityX", LogicsStandard.Grob_Conveyor.Slots.VelocityOut));
         else if (item is FeeSensor && containerType == "Sensor")
             slots.Add(("Channel1", LogicsStandard.Grob_Sensor.Slots.SensorValue));
+        else if (item is FeeSensor && containerType == "GripperAddon_MultiplePartTypes")
+        {
+            string[] partSlots = [LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent1,
+                LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent2,
+                LogicsAddons.Grob_GripperAddOn_MultiplePartTypes.Slots.PartPresent3];
+            if (targetIndex >= 0 && targetIndex < partSlots.Length) slots.Add(("Channel1", partSlots[targetIndex]));
+        }
         else if (item is FeeFloor && containerType == "Stop")
             slots.Add(("Collision", LogicsStandard.Grob_Stop.Slots.Collision));
         else if (item is FeePickAndPlace && containerType == "GripperBasic")

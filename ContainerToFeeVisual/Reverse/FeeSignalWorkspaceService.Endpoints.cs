@@ -50,7 +50,8 @@ public sealed partial class FeeSignalWorkspaceService
                 {
                     if (!xmlByGuid.TryGetValue(guid, out var element)) throw new InvalidOperationException("FEE lieferte keinen XML-Datensatz mit der angeforderten Objekt-GUID.");
                     var actual = objects[guid];
-                    var definitionText = element.Descendants().FirstOrDefault(item => item.Name.LocalName is "PersistedLogicGuid" or "LogicDefinitionGuid")?.Value;
+                    var parsedDefinition = VIBN_Tools.Core.Interfaces.LogicDefinitionXml.ReadGuid(element);
+                    var definitionText = parsedDefinition == Guid.Empty ? null : parsedDefinition.ToString("D");
                     var type = (element.Attribute("Type")?.Value ?? (actual.FeeType.Length > 0 ? actual.FeeType : element.Name.LocalName)).Split('.').Last();
                     if (type == "LogicObject" && string.IsNullOrWhiteSpace(definitionText))
                         definitionText = await Fee2ContainerService.ReadOptionalObjectPropertyAsync(guid, "PersistedLogicGuid");

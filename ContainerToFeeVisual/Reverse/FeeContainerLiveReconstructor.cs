@@ -17,21 +17,6 @@ public sealed record FeeContainerLiveObject(
     IReadOnlyList<Guid>? LinkedObjectGuids = null,
     bool IsSpecialDevice = false);
 
-public sealed record FeeContainerLiveVariable(
-    Guid VariableGuid,
-    string Signal,
-    string Address,
-    string Path,
-    string DataType,
-    string Comment,
-    string Usage = "", string InterfaceGuid = "", string InterfaceName = "");
-
-public sealed record FeeContainerLiveAssignment(
-    Guid VariableGuid,
-    Guid TargetObjectGuid,
-    string TargetSlot,
-    bool IsIndirect = false);
-
 public sealed record FeeContainerReconstructionIssue(
     Guid? ObjectGuid,
     string Message);
@@ -41,20 +26,6 @@ public sealed record FeeContainerUnmappedObject(
     string Name,
     string FeeType,
     string Reason);
-
-public sealed record FeeContainerObjectAssociation(
-    Guid ObjectGuid,
-    string ObjectName,
-    string ObjectType,
-    Guid ContainerObjectGuid,
-    string ContainerId,
-    string Reason,
-    string Role = "SimObject",
-    string ProvenanceContainerId = "",
-    bool IsManual = false,
-    string ParentName = "",
-    string LogicDefinitionName = "",
-    string ConnectionText = "");
 
 public sealed record FeeContainerReconstructionResult(
     FeeContainerProvenanceSnapshot Snapshot,
@@ -307,15 +278,20 @@ public static class FeeContainerLiveReconstructor
             if (EndsWithType(item.FeeType, "Cabinet") || IsHelper(item.FeeType) && !byCandidateGuid.ContainsKey(item.Guid))
                 continue;
             ContainerCandidate[] matches = string.IsNullOrWhiteSpace(item.Name) ? [] : byName[item.Name.Trim()].ToArray();
-            // Provenance disambiguates equal names but never invents an automatic
-            // association between differently named physical scene objects.
+            // Current live connections are stronger evidence than CAD names.
+            // Provenance alone never assigns differently named physical objects.
             ContainerCandidate[] own = byCandidateGuid.TryGetValue(item.Guid, out var primary) ? [primary] : [];
             if (own.Length == 1) matches = own;
-            else if (matches.Length > 1)
+            else
             {
-                var related = matches.Where(candidate => item.LinkedObjectGuids?.Contains(candidate.Object.Guid) == true ||
-                    IsDescendantOf(item, candidate.Object.Guid, byGuid)).ToArray();
-                if (related.Length == 1) matches = related;
+                var linked = candidates.Where(candidate => item.LinkedObjectGuids?.Contains(candidate.Object.Guid) == true ||
+                    candidate.Object.LinkedObjectGuids?.Contains(item.Guid) == true).ToArray();
+                if (linked.Length > 0) matches = linked;
+                else if (matches.Length > 1)
+                {
+                    var related = matches.Where(candidate => IsDescendantOf(item, candidate.Object.Guid, byGuid)).ToArray();
+                    if (related.Length == 1) matches = related;
+                }
             }
             if (matches.Length == 1)
             {
@@ -323,7 +299,7 @@ public static class FeeContainerLiveReconstructor
                 result.Add(new FeeContainerObjectAssociation(item.Guid, item.Name, item.FeeType,
                     container.Object.Guid, $"fee:{container.Object.Guid:D}",
                     item.Guid == container.Object.Guid ? "Primäres Containerobjekt" :
-                    IsHelper(item.FeeType) ? "Technisches Hilfsobjekt" : "Automatisch über eindeutigen gleichen Namen zugeordnet",
+                    IsHelper(item.FeeType) ? "Technisches Hilfsobjekt" : "Über eindeutigen Namen oder aktuelle Objektverknüpfung zugeordnet",
                     item.Guid == container.Object.Guid ? "Primary" : IsHelper(item.FeeType) ? "TechnicalHelper" : "SimObject",
                     container.Object.ProvenanceContainerId ?? ""));
             }
@@ -492,7 +468,7 @@ public static class FeeContainerLiveReconstructor
         else if (requirements is not null)
         {
             IReadOnlyList<string> slotMatches = EndsWithType(feeType, "CabinetElement") && xmlType is not null ? [] : requirements.TypesMatchingSlots(liveSlots);
-            if (slotMatches.Count == 1)
+            if (xmlType is null && slotMatches.Count == 1)
             {
                 xmlType = slotMatches[0]; recognitionSource = "Req.xml";
                 ambiguity = $"'{item.Name}' wurde anhand aktueller FEE-Slots als Req-XML-Typ '{xmlType}' erkannt; Definition und Zuordnung bitte prüfen.";
@@ -630,29 +606,7 @@ public static class FeeContainerLiveReconstructor
              ContainerFileXml.HasMatchingObjectName(other.ComponentName, candidate.ComponentName)));
     }
 
-    internal static string? MapCabinetType(string? definition)
-    {
-        var normalized = NormalizeToken(definition);
-        if (normalized.Contains("GROBNOTAUS", StringComparison.Ordinal))
-            return "EStop";
-        if (normalized.Contains("FUSE", StringComparison.Ordinal))
-            return "CabinetFuse";
-        if (normalized.Contains("LAMP", StringComparison.Ordinal))
-            return "CabinetLamp";
-        if (normalized.Contains("GROB2POSITIONSWITCH", StringComparison.Ordinal) ||
-            normalized.Contains("GROB3POSITIONSWITCH", StringComparison.Ordinal) ||
-            normalized.Contains("POSITIONSWITCH2", StringComparison.Ordinal) ||
-            normalized.Contains("2POSITIONSWITCH", StringComparison.Ordinal) ||
-            normalized.Contains("TWOPOSITIONSWITCH", StringComparison.Ordinal) ||
-            normalized == "CABINETSWITCH")
-            return "CabinetSwitch";
-        if (normalized.Contains("BUTTON", StringComparison.Ordinal)) return "CabinetButton";
-        if (normalized.Contains("MAINSWITCH", StringComparison.Ordinal)) return "CabinetMainSwitch";
-        if (normalized.Contains("POSITIONSWITCH", StringComparison.Ordinal) || normalized.EndsWith("SWITCH", StringComparison.Ordinal)) return "CabinetSwitch";
-        var actual = definition?.Trim().Replace('/', '\\').Split('\\').Last();
-        if (string.IsNullOrWhiteSpace(actual) || Guid.TryParse(actual, out _)) return null;
-        return actual.EndsWith(".xml", StringComparison.OrdinalIgnoreCase) ? actual[..^4] : actual;
-    }
+    internal static string? MapCabinetType(string? definition) => FeeCabinetDefinitionType.Resolve(definition);
 
     private static bool EndsWithType(string value, string typeName) =>
         NormalizeToken(value).EndsWith(NormalizeToken(typeName), StringComparison.Ordinal);

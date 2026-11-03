@@ -40,13 +40,6 @@ internal sealed class ExistingSignalEndpointLinker(
         var identified = containerObjects.Where(item => item.Kind == VisualFeeContainerObjectKind.TechnicalHelper &&
                 VisualFeeTechnicalHelperResolver.MatchesIdentity(item, bound.PlanNode))
             .Select(item => item.GuidString).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        if (connected.Any(item => !identified.Contains(item.GuidString) && !string.IsNullOrWhiteSpace(item.Name) &&
-                !string.Equals(item.Name, bound.PlanNode.Name, StringComparison.OrdinalIgnoreCase)))
-        {
-            Warn(issues, bound.PlanNode.Id, "TECHNICAL_HELPER_SKIPPED",
-                $"{bound.PlanNode.Name}: vorhandene Signalroute führt zu einem anders benannten Hilfsobjekt; mit Warnung übersprungen und nicht umgehängt.");
-            return null;
-        }
         var candidates = connected.Length > 0 ? connected : sceneObjects.Where(item => type.IsInstanceOfType(item) &&
             (identified.Contains(item.GuidString) || string.Equals(item.Name, bound.PlanNode.Name, StringComparison.OrdinalIgnoreCase))).ToArray();
         if (candidates.Length == 1) return candidates[0];
@@ -129,7 +122,18 @@ internal sealed class ExistingSignalEndpointLinker(
             return false;
         }
         Guid moveGuid;
-        if (outputs.Length == 1) moveGuid = outputs[0];
+        if (outputs.Length == 1)
+        {
+            moveGuid = outputs[0];
+            var inputs = await VIBN_Tools.GlobalClasses.Services.ApiInstance.Interface.GetSlotSlotAssignmentAsync(moveGuid, "Input 01");
+            if (inputs is null || inputs.Any(peer => !Guid.TryParse(peer.SceneObjectGuid, out var guid) || guid != target.Guid ||
+                (peer.SlotNames ?? []).Any(name => !string.Equals(name, slot, StringComparison.OrdinalIgnoreCase))))
+            {
+                Warn(issues, request.NodeId ?? bound.PlanNode.Id, "TECHNICAL_HELPER_SKIPPED",
+                    $"{request.Signal.Tag}: MoveBit-Eingang gehört zu einem anderen Ziel oder ist nicht lesbar; bestehende Route bleibt erhalten.");
+                return false;
+            }
+        }
         else
         {
             cancellationToken.ThrowIfCancellationRequested();

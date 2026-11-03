@@ -146,6 +146,8 @@ namespace VIBN_Tools.ContainerToFee
                 "Conveyor" => new GrobConveyor_Container(),
                 "Cylinder" or "FeedSafetyDoor" => new GrobCylinder_Container(),
                 "GripperBasic" => new GrobGripperBasic_Container(),
+                "GripperAddon_MultiplePartTypes" => new GrobGripperAddon_MultiPartTypes_Container(),
+                "GripperAddon_AnalogValues" => new GrobGripperAddon_AnalogValues_Container(),
                 "GripperVacuum" => new GrobGripperVacuum_Container(),
                 "LiftUnit" => new GrobLiftUnit_Container(),
                 "PneumaticSupply" => new GrobPneumaticSupply_Container()  ,

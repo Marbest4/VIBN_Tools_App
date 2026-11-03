@@ -166,6 +166,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             if (Joints_LiftUnit.Any())
             {
                 bool isActualPositionConnected = false;
+                var feedbackSource = await ContainerSlotLinkService.ResolveMotionFeedbackSourceAsync(
+                    Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.ActualPosition, Joints_LiftUnit);
 
                 // Lists with slot assignments for later assignment
                 var slotsToAssignTarget = new List<(Guid, string)>() { (Logic_LiftUnit.Guid, LogicsStandard.Grob_LiftUnit.Slots.TargetPosition) };
@@ -178,7 +180,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     await Services.ApiInstance.Object.SetPropertyAsync(joint.Guid, nameof(JointControllerComponent.MotionSource), MotionSource.Position, "Controller");
                     await Services.ApiInstance.Object.SendAndWait(joint.Guid);
 
-                    if (!isActualPositionConnected)
+                    if (!isActualPositionConnected && joint.Guid == feedbackSource)
                     {
                         isActualPositionConnected = await ContainerSlotLinkService.AssignAndVerifyAsync(
                             Logic_LiftUnit.Guid,

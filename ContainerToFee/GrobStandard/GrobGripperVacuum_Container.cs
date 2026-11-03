@@ -129,20 +129,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 foreach (var signal in signals)
                 {
-                    FeeSimpleMove moveBit = new FeeSimpleMove();
-                    await moveBit.CreateAsync();
-                    await moveBit.SendAndWaitAsync();
-                    await ContainerObjectProvenance.WriteNewObjectAsync(moveBit, this);
+                    var moveBit = await ContainerSignalHelperReuse.GetMoveAsync(this, Logic_Gripper, slotName, signal, targetInterface);
 
-                    await signal.CreateSignalAsync(targetInterface);
-
-                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
-                        moveBit.Guid,
-                        "Output 01",
-                        signal.Guid,
-                        $"GripperVacuum {ComponentName}: MoveBit Output 01");
-
-                    // Add current assignment information
                     slotsToAssign.Add((moveBit.Guid, "Input 01"));
                 }
 

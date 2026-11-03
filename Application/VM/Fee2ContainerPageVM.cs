@@ -1272,7 +1272,7 @@ public sealed class Fee2ContainerFoundContainerVM : NotifyBase
     public string InputByteText => MinimumByte(input: true)?.ToString() ?? "—";
     public string OutputByteText => MinimumByte(input: false)?.ToString() ?? "—";
     private int? MinimumByte(bool input) => VIBN_Tools.SpecialDevices.FeeSpecialDeviceLiveProjector.MinimumByte(
-        DataList.Concat(ChildContainers.SelectMany(child => child.DataList)).Where(item => item.VariableGuid is not null).Select(item =>
+        DataList.Concat(ChildContainers.SelectMany(child => child.DataList)).Select(item =>
             new VIBN_Tools.SpecialDevices.FeeSpecialDeviceSignalSnapshot(item.VariableGuid ?? Guid.Empty, item.Signal, item.Address, item.Usage, item.DataType, item.SignalId, "", [])), input);
     public string SignalAddresses => string.Join("; ", DataList.Where(item => !string.IsNullOrWhiteSpace(item.Signal))
         .Select(item => $"{item.Signal}: {item.Address}"));
