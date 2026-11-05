@@ -37,10 +37,6 @@ public sealed record Fee2ContainerRoot(
     public int SignalCount => Provenance?.SignalCount ?? 0;
 }
 
-public sealed record FeeContainerObjectDetails(Guid Guid, string Name, string FeeType,
-    string ParentName, string LogicDefinitionName, string ConnectionText, bool IsSpecialDevice = false, string ParentGuid = "",
-    IReadOnlyList<string>? SlotNames = null, string CabinetDefinition = "");
-
 public sealed record Fee2ContainerExportResult(
     FeeContainerProvenanceSnapshot Snapshot,
     bool UsedProvenance,

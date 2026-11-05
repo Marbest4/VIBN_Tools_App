@@ -140,20 +140,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
 
                 foreach (var signal in signals)
                 {
-                    FeeSimpleMove moveBit = new FeeSimpleMove();
-                    await moveBit.CreateAsync();
-                    await moveBit.SendAndWaitAsync();
-                    await ContainerObjectProvenance.WriteNewObjectAsync(moveBit, this);
+                    var moveBit = await ContainerSignalHelperReuse.GetMoveAsync(this, Logic_Cylinder, slotName, signal, targetInterface);
 
-                    await signal.CreateSignalAsync(targetInterface);
-
-                    await ContainerSlotLinkService.AssignVariableAndVerifyAsync(
-                        moveBit.Guid,
-                        "Output 01",
-                        signal.Guid,
-                        $"Cylinder {ComponentName}: MoveBit Output 01");
-
-                    // Add current assignment information
                     slotsToAssign.Add((moveBit.Guid, "Input 01"));
                 }
 
@@ -204,6 +192,8 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
             if (Joints_Cylinder.Any())
             {
                 bool isActualPositionConnected = false;
+                var feedbackSource = await ContainerSlotLinkService.ResolveMotionFeedbackSourceAsync(
+                    Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.ActualPosition, Joints_Cylinder);
 
                 // Lists with slot assignments for later assignment
                 var slotsToAssignTarget = new List<(Guid, string)>() { (Logic_Cylinder.Guid, LogicsStandard.Grob_Cylinder.Slots.TargetPosition) };
@@ -216,7 +206,7 @@ namespace VIBN_Tools.ContainerToFee.GrobStandard
                     await Services.ApiInstance.Object.SetPropertyAsync(joint.Guid, nameof(JointControllerComponent.MotionSource), MotionSource.Position, "Controller");
                     await Services.ApiInstance.Object.SendAndWait(joint.Guid);
 
-                    if (!isActualPositionConnected)
+                    if (!isActualPositionConnected && joint.Guid == feedbackSource)
                     {
                         isActualPositionConnected = await ContainerSlotLinkService.AssignAndVerifyAsync(
                             Logic_Cylinder.Guid,

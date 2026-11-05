@@ -152,8 +152,7 @@ namespace VIBN_Tools.GlobalClasses.FeeObjects
 
             var logic = xElement.Elements().FirstOrDefault(element => element.Name.LocalName is "Logic" or "LogicComponent")
                 ?? xElement.Descendants().FirstOrDefault(element => element.Name.LocalName is "Logic" or "LogicComponent");
-            var definition = logic?.Elements().FirstOrDefault(element => element.Name.LocalName is "PersistedLogicGuid" or "LogicDefinitionGuid")?.Value;
-            LogicDefinitionGuid = Guid.TryParse(definition, out var parsed) ? parsed : Guid.Empty;
+            LogicDefinitionGuid = VIBN_Tools.Core.Interfaces.LogicDefinitionXml.ReadGuid(xElement);
             LogicDefinitionVersion = logic?.Element("PersistedLogicVersion")?.Value ?? String.Empty;
             IsEnabled = bool.TryParse(logic?.Element("IsEnable")?.Value, out var enabled) && enabled;
 

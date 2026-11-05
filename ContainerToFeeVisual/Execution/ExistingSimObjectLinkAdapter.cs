@@ -86,9 +86,9 @@ internal sealed class ExistingSimObjectLinkAdapter(IVisualPlanLogger logger)
                 if (matchingLogics.Count == 0)
                 {
                     return Failure(
-                        $"Für '{bound.PlanNode.Name}' wurde kein bestehendes FEE-LogicObject mit " +
-                        "identischem Namen gefunden. Model Validation aktualisieren oder den " +
-                        "Komponentennamen prüfen.",
+                        $"Für '{bound.PlanNode.Name}' wurde keine passende vorhandene Containerlogik gefunden. " +
+                        "FEE aktualisieren und eine Logik zuordnen oder zuerst die Containerlogik generieren. " +
+                        "Die reine Verknüpfung erzeugt keine fehlende Logik.",
                         "EXISTING_LOGIC_NOT_FOUND",
                         bound.PlanNode.Id);
                 }
@@ -112,8 +112,10 @@ internal sealed class ExistingSimObjectLinkAdapter(IVisualPlanLogger logger)
                 logicProperty.SetValue(bound.RuntimeContainer, matchingLogics[0]);
                 logger.Information($"{bound.PlanNode.Name}: bestehende Logik '{matchingLogics[0].Name}', " +
                     $"Objekt-GUID {matchingLogics[0].Guid:D}, Definition '{matchingLogics[0].LogicDefinitionName}' gebunden.");
-                var required = selectable.GetSimObjectTargets().SelectMany(target => target.GetObjects().SelectMany((item, index) =>
-                    SimObjectLinkMap.Create(bound.PlanNode.TypeName, item, index))).ToArray();
+                var required = selectable.GetSimObjectTargets().SelectMany((target, targetIndex) => target.GetObjects().SelectMany((item, index) =>
+                    SimObjectLinkMap.Create(bound.PlanNode.TypeName, item,
+                        SimObjectLinkMap.FeedbackIndex(bound.PlanNode.TypeName, item, index, matchingLogics[0].GuidString, liveLinks ?? []),
+                        targetIndex))).ToArray();
                 if (required.Length == 0)
                 {
                     issues.Add(new VisualIssue(VisualIssueSeverity.Warning, "SIMOBJECT_LINK_ENDPOINTS_MISSING",

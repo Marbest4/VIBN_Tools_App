@@ -207,14 +207,18 @@ internal sealed class ExistingSignalLinkAdapter(IVisualPlanLogger logger)
                 out var definitionGuid)
                 ? definitionGuid
                 : Guid.Empty;
-            result.Add(new FeeLogic
+            var logic = new FeeLogic
             {
                 Guid = guids[index],
                 Name = Services.ApiInstance.XmlHelper.ConvertToString(names[index]),
                 LogicDefinitionGuid = persisted,
                 LogicDefinitionName = definitionNames.GetValueOrDefault(persisted, string.Empty),
-            });
+            };
+            logic.StoreXmlObjectProperties(element, guids[index]);
+            logic.LogicDefinitionName = definitionNames.GetValueOrDefault(logic.LogicDefinitionGuid, string.Empty);
+            result.Add(logic);
         }
+        await FeeLogicSlotSnapshot.PopulateAsync(result, cancellationToken);
         return result;
     }
 

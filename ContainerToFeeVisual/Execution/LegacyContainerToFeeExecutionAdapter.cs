@@ -20,8 +20,8 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
         IReadOnlyList<VisualIssue> acceptedValidationErrors,
         IProgress<VisualGenerationProgress>? progress,
-        CancellationToken cancellationToken) => FeeMutationScope.RunAsync(
-            () => ExecuteCoreAsync(plan, runtimeObjects, runtimeInterfaces, acceptedValidationErrors, progress, cancellationToken), cancellationToken);
+        CancellationToken cancellationToken, IReadOnlyList<VisualFeeObjectLink>? liveLinks = null) => FeeMutationScope.RunAsync(
+            () => ExecuteCoreAsync(plan, runtimeObjects, runtimeInterfaces, acceptedValidationErrors, progress, cancellationToken, liveLinks), cancellationToken);
 
     private async Task<VisualExecutionResult> ExecuteCoreAsync(
         VisualPlan plan,
@@ -29,7 +29,7 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
         IReadOnlyDictionary<string, FeeInterface> runtimeInterfaces,
         IReadOnlyList<VisualIssue> acceptedValidationErrors,
         IProgress<VisualGenerationProgress>? progress,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken, IReadOnlyList<VisualFeeObjectLink>? liveLinks)
     {
         if (Services.Connection?.CanUseFeeFeatures != true)
             return Failure(FeeConnectionService.MissingConnectionMessage, "FEE_NOT_CONNECTED");
@@ -65,18 +65,23 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                                !excludedContainerIds.Contains(item.PlanNode.Id))
                 .ToArray();
             var reuseIssues = new List<VisualIssue>();
+            var addonNames = selectedBindings.Where(item => item.RuntimeContainer is IAddonContainer)
+                .Select(item => item.RuntimeContainer.ComponentName).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var parentBindings = binding.Containers.Where(item =>
+                item.RuntimeContainer is ContainerToFee.GrobStandard.GrobGripperBasic_Container &&
+                addonNames.Contains(item.RuntimeContainer.ComponentName)).ToArray();
+            if (addonNames.Any(name => !parentBindings.Any(item => string.Equals(item.RuntimeContainer.ComponentName, name, StringComparison.OrdinalIgnoreCase))))
+                return Failure("Für ein ausgewähltes Gripper-Addon fehlt der zugehörige GripperBasic-Container.", "ADDON_PARENT_MISSING");
             var existingLogics = await ExistingSignalLinkAdapter.ReadExistingLogicsAsync(cancellationToken);
-            foreach (var item in selectedBindings.Where(item =>
+            foreach (var item in selectedBindings.Concat(parentBindings).DistinctBy(item => item.PlanNode.Id).Where(item =>
                          item.RuntimeContainer is Interfaces.ILogicOwner or Interfaces.ILogicSimObjectOwner))
             {
                 var expectedLogic = plan.Nodes.FirstOrDefault(node =>
                     node.ContainerId == item.PlanNode.Id && node.Kind == VisualNodeKind.Logic)?.Name;
                 var explicitLogic = ExistingContainerLogicResolver.ExplicitAssignment(plan, item.PlanNode.Id, runtimeObjects);
-                var matches = existingLogics.Where(logic => explicitLogic is not null ? logic.Guid == explicitLogic.Guid :
-                        string.Equals(logic.Name, item.RuntimeContainer.ComponentName, StringComparison.OrdinalIgnoreCase) &&
-                        (string.IsNullOrWhiteSpace(expectedLogic) ||
-                         string.Equals(logic.LogicDefinitionName, expectedLogic, StringComparison.OrdinalIgnoreCase)))
-                    .ToArray();
+                var assigned = item.RuntimeContainer is ISimObjectFindOrSelect selectable
+                    ? selectable.GetSimObjectTargets().SelectMany(target => target.GetObjects()).ToArray() : [];
+                var matches = new ExistingContainerLogicResolver(existingLogics).Find(item.PlanNode, assigned, liveLinks, explicitLogic).ToArray();
                 if (explicitLogic is not null && (matches.Length != 1 ||
                     matches[0].LogicDefinitionGuid != explicitLogic.LogicDefinitionGuid))
                     return Failure("Die ausdrücklich zugeordnete Logik wurde in FEE entfernt oder geändert. FEE aktualisieren und die Zuordnung prüfen.",
@@ -120,6 +125,9 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
                         requiresOverrideConfirmation: true);
                 }
             }
+            if (parentBindings.Any(parent => !plan.IsGenerationSelected(parent.PlanNode.Id) &&
+                ContainerExistingObjectReuse.GetAssignedLogic(parent.RuntimeContainer) is null))
+                return Failure("Die übergeordnete GripperBasic-Logik fehlt. Den Parent für die Generierung mit auswählen.", "ADDON_PARENT_LOGIC_MISSING");
             var existingCabinetElements = await ExistingSignalLinkAdapter.ReadExistingCabinetElementsAsync(cancellationToken);
             foreach (var item in selectedBindings.Where(item => item.RuntimeContainer is Interfaces.ICabinetElementOwner))
             {
@@ -272,10 +280,11 @@ internal sealed class LegacyContainerToFeeExecutionAdapter(IVisualPlanLogger log
             var selectedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
                 .ToArray();
-            ContainerToFeeService.LinkAddonContainers(selectedContainers);
+            ContainerToFeeService.LinkAddonContainers(selectedContainers.Concat(parentBindings.Select(item => item.RuntimeContainer)).Distinct());
             var sortedContainers = selectedBindings
                 .Select(item => item.RuntimeContainer)
-                .OrderBy(container => container.GetType().Name, StringComparer.Ordinal)
+                .OrderBy(container => container is IAddonContainer ? 1 : 0)
+                .ThenBy(container => container.GetType().Name, StringComparer.Ordinal)
                 .ThenBy(container => container.ComponentName, StringComparer.Ordinal)
                 .ToArray();
 

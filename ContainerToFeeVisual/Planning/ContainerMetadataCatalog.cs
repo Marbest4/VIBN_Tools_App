@@ -24,6 +24,8 @@ internal static class ContainerMetadataCatalog
             ["Cylinder"] = Describe<GrobCylinder_Container>("Grob_Cylinder", ["Move-Bit-Hilfslogik"]),
             ["FeedSafetyDoor"] = Describe<GrobCylinder_Container>("Grob_Cylinder", ["Move-Bit-Hilfslogik"]),
             ["GripperBasic"] = Describe<GrobGripperBasic_Container>("Grob_GripperBasic", ["Move-Bit-Hilfslogik"]),
+            ["GripperAddon_MultiplePartTypes"] = Describe<GrobGripperAddon_MultiPartTypes_Container>("Grob_GripperAddOn_MultiplePartTypes"),
+            ["GripperAddon_AnalogValues"] = Describe<GrobGripperAddon_AnalogValues_Container>("Grob_GripperAddOn_AnalogValues"),
             ["GripperVacuum"] = Describe<GrobGripperVacuum_Container>("Grob_GripperVacuum", ["Move-Bit-Hilfslogik"]),
             ["LiftUnit"] = Describe<GrobLiftUnit_Container>("Grob_LiftUnit"),
             ["PneumaticSupply"] = Describe<GrobPneumaticSupply_Container>("Grob_PneumaticSupply"),

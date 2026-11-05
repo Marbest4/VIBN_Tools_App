@@ -3,7 +3,7 @@ using VIBN_Tools.ContainerGeneration.Models;
 namespace VIBN_Tools.ContainerToFeeVisual;
 
 /// <summary>Only an operator's input can transfer ownership to an upstream scene object.</summary>
-public sealed class FeeSignalOwnershipGraph
+public sealed partial class FeeSignalOwnershipGraph
 {
     private readonly IReadOnlyDictionary<Guid, FeeSignalEndpoint> _objects;
     private readonly ILookup<Guid, Peer> _peers;
@@ -62,19 +62,6 @@ public sealed class FeeSignalOwnershipGraph
     public IReadOnlyList<Guid> Members(Guid owner) => (_members ??= _objects.Keys.SelectMany(guid => Owners(guid)
         .Select(item => (Owner: item.Guid, Member: guid))).Distinct().ToLookup(item => item.Owner, item => item.Member))[owner].ToArray();
 
-    public IReadOnlyList<FeeContainerObjectDetails> CreateDetails(IEnumerable<FeeContainerLiveAssignment> assignments)
-    {
-        var signals = assignments.ToLookup(item => item.TargetObjectGuid);
-        return _objects.Values.Select(item => new FeeContainerObjectDetails(item.Guid, item.Name, item.FeeType,
-            item.ParentName, item.LogicDefinitionName.Length > 0 ? item.LogicDefinitionName :
-                ContainerFileXml.IsSimpleLogicType(item.FeeType) ? item.FeeType : "",
-            string.Join("; ", signals[item.Guid].Select(route => $"{route.TargetSlot} ↔ Signal {route.VariableGuid:D}" + (route.IsIndirect ? " (über Hilfslogik)" : ""))
-                .Concat(_peers[item.Guid].Select(peer => $"{peer.LocalSlot} ↔ {_objects.GetValueOrDefault(peer.Guid)?.Name ?? peer.Guid.ToString("D")}/{peer.RemoteSlot}"))
-                .Distinct(StringComparer.OrdinalIgnoreCase)),
-            VIBN_Tools.SpecialDevices.FeeSpecialDeviceLogicCatalog.Contains(item.LogicDefinitionName), item.ParentGuid,
-            item.SlotNames, item.CabinetDefinition)).ToArray();
-    }
-
     public static IEnumerable<string> HelperSlotNames(string type, IEnumerable<string>? known = null)
     {
         type = type.Split('.').Last();
@@ -90,8 +77,10 @@ public sealed class FeeSignalOwnershipGraph
     public static bool IsInput(string slot)
     {
         slot = (slot ?? "").Trim();
-        return slot.StartsWith("Input", StringComparison.OrdinalIgnoreCase) || slot.StartsWith("In ", StringComparison.OrdinalIgnoreCase) || CounterInputs.Contains(slot);
+        return slot.StartsWith("Input", StringComparison.OrdinalIgnoreCase) || slot.StartsWith("In ", StringComparison.OrdinalIgnoreCase) ||
+            slot.Equals("InValue", StringComparison.OrdinalIgnoreCase) || CounterInputs.Contains(slot);
     }
     public static bool IsOutput(string slot) => (slot ?? "").Trim().StartsWith("Output", StringComparison.OrdinalIgnoreCase) ||
-        (slot ?? "").Trim().StartsWith("Out ", StringComparison.OrdinalIgnoreCase);
+        (slot ?? "").Trim().StartsWith("Out ", StringComparison.OrdinalIgnoreCase) ||
+        (slot ?? "").Trim().Equals("OutValue", StringComparison.OrdinalIgnoreCase);
 }

@@ -298,15 +298,7 @@ namespace VIBN_Tools.ContainerGeneration.BusinessLogic.ContainerData
 
         private void RefreshAssignmentWarning()
         {
-            var normalizedAddress = (Address ?? string.Empty).TrimStart().TrimStart('%');
-            var isOutputAddress = normalizedAddress.StartsWith("A", StringComparison.OrdinalIgnoreCase) ||
-                                  normalizedAddress.StartsWith("Q", StringComparison.OrdinalIgnoreCase);
-            var isInputSlot = (Slot ?? string.Empty).StartsWith("PLC_IN", StringComparison.OrdinalIgnoreCase);
-
-            AssignmentWarning = isOutputAddress && isInputSlot
-                ? $"Ausgangsadresse „{Address}“ ist einem Eingangsslot „{Slot}“ zugeordnet. " +
-                  "Bitte die Zuordnung fachlich prüfen."
-                : string.Empty;
+            AssignmentWarning = VIBN_Tools.Core.Interfaces.PlcSignalSlotPolicy.AssignmentWarning(Address, Slot);
         }
 
         /// <summary>

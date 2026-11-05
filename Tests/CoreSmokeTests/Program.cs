@@ -41,6 +41,7 @@ try
     VerifyProjectIdentityAndPaths(temporaryRoot);
     Console.WriteLine("Running project documents and selection race checks...");
     await ProjectDocumentsSmokeTests.VerifyAsync(temporaryRoot);
+    await WorkstationRefreshSmokeTests.VerifyAsync(temporaryRoot);
     Console.WriteLine("Running Remote Desktop profile smoke test...");
     VerifyRemoteDesktopProfile();
     Console.WriteLine("Running Level9 role policy smoke test...");

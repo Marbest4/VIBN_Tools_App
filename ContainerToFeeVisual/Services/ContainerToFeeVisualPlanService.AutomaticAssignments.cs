@@ -52,7 +52,8 @@ public sealed partial class ContainerToFeeVisualPlanService
                 for (var index = 0; index < assigned.Length; index++)
                 {
                     if (!_runtimeObjects.TryGetValue(assigned[index].FeeObjectId, out var item)) continue;
-                    foreach (var link in SimObjectLinkMap.Create(container.TypeName, item, index))
+                    foreach (var link in SimObjectLinkMap.Create(container.TypeName, item, item is FeeJoint ? 0 : index,
+                        Array.IndexOf(plan.Targets.Where(candidate => candidate.ContainerId == container.Id).ToArray(), target)))
                     {
                         Add(item.Guid, link.ObjectSlot);
                         foreach (var logic in logics) Add(Guid.Parse(logic.GuidString), link.LogicSlot);
@@ -182,7 +183,6 @@ public sealed partial class ContainerToFeeVisualPlanService
         foreach (var node in plan.Nodes.Where(node => node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal &&
                      !plan.IsSignalRemoved(node.Id) && !assignedNodes.Contains(node.Id)))
         {
-            if (node.ContainerId is { } containerId && !HasRequiredContainerLogic(containerId)) continue;
             var matches = byName[node.Name.Trim()].Where(signal => VisualSignalAssignmentMatcher.Matches(node, signal)).ToArray();
             if (matches.Length == 0 && !string.IsNullOrWhiteSpace(node.SourceLocation))
                 matches = byLocation[VisualSignalAssignmentMatcher.NormalizeLocation(node.SourceLocation)]
@@ -199,10 +199,6 @@ public sealed partial class ContainerToFeeVisualPlanService
         }
         return added;
     }
-
-    private bool HasRequiredContainerLogic(string containerId) => CurrentPlan?.FindNode(containerId) is { } container &&
-        (!ContainerMetadataCatalog.TryGet(container.TypeName, out var descriptor) || string.IsNullOrWhiteSpace(descriptor.ExpectedLogicName) ||
-            FindExistingContainerLogics(containerId).Count == 1);
 
     public bool CanAssignLogic(string logicNodeId, string feeObjectId) =>
         CurrentPlan?.FindNode(logicNodeId) is { Kind: VisualNodeKind.Logic, ContainerId: { } id } &&

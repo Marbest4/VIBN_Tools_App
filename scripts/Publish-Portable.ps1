@@ -9,6 +9,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot 'Build-Common.ps1')
+. (Join-Path $PSScriptRoot 'Installer-Common.ps1')
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $feeRoot = Resolve-FeeScreenSimRoot -ExplicitRoot $FeeScreenSimRoot
 $feeRuntimeAssemblies = @(Get-FeeRuntimeClosure -FeeRoot $feeRoot)
@@ -44,10 +45,10 @@ try {
 
     # A runtime-specific assets target is required for self-contained publish.
     if (-not [string]::IsNullOrWhiteSpace($AdditionalPackageSource)) {
-        dotnet restore VIBN_Tools.csproj --runtime $Runtime "-p:RestoreAdditionalProjectSources=$packageSource"
+        dotnet restore VIBN_Tools.csproj --runtime $Runtime -p:Configuration=Release -p:SelfContained=true "-p:RestoreAdditionalProjectSources=$packageSource"
     }
     else {
-        dotnet restore VIBN_Tools.csproj --runtime $Runtime
+        dotnet restore VIBN_Tools.csproj --runtime $Runtime -p:Configuration=Release -p:SelfContained=true
     }
     Assert-LastExitCode 'Runtime-spezifische NuGet-Wiederherstellung'
 
@@ -65,6 +66,7 @@ try {
     )
     dotnet @publishArguments
     Assert-LastExitCode 'Portable Veröffentlichung'
+    Assert-VibnPublishOutput -PublishRoot $publishRoot
 
     Copy-Item -LiteralPath 'distribution\START_HERE.md' -Destination $publishRoot
     Copy-Item -LiteralPath 'docs' -Destination (Join-Path $publishRoot 'docs') -Recurse

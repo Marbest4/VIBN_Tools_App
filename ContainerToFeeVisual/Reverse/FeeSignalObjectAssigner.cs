@@ -74,7 +74,8 @@ public static class FeeSignalObjectAssigner
                 members.Add(new(targetGuid, detail.Name, detail.FeeType, targetGuid, id,
                     "Über aktive Signal-GUID und aktuelle Slotverbindung zugeordnet", "Primary", ParentName: detail.ParentName,
                     LogicDefinitionName: detail.LogicDefinitionName, ConnectionText: detail.ConnectionText));
-                members.AddRange(associationsByOwner[targetGuid].Where(item => item.ObjectGuid != targetGuid && (item.Role == "TechnicalHelper" || ContainerFileXml.HasMatchingObjectName(item.ObjectName, detail.Name)) &&
+                members.AddRange(associationsByOwner[targetGuid].Where(item => item.ObjectGuid != targetGuid && (item.Role == "TechnicalHelper" || ContainerFileXml.HasMatchingObjectName(item.ObjectName, detail.Name) ||
+                    FeeLogicConnectionMatcher.IsConnected(targetGuid, [item.ObjectGuid], links)) &&
                     (!ContainerFileXml.IsSimpleLogicType(item.ObjectType) || graph.Owners(item.ObjectGuid).Any(owner => owner.Guid == targetGuid)))
                     .Select(item => item with { ContainerId = id }));
                 foreach (var helperGuid in graph.Members(targetGuid).Where(guid => guid != targetGuid))

@@ -1,6 +1,14 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net8.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><TreatWarningsAsErrors>true</TreatWarningsAsErrors></PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../VIBN_Tools.Core/VIBN_Tools.Core.csproj" />
+    <Compile Include="../../ContainerToFeeVisual/Domain/FeeSignalGraphModels.cs" Link="FeeSignalGraphModels.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Discovery/FeeLogicConnectionMatcher.cs" Link="FeeLogicConnectionMatcher.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Reverse/FeeSignalOwnershipGraph.cs" Link="FeeSignalOwnershipGraph.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Reverse/FeeContainerReadPolicy.cs" Link="FeeContainerReadPolicy.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Reverse/FeeUnknownLogicExporter.cs" Link="FeeUnknownLogicExporter.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Reverse/FeeCabinetContainerGrouping.cs" Link="FeeCabinetContainerGrouping.cs"/>
+    <Compile Include="../../ContainerToFeeVisual/Reverse/FeeCabinetDefinitionType.cs" Link="FeeCabinetDefinitionType.cs"/>
     <Compile Include="../../ContainerGeneration/Models/ContainerFileXml.cs" Link="ContainerFileXml.cs"/>
     <Compile Include="../../ContainerGeneration/Models/ContainerFileComparison.cs" Link="ContainerFileComparison.cs"/>
     <Compile Include="../../ContainerGeneration/BusinessLogic/ContainerData/ContainerFeeObject.cs" Link="ContainerFeeObject.cs"/>

@@ -16,22 +16,24 @@ public sealed record FeeUnknownLogicContainer(string Root, string ContainerId, s
     IReadOnlyList<FeeUnknownLogicObject> Logics, IReadOnlyList<FeeUnknownLogicSignal> Signals, string Note);
 public sealed record FeeUnknownLogicDocument(string Schema, DateTimeOffset ReadoutExportedAt, IReadOnlyList<FeeUnknownLogicContainer> Containers);
 
+public sealed record FeeUnknownLogicSource(string Name, XDocument ContainerDocument,
+    IReadOnlyDictionary<Guid, FeeSignalEndpoint> SignalEndpoints, IReadOnlyList<FeeContainerLiveVariable> LiveVariables,
+    IReadOnlyList<FeeContainerLiveAssignment> LiveAssignments, IReadOnlyList<VisualFeeObjectLink> ObjectLinks);
+
 /// <summary>Exports the read-only live snapshot needed to define unsupported container logic.</summary>
-public static class FeeUnknownLogicExporter
+public static partial class FeeUnknownLogicExporter
 {
-    public static FeeUnknownLogicDocument Create(IEnumerable<Fee2ContainerRoot> roots)
+    public static FeeUnknownLogicDocument Create(IEnumerable<FeeUnknownLogicSource> roots)
     {
         var result = new List<FeeUnknownLogicContainer>();
         foreach (var root in roots)
         {
             var endpoints = (root.SignalEndpoints ?? new Dictionary<Guid, FeeSignalEndpoint>()).ToDictionary(item => item.Key, item => item.Value);
-            foreach (var item in root.ObjectDetails ?? []) endpoints[item.Guid] = new(item.Guid, item.Name, item.FeeType,
-                item.LogicDefinitionName, item.SlotNames, item.ParentGuid, item.ParentName, item.CabinetDefinition);
             var graph = new FeeSignalOwnershipGraph(endpoints, root.ObjectLinks ?? []);
             var variables = (root.LiveVariables ?? []).DistinctBy(item => item.VariableGuid).ToDictionary(item => item.VariableGuid);
             var routes = (root.LiveAssignments ?? []).ToLookup(item => item.TargetObjectGuid);
-            foreach (var container in root.Provenance?.ContainerDocument.Descendants("Container").Where(item =>
-                string.Equals(item.Element("Type")?.Value, "N/A", StringComparison.OrdinalIgnoreCase) && item.Attribute("export")?.Value != "false") ?? [])
+            foreach (var container in root.ContainerDocument.Descendants("Container").Where(item =>
+                string.Equals(item.Element("Type")?.Value, "N/A", StringComparison.OrdinalIgnoreCase) && item.Attribute("export")?.Value != "false"))
             {
                 var entries = (container.Element("DataList")?.Elements("Entry") ?? []).ToArray();
                 var included = entries.Where(item => item.Attribute("export")?.Value != "false").Select(item =>

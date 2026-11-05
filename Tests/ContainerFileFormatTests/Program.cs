@@ -128,4 +128,5 @@ await Task.WhenAll(Enumerable.Range(0, 3).Select(_ => VIBN_Tools.GlobalClasses.F
     await Task.Delay(10); Interlocked.Decrement(ref active); return true;
 })));
 Assert(peak == 1 && active == 0, "Complete FEE writes overlapped or nested generation deadlocked.");
+await LiveGraphRegressionTests.RunAsync();
 Console.WriteLine("ContainerFile schema, identity, aligned comparison and secure parsing checks passed.");

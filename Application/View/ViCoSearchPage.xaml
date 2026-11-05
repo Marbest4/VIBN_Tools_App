@@ -91,9 +91,10 @@
                     Margin="8,0,0,0"
                     FontSize="14"
                     Content="Daten aktualisieren"
-                    ToolTip="Aktualisiert Kanbanize-Daten und lädt anschließend den lokalen Cache; ohne API-Zugriff wird nur der Cache geladen."
+                    ToolTip="Aktualisiert Kanbanize-Daten, Rechnerstatus und RDP-Sitzungen ohne deren Cache. Der Datenstand zeigt die tatsächliche Aktualisierung der Quelldaten; ohne API-Zugriff bleibt deren Cache-Zeit erhalten."
                     Command="{Binding RefreshCommand}" />
 			<WrapPanel Grid.Row="1" Grid.ColumnSpan="2" Margin="0,8,0,0" VerticalAlignment="Center">
+                <TextBlock Margin="0,0,14,0" VerticalAlignment="Center" Text="{Binding DataUpdatedAtText}" />
 				<TextBlock Margin="0,0,14,0" VerticalAlignment="Center" FontWeight="SemiBold"
                            Text="{Binding AutoRefreshCountdown}" />
 				<TextBlock Margin="0,0,6,0" VerticalAlignment="Center" Text="Intervall:" />

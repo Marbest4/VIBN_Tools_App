@@ -16,6 +16,17 @@ public static class ContainerSlotLinkService
     private const int VerificationAttempts = 5;
     private static readonly TimeSpan VerificationDelay = TimeSpan.FromMilliseconds(120);
 
+    internal static async Task<Guid> ResolveMotionFeedbackSourceAsync(Guid logicGuid, string slot, IEnumerable<FeeJoint> joints)
+    {
+        var links = await Services.ApiInstance.Interface.GetSlotSlotAssignmentAsync(logicGuid, slot)
+            ?? throw new InvalidOperationException("Die bestehende MotionJoint-Rückmeldung konnte nicht gelesen werden.");
+        var sources = links.Where(link => (link.SlotNames ?? []).Contains("OutValue", StringComparer.OrdinalIgnoreCase))
+            .Select(link => Guid.TryParse(link.SceneObjectGuid, out var guid) ? guid : Guid.Empty)
+            .Where(guid => guid != Guid.Empty).Distinct().ToArray();
+        if (sources.Length > 1) throw new InvalidOperationException("Mehrere MotionJoint-Rückmeldungen sind verbunden. Bestehende Verbindung vor der Generierung prüfen.");
+        return sources.Length == 1 ? sources[0] : joints.Select(joint => joint.Guid).FirstOrDefault();
+    }
+
     public static async Task<bool> AssignAndVerifyAsync(
         Guid firstObjectGuid,
         string firstSlotName,
@@ -46,7 +57,8 @@ public static class ContainerSlotLinkService
             throw new ArgumentException("Eine Variablenzuordnung enthält einen ungültigen Endpunkt.");
 
         cancellationToken.ThrowIfCancellationRequested();
-        var existing = knownAssignments ?? (await Services.ApiInstance.Interface.GetAssignedSceneObjectsAsync(variableGuid) ?? []).ToArray();
+        var existing = knownAssignments ?? (await Services.ApiInstance.Interface.GetAssignedSceneObjectsAsync(variableGuid)
+            ?? throw new InvalidOperationException($"Die bestehenden Signalverbindungen für '{context}' konnten nicht gelesen werden.")).ToArray();
         if (ContainsVariableEndpoint(existing, objectGuid, slotName)) return;
 
         cancellationToken.ThrowIfCancellationRequested();

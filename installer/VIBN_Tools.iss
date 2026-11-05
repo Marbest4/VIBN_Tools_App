@@ -1,5 +1,5 @@
 #ifndef MyAppVersion
-  #define MyAppVersion "1.2.1"
+  #error MyAppVersion fehlt. scripts/Build-Installer.ps1 verwenden.
 #endif
 
 [Setup]
@@ -30,3 +30,16 @@ Name: "desktopicon"; Description: "Desktopverknüpfung erstellen"; GroupDescript
 
 [Run]
 Filename: "{app}\VIBN_Tools.exe"; Description: "VIBN Tools starten"; Flags: nowait postinstall skipifsilent
+
+[Code]
+function InitializeSetup(): Boolean;
+var
+  Release: Cardinal;
+begin
+  Result := RegQueryDWordValue(HKLM32,
+    'SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full', 'Release', Release);
+  if Result then
+    Result := Release >= 528040;
+  if not Result then
+    MsgBox('Die TIA-Bridge benötigt .NET Framework 4.8 oder neuer. Bitte die Microsoft-Laufzeit installieren und das Setup erneut starten.', mbError, MB_OK);
+end;

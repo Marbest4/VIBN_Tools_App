@@ -634,9 +634,13 @@ public sealed partial class ContainerToFeeVisualPlanService
         {
             var index = Array.IndexOf(targetAssignments, assignment);
             var runtimeObject = _runtimeObjects.GetValueOrDefault(assignment.FeeObjectId);
-            var expectedLinks = runtimeObject is null ? [] : SimObjectLinkMap.Create(container.TypeName, runtimeObject, index);
-            if (expectedLinks.Count == 0 || expectedLogics.Count(logic =>
-                    expectedLinks.All(link => SimObjectLinkMap.IsLinked(link, logic.GuidString, _feeSimObjectLinks))) != 1)
+            if (runtimeObject is null || expectedLogics.Count(logic =>
+                {
+                    var expectedLinks = SimObjectLinkMap.Create(container.TypeName, runtimeObject,
+                        SimObjectLinkMap.FeedbackIndex(container.TypeName, runtimeObject, index, logic.GuidString, _feeSimObjectLinks),
+                        Array.IndexOf(plan.Targets.Where(candidate => candidate.ContainerId == container.Id).ToArray(), target));
+                    return expectedLinks.Count > 0 && expectedLinks.All(link => SimObjectLinkMap.IsLinked(link, logic.GuidString, _feeSimObjectLinks));
+                }) != 1)
                 unlinked.Add(assignment.FeeObjectName);
         }
         var details = string.Join("; ", assignments.SelectMany(assignment =>
@@ -743,16 +747,21 @@ public sealed partial class ContainerToFeeVisualPlanService
 
         foreach (var target in plan.Targets)
         {
-            if (!HasRequiredContainerLogic(target.ContainerId)) continue;
             if (assignments.Any(assignment => assignment.TargetId == target.Id && IsAssignedObjectInSelectedRoots(assignment)))
                 continue;
 
             var containerName = plan.FindNode(target.ContainerId)?.Name ?? string.Empty;
+            var connectedLogics = FindExistingContainerLogics(target.ContainerId);
             var matches = _feeObjects
                 .Where(target.CanAssign)
                 .Where(IsFeeObjectInSelectedRoots)
                 .Where(item => !assignedObjectIds.Contains(item.Id))
-                .Where(item => string.Equals(item.Name.Trim(), containerName.Trim(), StringComparison.OrdinalIgnoreCase))
+                .Where(item => string.Equals(item.Name.Trim(), containerName.Trim(), StringComparison.OrdinalIgnoreCase) ||
+                    connectedLogics.Any(logic => _feeSimObjectLinks.Any(link =>
+                        string.Equals(link.ObjectGuidString, item.GuidString, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(link.LinkedObjectGuidString, logic.GuidString, StringComparison.OrdinalIgnoreCase) ||
+                        string.Equals(link.LinkedObjectGuidString, item.GuidString, StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(link.ObjectGuidString, logic.GuidString, StringComparison.OrdinalIgnoreCase))))
                 .OrderBy(item => item.Name, StringComparer.OrdinalIgnoreCase)
                 .ThenBy(item => item.Id, StringComparer.Ordinal)
                 .ToArray();
@@ -852,8 +861,6 @@ public sealed partial class ContainerToFeeVisualPlanService
             return AssignmentFailure("Das FEE-SimObject ist nicht mehr verfügbar.", "FEE_OBJECT_NOT_FOUND", targetId);
         if (!IsFeeObjectInSelectedRoots(feeObject))
             return AssignmentFailure("Der FEE-Root dieses Objekts ist nicht ausgewählt.", "FEE_OBJECT_ROOT_NOT_SELECTED", targetId);
-        if (!HasRequiredContainerLogic(target.ContainerId))
-            return AssignmentFailure("Zuerst eine vorhandene Logik mit Logic Component und Slots dem Container zuordnen.", "CONTAINER_LOGIC_MISSING", targetId);
         if (!target.CanAssign(feeObject))
         {
             return AssignmentFailure(
@@ -911,8 +918,6 @@ public sealed partial class ContainerToFeeVisualPlanService
         var node = plan.FindNode(signalNodeId);
         if (node?.Kind is not (VisualNodeKind.Signal or VisualNodeKind.UnknownSignal))
             return SignalAssignmentFailure("Das Ziel ist kein Container-Signal.", "SIGNAL_TARGET_NOT_FOUND", signalNodeId);
-        if (node.ContainerId is { } containerId && !HasRequiredContainerLogic(containerId))
-            return SignalAssignmentFailure("Zuerst eine vorhandene Logik mit Logic Component und Slots dem Container zuordnen.", "CONTAINER_LOGIC_MISSING", signalNodeId);
         var signal = _feeSignals.FirstOrDefault(item => string.Equals(
             item.GuidString,
             feeSignalGuid,
@@ -1538,6 +1543,20 @@ public sealed partial class ContainerToFeeVisualPlanService
                                 issue.NodeId,
                                 StringComparison.Ordinal)))
             .ToList();
+        var assignedGuids = plan.SignalAssignments.DistinctBy(item => item.SignalNodeId).ToDictionary(item => item.SignalNodeId, item => item.FeeSignalGuid);
+        var addresses = _feeSignals.DistinctBy(item => item.GuidString, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(item => item.GuidString, item => item.Address, StringComparer.OrdinalIgnoreCase);
+        foreach (var signal in plan.Nodes.Where(node => node.Kind is VisualNodeKind.Signal or VisualNodeKind.UnknownSignal && !plan.IsSignalRemoved(node.Id)))
+        {
+            var liveAddress = assignedGuids.TryGetValue(signal.Id, out var assignedGuid) ? addresses.GetValueOrDefault(assignedGuid) : null;
+            foreach (var location in new[] { signal.SourceLocation, liveAddress }.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                var warning = VIBN_Tools.Core.Interfaces.PlcSignalSlotPolicy.AssignmentWarning(location, plan.GetEffectiveSlot(signal));
+                if (warning.Length > 0)
+                    issues.Add(new VisualIssue(signal.ContainerId is { } id && plan.IsGenerationSelected(id)
+                        ? VisualIssueSeverity.Error : VisualIssueSeverity.Warning, "SIGNAL_DIRECTION_CONFLICT", warning, signal.Id));
+            }
+        }
         foreach (var added in plan.AddedSignals)
         {
             var node = plan.FindNode(added.NodeId);
@@ -1758,7 +1777,8 @@ public sealed partial class ContainerToFeeVisualPlanService
         AutoAssignMatches();
 
         var validation = Validate();
-        if (!validation.IsValid && acceptedValidationErrors is null)
+        if (validation.Issues.Any(issue => issue.Code == "SIGNAL_DIRECTION_CONFLICT" && issue.Severity == VisualIssueSeverity.Error) ||
+            !validation.IsValid && acceptedValidationErrors is null)
         {
             return new VisualExecutionResult(
                 false,
@@ -1786,7 +1806,7 @@ public sealed partial class ContainerToFeeVisualPlanService
             _runtimeInterfaces,
             effectiveAcceptedErrors,
             progress,
-            cancellationToken);
+            cancellationToken, _feeSimObjectLinks);
     }
 
     /// <summary>

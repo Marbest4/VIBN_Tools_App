@@ -1,4 +1,4 @@
-<UserControl x:Class="VIBN_Tools.Application.View.ContainerToFeeVisualPage"
+﻿<UserControl x:Class="VIBN_Tools.Application.View.ContainerToFeeVisualPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -200,6 +200,8 @@
                             Command="{Binding UndoCommand}" />
                     <Button Style="{StaticResource VisualToolbarButton}" Content="Wiederholen"
                             Command="{Binding RedoCommand}" />
+                    <Button Style="{StaticResource VisualToolbarButton}" Content="GrobStandard-Logiken" Command="{Binding ShowLogicDefinitionsCommand}"
+                            ToolTip="Zeigt die verfügbaren Logikdefinitionen und markiert die im aktuellen Plan benötigten Logiken." />
                     <Button Style="{StaticResource VisualToolbarButton}" Content="FEE aktualisieren"
                             Command="{Binding RefreshFeeObjectsCommand}"
                             ToolTip="{Binding RefreshFeeObjectsUnavailableReason}"
@@ -1462,7 +1464,12 @@
             </Grid>
 
             <Expander Grid.Row="3" Margin="0,7,0,0" Header="Vorgangsprotokoll" IsExpanded="False">
-            <ListBox ItemsSource="{Binding OperationDetails}" MinHeight="70" MaxHeight="170"
+            <DockPanel>
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,5">
+                    <ComboBox Width="200" ItemsSource="{Binding ProtocolFilters}" SelectedItem="{Binding SelectedProtocolFilter}" />
+                    <Button Margin="8,0,0,0" Padding="10,3" Content="Protokoll leeren" Command="{Binding ClearProtocolCommand}" />
+                </StackPanel>
+            <ListBox ItemsSource="{Binding OperationDetailsView}" MinHeight="70" MaxHeight="170"
                      ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
                 <ListBox.ItemTemplate>
@@ -1473,6 +1480,7 @@
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
+            </DockPanel>
         </Expander>
 
         <Grid Grid.Row="4" Visibility="{Binding IsBusy, Converter={StaticResource BooleanToVisibilityConverter}}">
